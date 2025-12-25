@@ -8,10 +8,13 @@ export type PathSegment = { from: Cell; to: Cell };
 export interface GameState {
   gridSize: GridSize;
   cells: Cell[];
-  path: Cell[];
+  grid: boolean[][]; // 5x5グリッド（true: 通過済み）
+  path: { x: number; y: number }[]; // 軌跡
+  start: { x: number; y: number };
+  goal: { x: number; y: number };
   isGameActive: boolean;
   isCleared: boolean;
-  
+  isComplete: boolean;
   // アクション
   initGame: (width: number, height: number, start: { x: number, y: number }, goal: { x: number, y: number }) => void;
   resetGame: () => void;
@@ -23,12 +26,21 @@ const initialGridSize: GridSize = { width: 5, height: 5 };
 /**
  * GameStateを管理するZustandストア
  */
-export const useGameStore = create<GameState>((set, get) => ({
+export const useGameStore = create<GameState & {
+  addToPath: (x: number, y: number) => void;
+  reset: () => void;
+  checkComplete: () => void;
+}>((set, get) => ({
   gridSize: initialGridSize,
   cells: [],
   path: [],
   isGameActive: false,
   isCleared: false,
+  grid: Array(5).fill(null).map(() => Array(5).fill(false)),
+  path: [],
+  start: { x: 0, y: 0 },
+  goal: { x: 4, y: 4 },
+  isComplete: false,
 
   initGame: (width, height, start, goal) => {
     const cells: Cell[] = [];
@@ -96,4 +108,28 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { ...state, path: newPath };
     });
   },
+  addToPath: (x, y) => {
+    const { grid, path } = get();
+    if (!grid[y][x]) { // 重複チェック
+      set(state => ({
+        grid: state.grid.map((row, i) => 
+          i === y ? row.map((cell, j) => j === x ? true : cell) : row
+        ),
+        path: [...state.path, { x, y }]
+      }));
+      get().checkComplete();
+    }
+  },
+  reset: () => set({
+    grid: Array(5).fill(null).map(() => Array(5).fill(false)),
+    path: [],
+    isComplete: false
+  }),
+  checkComplete: () => {
+    const { grid, goal } = get();
+    const allVisited = grid.flat().every(cell => cell);
+    const atGoal = get().path.length > 0 && get().path[get().path.length - 1].x === goal.x && get().path[get().path.length - 1].y === goal.y;
+    set({ isComplete: allVisited && atGoal });
+  }
 }));
+
