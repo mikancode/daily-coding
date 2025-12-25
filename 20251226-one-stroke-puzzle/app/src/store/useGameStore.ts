@@ -37,7 +37,6 @@ export const useGameStore = create<GameState & {
   isGameActive: false,
   isCleared: false,
   grid: Array(5).fill(null).map(() => Array(5).fill(false)),
-  path: [],
   start: { x: 0, y: 0 },
   goal: { x: 4, y: 4 },
   isComplete: false,
