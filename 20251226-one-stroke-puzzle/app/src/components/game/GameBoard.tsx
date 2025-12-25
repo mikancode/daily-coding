@@ -2,12 +2,20 @@
 
 import { useGameStore } from '@/store/useGameStore';
 import { motion } from 'motion/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * 個々のマス目を表示するコンポーネント
  */
-const CellComponent: React.FC<{ x: number; y: number; type: 'start' | 'goal' | 'normal'; onClick: (x: number, y: number) => void }> = ({ x, y, type, onClick }) => {
+const CellComponent: React.FC<{ 
+  x: number; 
+  y: number; 
+  type: 'start' | 'goal' | 'normal'; 
+  onClick: (x: number, y: number) => void;
+  onMouseDown: (x: number, y: number) => void;
+  onMouseEnter: (x: number, y: number) => void;
+  onTouchStart: (x: number, y: number) => void;
+}> = ({ x, y, type, onClick, onMouseDown, onMouseEnter, onTouchStart }) => {
   const isVisited = useGameStore((state) => state.path.some(cell => cell.x === x && cell.y === y));
   
   // マス目の基本スタイル
@@ -23,7 +31,9 @@ const CellComponent: React.FC<{ x: number; y: number; type: 'start' | 'goal' | '
   }
 
   const handleClick = () => onClick(x, y);
-  const handleTouch = () => onClick(x, y); // タッチイベントもクリックと同じ処理
+  const handleMouseDown = () => onMouseDown(x, y);
+  const handleMouseEnter = () => onMouseEnter(x, y);
+  const handleTouchStart = () => onTouchStart(x, y);
 
   return (
     <motion.div
@@ -31,7 +41,12 @@ const CellComponent: React.FC<{ x: number; y: number; type: 'start' | 'goal' | '
       layout
       transition={{ type: 'spring', stiffness: 700, damping: 30 }}
       onClick={handleClick}
-      onTouchStart={handleTouch} // スマホタッチ対応
+      onMouseDown={handleMouseDown}
+      onMouseEnter={handleMouseEnter}
+      onTouchStart={handleTouchStart}
+      data-cell
+      data-x={x}
+      data-y={y}
     >
       {/* 訪れたマス目を視覚的に確認するためのドット（デバッグ用） */}
       {isVisited && type === 'normal' && (
@@ -47,7 +62,8 @@ const CellComponent: React.FC<{ x: number; y: number; type: 'start' | 'goal' | '
  * グリッドボード全体を表示するコンポーネント
  */
 const GameBoard: React.FC = () => {
-  const { gridSize, cells, initGame, grid, path, addToPath, reset, isComplete } = useGameStore();
+  const { gridSize, cells, initGame, grid, path, tryMove, resetGame, isComplete } = useGameStore();
+  const [isDrawing, setIsDrawing] = useState(false);
 
   // 初回ロード時にゲームを初期化
   useEffect(() => {
@@ -58,7 +74,49 @@ const GameBoard: React.FC = () => {
   }, [cells.length, initGame]);
 
   const handleCellClick = (x: number, y: number) => {
-    addToPath(x, y);
+    const cell = cells.find(c => c.x === x && c.y === y);
+    if (cell) {
+      tryMove(cell);
+    }
+  };
+
+  const handleMouseDown = (x: number, y: number) => {
+    setIsDrawing(true);
+    handleCellClick(x, y);
+  };
+
+  const handleMouseEnter = (x: number, y: number) => {
+    if (isDrawing) {
+      handleCellClick(x, y);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDrawing(false);
+  };
+
+  // タッチ対応
+  const handleTouchStart = (x: number, y: number) => {
+    setIsDrawing(true);
+    handleCellClick(x, y);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDrawing) return;
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (element) {
+      const cellElement = element.closest('[data-cell]');
+      if (cellElement) {
+        const x = parseInt(cellElement.getAttribute('data-x') || '0');
+        const y = parseInt(cellElement.getAttribute('data-y') || '0');
+        handleCellClick(x, y);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDrawing(false);
   };
 
   // CSS Gridを使ってレスポンシブなグリッドレイアウトを構築
@@ -72,13 +130,23 @@ const GameBoard: React.FC = () => {
       <div
         style={gridStyle}
         className="grid gap-1 h-full w-full"
+        onMouseUp={handleMouseUp}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
       >
         {cells.map((cell) => (
-          <CellComponent key={`${cell.x}-${cell.y}`} {...cell} onClick={handleCellClick} />
+          <CellComponent 
+            key={`${cell.x}-${cell.y}`} 
+            {...cell} 
+            onClick={handleCellClick}
+            onMouseDown={handleMouseDown}
+            onMouseEnter={handleMouseEnter}
+            onTouchStart={handleTouchStart}
+          />
         ))}
       </div>
       {isComplete && <p className="text-green-500">クリア！</p>}
-      <button onClick={reset} className="mt-4 px-4 py-2 bg-red-500 text-white rounded">
+      <button onClick={resetGame} className="mt-4 px-4 py-2 bg-red-500 text-white rounded">
         リセット
       </button>
     </div>
