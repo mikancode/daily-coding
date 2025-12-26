@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# One-Stroke Grid Puzzle
 
-## Getting Started
+## ゲーム概要
 
-First, run the development server:
+**One-Stroke Grid Puzzle** は、一筆書きパズルゲームです。グリッド上のスタート地点から、全てのマスを一度だけ通過してゴールを目指します。直感的なドラッグ操作で軌跡を描き、クリアを目指しましょう。
 
+### ルール
+- グリッド上でスタート（緑）からゴール（赤）まで、全てのマスを一度だけ通る経路を描く
+- 重複して通ったマスや、通過していないマスがある場合はクリアできない
+- スマホ・PC両対応で、タッチまたはマウスドラッグで操作可能
+
+## 技術スタック
+- **Framework**: Next.js (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: Zustand
+- **Animation**: Motion
+
+## インストールと実行
+
+### 依存関係のインストール
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+# または
+yarn install
+# または
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 開発サーバーの起動
+```bash
+npm run dev
+# または
+yarn dev
+# または
+pnpm dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+ブラウザで [http://localhost:3000](http://localhost:3000) を開いてゲームをプレイしてください。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 背景情報
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+このプロジェクトはRoo Codeを使用してAI駆動開発で作成しました。新言語の学習には不向きだと悟りましたが、戒めのために残します。
