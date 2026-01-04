@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import './App.css'
 
 function App() {
@@ -10,17 +11,21 @@ function App() {
   // 変数での型指定
   const r: number = 100;
   const pi: number = 3.14;
-  const isActive: boolean = true;
+  
+  // 型を明示する場合（省略も可）
+  const [isActive, setActive] = useState<boolean>(true);
 
   // 関数での型指定（引数と戻り値）
   const culc: (a: number, b: number) => number = (a, b) => {
+    let result: number = 0;
     // 条件分岐
     if (isActive) {
-      return 2 * a * b;
+      result = 2 * a * b;
     }
     else {
-      return (a ** 2) * b;
+      result = (a ** 2) * b;
     }
+    return result;
   };
 
   const loop: (a: number, b: number) => string = (a, b) => {
@@ -38,6 +43,9 @@ function App() {
       <h2>{subMessage}</h2>
       <h3>{culc(r, pi)}</h3>
       <h4>{loop(r, pi)}</h4>
+      <button onClick={() => setActive(!isActive)}>
+        計算モードを切り替える
+      </button>
     </div>
   )
 }
