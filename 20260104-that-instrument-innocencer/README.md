@@ -1,73 +1,50 @@
-# React + TypeScript + Vite
+# Innocencer (あの楽器)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+日々のコーディング学習の一環として開発している、直感的な操作が可能なWeb楽器アプリです。
+画面をタッチした座標に応じて、リアルタイムに音階とビジュアルエフェクト（波紋）が生成されます。
 
-Currently, two official plugins are available:
+## 🚀 Live Demo
+- **Production:** [https://innocencer.vercel.app](https://innocencer.vercel.app)
+- **Development Preview:** VercelのGitHub連携により、ブランチごとにプレビューURLが自動生成されます。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🛠 Tech Stack
+- **Frontend:** React + TypeScript
+- **Build Tool:** Vite
+- **Sound Engine:** Tone.js (Web Audio API)
+- **Visuals:** Canvas API
+- **Deployment:** Vercel
 
-## React Compiler
+## 📖 Learning Journey
+このプロジェクトでは、以下の技術習得を目標としています。
+- [x] Vite + React + TS による開発環境の構築
+- [x] VercelによるCI/CD（自動デプロイ）環境の構築
+- [ ] TypeScriptの基本（型定義、State、イベントハンドリング）
+- [ ] Tone.jsを用いたシンセサイザーの制御
+- [ ] Canvas APIによる低遅延なアニメーション描画
+- [ ] スマホ（マルチタッチ）への最適化
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 💻 Local Development
 
-## Expanding the ESLint configuration
+リポジトリをクローンした後、以下のコマンドでローカル開発サーバーを起動できます。
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+# プロジェクトディレクトリへ移動
+cd 20260104-that-instrument-innocencer/innocencer
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# 依存関係のインストール
+npm install
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# 開発サーバー起動（スマホでテストする場合は --host を使用）
+npm run dev -- --host
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## 📂 Project Structure
+```text
+innocencer/
+├── src/
+│   ├── App.tsx    # メインロジック（State, Audio, Event）
+│   ├── main.tsx   # エントリーポイント
+│   └── App.css    # 全画面レイアウト、スタイリング
+├── public/        # 静的アセット
+└── index.html
 ```
