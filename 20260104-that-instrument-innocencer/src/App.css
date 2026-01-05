@@ -30,4 +30,17 @@
   border-radius: 50%;
   transform: translate(-50%, -50%); /* 中心を座標に合わせる */
   pointer-events: none;
+
+  /* アニメーション（色のふわっと変化） */
+  transition: background-color 0.1s, border-color 0.1s, transform 0.1s;
+  /* GUIが使えるよう最適化 */
+  will-change: transform;
+}
+
+.pointer-dot.active {
+  background-color: rgba(0, 255, 204, 0.6);
+  border-color: #ffffff;
+
+  /* scale を追加。translate とまとめて上書き */
+  transform: translate(-50%, -50%) scale(1.2);
 }
