@@ -40,3 +40,31 @@
 .read-the-docs {
   color: #888;
 }
+
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  background-color: #111;
+  color: #00ffcc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.info-display {
+  text-align: center;
+  pointer-events: none; /* テキストがタッチの邪魔をしないように */
+  font-family: monospace;
+}
+
+.pointer-dot {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border: 2px solid #00ffcc;
+  border-radius: 50%;
+  transform: translate(-50%, -50%); /* 中心を座標に合わせる */
+  pointer-events: none;
+}
