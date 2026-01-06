@@ -27,6 +27,13 @@ html, body {
   overflow: hidden;         /* はみ出し防止 */
 
   position: relative;       /* ポインタドットの基準位置 */
+  
+  /* ユーザー操作の無効化 */
+  user-select: none;         /* 標準 */
+  -webkit-user-select: none; /* Safari, Chrome */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* 旧IE */
+  -webkit-touch-callout: none; /* 長押しメニューを無効化（iOS） */
 }
 
 /* 情報表示（タップ干渉なし） */
