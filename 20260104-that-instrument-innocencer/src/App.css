@@ -1,46 +1,63 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  text-align: center;
+/* 画面全体のリセットとスクロール禁止 */
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;        /* 余白無し */
+  padding: 0;       /* 内部余白無し */
+  overflow: hidden; /* はみ出し防止 */
+  background: #000;
 }
 
+/* React root */
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+/* 全画面キャンバス */
 .app-container {
   width: 100vw;
-  height: 100vh;
-  background-color: #111;
+  height: 100dvh; /* モバイルで正確な高さ */
+  background: #111;
   color: #00ffcc;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-  position: relative;
+
+  display: flex;            /* Flexbox レイアウト */
+  justify-content: center;  /* 中央揃え */
+  align-items: center;      /* 中央揃え */
+  overflow: hidden;         /* はみ出し防止 */
+
+  position: relative;       /* ポインタドットの基準位置 */
 }
 
+/* 情報表示（タップ干渉なし） */
 .info-display {
   text-align: center;
-  pointer-events: none; /* テキストがタッチの邪魔をしないように */
+  pointer-events: none;
   font-family: monospace;
 }
 
+/* カーソル追従ポインタ */
 .pointer-dot {
   position: absolute;
   width: 40px;
   height: 40px;
   border: 2px solid #00ffcc;
   border-radius: 50%;
-  transform: translate(-50%, -50%); /* 中心を座標に合わせる */
   pointer-events: none;
 
-  /* アニメーション（色のふわっと変化） */
-  transition: background-color 0.1s, border-color 0.1s, transform 0.1s;
-  /* GUIが使えるよう最適化 */
-  will-change: transform;
+  transform: translate(-50%, -50%);
+  will-change: transform, background-color, border-color;
+
+  transition: 
+    background-color 0.1s ease,
+    border-color 0.1s ease,
+    transform 0.1s ease;
 }
 
+/* アクティブ時の見た目 */
 .pointer-dot.active {
-  background-color: rgba(0, 255, 204, 0.6);
-  border-color: #ffffff;
+  background: rgba(0, 255, 204, 0.6);
+  border-color: #fff;
 
-  /* scale を追加。translate とまとめて上書き */
   transform: translate(-50%, -50%) scale(1.2);
 }
