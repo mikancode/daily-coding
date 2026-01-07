@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import * as Tone from 'tone';
 import './App.css'
 
 function App() {
@@ -7,7 +8,15 @@ function App() {
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
  
   // ポインターが押されたとき
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerDown = async (e: React.PointerEvent) => {
+    // 【重要】ブラウザの制限で、最初のクリック時にオーディオコンテキストを開始する必要がある
+    await Tone.start();
+    
+    // シンプルなシンセサイザーを作成して音を鳴らす
+    const synth = new Tone.Synth().toDestination();
+    // 440Hz（ラ）の音を、8分音符の長さで鳴らす
+    synth.triggerAttackRelease("A4", "8n");
+
     setIsDown(true);
     updatePosition(e);
   };
@@ -16,13 +25,13 @@ function App() {
     setIsDown(false);
   };
   // ポインターが動いたとき
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerMove = (e: React.PointerEvent) => {
     if (isDown) {
       updatePosition(e);
     }
   };
   // ポインターの位置を更新
-  const updatePosition = (e: React.PointerEvent<HTMLDivElement>) => {
+  const updatePosition = (e: React.PointerEvent) => {
     setPosition({
       x: Math.round(e.clientX),
       y: Math.round(e.clientY),
