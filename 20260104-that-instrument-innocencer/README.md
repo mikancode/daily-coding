@@ -1,50 +1,79 @@
-# Innocencer (あの楽器)
+# Innocencer（あの楽器）
 
-日々のコーディング学習の一環として開発している、直感的な操作が可能なWeb楽器アプリです。
-画面をタッチした座標に応じて、リアルタイムに音階とビジュアルエフェクト（波紋）が生成されます。
+**画面をタッチすると、音と波紋が生まれる。**  
+Innocencer は、直感的な操作で演奏できるWeb楽器アプリです。
+
+タッチした座標に応じて音が鳴り、同時にビジュアルエフェクトがリアルタイムに描画されます。  
+スマホ・PC のどちらでも、指先ひとつで「音を出す体験」を楽しめます。
+
+<!--
+📸 スクリーンショットを置くならここ
+例: docs/images/hero.png
+-->
 
 ## 🚀 Live Demo
-- **Production:** [https://innocencer.vercel.app](https://innocencer.vercel.app)
-- **Development Preview:** VercelのGitHub連携により、ブランチごとにプレビューURLが自動生成されます。
+
+- **Production:** https://innocencer.vercel.app  
+- **Preview:** VercelのGitHub 連携により、ブランチごとに自動生成
+
+※ スマートフォンでのタッチ操作推奨
+
+## ✨ What You Can Do
+
+- 画面タッチで即座に音を再生
+- ポインター位置に追従するビジュアル表示
+- ブラウザ上で完結（インストール不要）
 
 ## 🛠 Tech Stack
+
 - **Frontend:** React + TypeScript
 - **Build Tool:** Vite
-- **Sound Engine:** Tone.js (Web Audio API)
-- **Visuals:** Canvas API
+- **Sound:** Tone.js（Web Audio API）
+- **Visual:** Canvas API
 - **Deployment:** Vercel
 
+## 📐 Design & Architecture
+
+このプロジェクトでは、  
+**入力・音・描画の責務を分離し、機能追加しやすい構造**を意識しています。
+
+設計メモや考え方は `docs/` にまとめています。
+
 ## 📖 Learning Journey
-このプロジェクトでは、以下の技術習得を目標としています。
-- [x] Vite + React + TS による開発環境の構築
-- [x] VercelによるCI/CD（自動デプロイ）環境の構築
-- [ ] TypeScriptの基本（型定義、State、イベントハンドリング）
-- [ ] Tone.jsを用いたシンセサイザーの制御
-- [ ] Canvas APIによる低遅延なアニメーション描画
-- [ ] スマホ（マルチタッチ）への最適化
+
+学習・検証を目的とした個人開発プロジェクトとして、以下に取り組んでいます。
+
+- [x] Vite + React + TypeScript による開発環境構築
+- [x] Vercel による CI/CD（自動デプロイ）
+- [ ] TypeScript の基本（型定義 / State / イベント）
+- [ ] Tone.js によるシンセ制御
+- [ ] Canvas API を用いた低遅延アニメーション
+- [ ] スマホでのマルチタッチ最適化
 
 ## 💻 Local Development
 
-リポジトリをクローンした後、以下のコマンドでローカル開発サーバーを起動できます。
-
 ```bash
-# プロジェクトディレクトリへ移動
-cd 20260104-that-instrument-innocencer/innocencer
-
-# 依存関係のインストール
+cd 20260104-that-instrument-innocencer
 npm install
-
-# 開発サーバー起動（スマホでテストする場合は --host を使用）
 npm run dev -- --host
 ```
-
 ## 📂 Project Structure
-```text
-innocencer/
+```
+20260104-that-instrument-innocencer/
 ├── src/
-│   ├── App.tsx    # メインロジック（State, Audio, Event）
+│   ├── App.tsx    # 全体制御（入力・音・描画の起点）
 │   ├── main.tsx   # エントリーポイント
-│   └── App.css    # 全画面レイアウト、スタイリング
-├── public/        # 静的アセット
+│   └── App.css    # 全画面レイアウト
+├── public/
 └── index.html
 ```
+
+## 🎼 Inspiration
+
+Innocencerは、2007年に公開された楽曲「Innocence」に関連する動画に登場する、架空の楽器表現から着想を得ています。
+
+当時、映像内の抽象的な楽器表現を技術的に再現しようとする試みが
+エンジニアコミュニティで数多く見られました。
+
+本プロジェクトでは、その発想を現代のWeb技術（Web Audio / Canvas）で
+再解釈し、ブラウザ上で触れる形に落とし込むことを目的としています。
