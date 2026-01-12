@@ -80,7 +80,7 @@ if warn_hits:
     print("目視でレビューしてください")
 
 if white_hits:
-    print(f"✅ OK packages: {sorted(set(white_hits))}")
+    print(f"✅ LICENSE CHECK PASSED (WHITE): {sorted(set(white_hits))}")
 
 # -------------------------
 # Generate THIRD-PARTY-NOTICES.md
@@ -88,4 +88,4 @@ if white_hits:
 subprocess.run(
     ["pip-licenses", "--format=markdown", "--packages"] + packages + ["--output-file", OUTPUT_FILE]
 )
-print("✅ ライセンスチェック完了。NOTICEファイルを作成しました")
+print("NOTICEファイルを作成しました")
