@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { usePointer } from './hooks/usePointer';
 import { useSound } from './hooks/useSound';
 import './App.css';
@@ -6,19 +7,15 @@ function App() {
   const pointer = usePointer();
   const sound = useSound();
 
-  /* =====================
-   * Pointer（入力イベント）
-   * ===================== */
-  const handlePointerDown = async (e: React.PointerEvent) => {
-    await sound.startAudio();
-    sound.playSound();
-    pointer.handlers.handlePointerDown(e);
-  };
-
-  const handlePointerUp = () => {
-    sound.stopSound();
-    pointer.handlers.handlePointerUp();
-  };
+  // Pointer と Sound をつなぐ
+  useEffect(() => {
+    if (pointer.isDown) {
+      sound.startAudio();
+      sound.playSound();
+    } else {
+      sound.stopSound();
+    }
+  }, [pointer.isDown]);
 
   /* =====================
    * Render
@@ -26,10 +23,10 @@ function App() {
   return (
     <div
       className="app-container"
-      onPointerDown={handlePointerDown}
-      onPointerMove={pointer.handlers.handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
+      onPointerDown={pointer.onPointerDown}
+      onPointerMove={pointer.onPointerMove}
+      onPointerUp={pointer.onPointerUp}
+      onPointerLeave={pointer.onPointerUp}
       style={{ touchAction: 'none' }}
     >
       <div className="info-display">

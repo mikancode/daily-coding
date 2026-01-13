@@ -12,7 +12,7 @@ export function usePointer() {
    * ===================== */
   const [isDown, setIsDown] = useState(false);
   const [position, setPosition] = useState<PointerPosition>({ x: 0, y: 0 });
-  
+
   /* =====================
    * Utility
    * ===================== */
@@ -22,32 +22,30 @@ export function usePointer() {
       y: Math.round(e.clientY),
     });
   };
-  
+
   /* =====================
    * Pointer（入力イベント）
    * ===================== */
-  const handlePointerDown = (e: React.PointerEvent) => {
+  const onPointerDown = (e: React.PointerEvent) => {
     setIsDown(true);
     updatePosition(e);
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
+  const onPointerMove = (e: React.PointerEvent) => {
     if (isDown) {
       updatePosition(e);
     }
   };
 
-  const handlePointerUp = () => {
+  const onPointerUp = () => {
     setIsDown(false);
   };
 
   return {
     isDown,
     position,
-    handlers: {
-      handlePointerDown,
-      handlePointerMove,
-      handlePointerUp,
-    },
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
   };
 }
