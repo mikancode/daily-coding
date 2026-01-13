@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import * as Tone from 'tone';
+import { useState } from 'react';
+import { useSound } from './hooks/useSound';
 import './App.css';
 
 function App() {
@@ -9,53 +9,28 @@ function App() {
   const [isDown, setIsDown] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
-  /* =====================
-   * ref（内部処理用の値）
-   * ===================== */
-  const synthRef = useRef<Tone.Synth | null>(null);
-  const audioStartedRef = useRef(false);
-
-  /* =====================
-   * Sound（音の初期化・制御）
-   * ===================== */
-  const startAudioIfNeeded = async () => {
-    if (!audioStartedRef.current) {
-      await Tone.start();
-      audioStartedRef.current = true;
-    }
-
-    if (!synthRef.current) {
-      synthRef.current = new Tone.Synth().toDestination();
-    }
-  };
-
-  const playSound = () => {
-    synthRef.current?.triggerAttack('A4');
-  };
-
-  const stopSound = () => {
-    synthRef.current?.triggerRelease();
-  };
+  const sound = useSound();
 
   /* =====================
    * Pointer（入力イベント）
    * ===================== */
-  const handlePointerDown = async (e: React.PointerEvent) => {
-    await startAudioIfNeeded();
+    const handlePointerDown = async (e: React.PointerEvent) => {
+    await sound.startAudio();
+    sound.playSound();
 
     setIsDown(true);
     updatePosition(e);
-    playSound();
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDown) return;
-    updatePosition(e);
+    if (isDown) {
+      updatePosition(e);
+    }
   };
 
   const handlePointerUp = () => {
     setIsDown(false);
-    stopSound();
+    sound.stopSound();
   };
 
   /* =====================
