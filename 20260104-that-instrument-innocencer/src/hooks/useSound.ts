@@ -16,11 +16,16 @@ export function useSound() {
     }
   };
 
-
-  const playSound = () => {
-    synthRef.current?.triggerAttack('A6');
+/**
+ * 音の再生
+ */
+const playSound = (frequency: number = 220) => {
+    synthRef.current?.triggerAttack(frequency);
   };
 
+/**
+ * 音の停止
+ */
   const stopSound = () => {
     synthRef.current?.triggerRelease();
   };
