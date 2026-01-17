@@ -8,21 +8,27 @@ function App() {
   const pointer = usePointer();
   const sound = useSound();
 
-  // Pointer と Sound をつなぐ
+  // 音の再生・停止
   useEffect(() => {
     if (pointer.isDown) {
       sound.startAudio();
-
-      // X座標(0〜画面幅)を周波数(261.63Hz[ド]〜523.25Hz[高いド])に変換
       const freq = mapRange(pointer.position.x, 0, window.innerWidth, 261.63, 523.25);
-      sound.setFrequency(freq);
       sound.playSound(freq);
     } else {
       sound.stopSound();
     }
     // 依存配列
-  }, [pointer.isDown, pointer.position.x]);
+  }, [pointer.isDown]);
 
+  // 音程のリアルタイム変更
+  useEffect(() => {
+    if (pointer.isDown) {
+      const freq = mapRange(pointer.position.x, 0, window.innerWidth, 261.63, 523.25);
+      sound.setFrequency(freq);
+    }
+    // 依存配列
+  }, [pointer.position.x]);
+  
   /* =====================
    * Render
    * ===================== */
