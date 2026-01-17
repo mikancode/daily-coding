@@ -1,70 +1,40 @@
-/* 画面全体のリセットとスクロール禁止 */
-html, body {
+/* 画面全体のリセット */
+html, body, #root {
   width: 100%;
   height: 100%;
-  margin: 0;        /* 余白無し */
-  padding: 0;       /* 内部余白無し */
-  overflow: hidden; /* はみ出し防止 */
+  margin: 0;         /* 余白をなくす */
+  overflow: hidden; /* スクロールバーを非表示にする */
   background: #000;
 }
 
-/* React root */
-#root {
-  width: 100%;
-  height: 100%;
-}
-
-/* 全画面キャンバス */
+/* コンテナ：Canvasとテキストを重ねるための基準 */
 .app-container {
   width: 100vw;
   height: 100dvh; /* モバイルで正確な高さ */
-  background: #111;
-  color: #00ffcc;
-
-  display: flex;            /* Flexbox レイアウト */
-  justify-content: center;  /* 中央揃え */
-  align-items: center;      /* 中央揃え */
-  overflow: hidden;         /* はみ出し防止 */
-
-  position: relative;       /* ポインタドットの基準位置 */
-  
+  position: relative;
   /* ユーザー操作の無効化 */
   user-select: none;         /* 標準 */
   -webkit-user-select: none; /* Safari, Chrome */
   -moz-user-select: none;    /* Firefox */
   -ms-user-select: none;     /* 旧IE */
   -webkit-touch-callout: none; /* 長押しメニューを無効化（iOS） */
+
 }
 
-/* 情報表示（タップ干渉なし） */
-.info-display {
-  text-align: center;
-  pointer-events: none;
-  font-family: monospace;
-}
-
-/* カーソル追従ポインタ */
-.pointer-dot {
+/* Canvasを画面いっぱいに広げて背面に置く */
+canvas {
   position: absolute;
-  width: 40px;
-  height: 40px;
-  border: 2px solid #00ffcc;
-  border-radius: 50%;
-  pointer-events: none;
-
-  transform: translate(-50%, -50%);
-  will-change: transform, background-color, border-color;
-
-  transition: 
-    background-color 0.1s ease,
-    border-color 0.1s ease,
-    transform 0.1s ease;
+  top: 0;
+  left: 0;
+  display: block;
 }
 
-/* アクティブ時の見た目 */
-.pointer-dot.active {
-  background: rgba(0, 255, 204, 0.6);
-  border-color: #fff;
-
-  transform: translate(-50%, -50%) scale(1.2);
+/* 情報表示：Canvasより前面に表示 */
+.info-display {
+  position: relative;
+  z-index: 10;
+  color: #00ffcc;
+  font-family: monospace;
+  pointer-events: none; /* テキストがクリックの邪魔をしないようにする */
+  padding: 20px;
 }
