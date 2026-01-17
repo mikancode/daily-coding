@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react';
 import { mapRange } from './utils/math';
 import { usePointer } from './hooks/usePointer';
 import { useSound } from './hooks/useSound';
-import { useVisualEffects } from './hooks/useVisualEffects';
+import { useVisualEffects } from './hooks/usePerticles';
 import { drawEffect } from './utils/draw';
 import './App.css';
 

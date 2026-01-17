@@ -1,4 +1,4 @@
-import type { VisualEffect } from '../hooks/useVisualEffects'; // 型だけインポート
+import type { VisualEffect } from '../hooks/usePerticles'; // 型だけインポート
 
 export const drawEffect = (ctx: CanvasRenderingContext2D, effect: VisualEffect) => {
   ctx.save();
