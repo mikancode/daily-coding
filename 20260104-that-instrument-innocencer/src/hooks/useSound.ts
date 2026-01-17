@@ -16,11 +16,25 @@ export function useSound() {
     }
   };
 
-
-  const playSound = () => {
-    synthRef.current?.triggerAttack('A6');
+/**
+ * 特定の周波数で音を再生する関数
+ * @param frequency 音の高さ（周波数）
+ */
+const playSound = (frequency: number = 220) => {
+    synthRef.current?.triggerAttack(frequency);
   };
 
+/**
+ * 音の高さをリアルタイムに変えるための関数
+ * @param frequency 音の高さ（周波数）
+ */
+  const setFrequency = (frequency: number) => {
+    synthRef.current?.setNote(frequency);
+  };
+
+/**
+ * 音を停止する関数
+ */
   const stopSound = () => {
     synthRef.current?.triggerRelease();
   };
@@ -28,6 +42,7 @@ export function useSound() {
   return {
     startAudio,
     playSound,
+    setFrequency,
     stopSound,
   };
 }
