@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 // エフェクトの型定義
 /**
  * 視覚効果エフェクトのデータ構造
- * @interface VisualEffect
+ * @interface Particle
  * @property id 個別識別用
  * @property type 図形の種類 ('circle', 'square', 'triangle', 'line' のいずれか)
  * @property x 発生したX座標
@@ -13,7 +13,7 @@ import { useState, useCallback } from 'react';
  * @property opacity 透明度 (1.0 -> 0.0)
  * @property lineWidth 線の太さ
  */
-export interface VisualEffect {
+export interface Particle {
   id: number;
   type: 'circle' | 'square' | 'triangle' | 'line';
   x: number;
@@ -26,15 +26,15 @@ export interface VisualEffect {
 
 /**
  * 視覚効果エフェクトを管理するカスタムフック
- * @function useVisualEffects
- * @returns {effects, addEffect, updateEffects}
+ * @function useParticles
+ * @returns {perticles, addPerticle, updatePerticles}
  */
-export function useVisualEffects() {
-  const [effects, setEffects] = useState<VisualEffect[]>([]);
+export function useParticles() {
+  const [perticles, setPerticles] = useState<Particle[]>([]);
 
 // 新しいエフェクトを追加する関数
-  const addEffect = useCallback((x: number, y: number, type: VisualEffect['type']) => {
-    const newEffect: VisualEffect = {
+  const addPerticle = useCallback((x: number, y: number, type: Particle['type']) => {
+    const newEffect: Particle = {
       id: Date.now(),
       type,
       x,
@@ -44,22 +44,22 @@ export function useVisualEffects() {
       opacity: 1,
       lineWidth: 2,
     };
-    setEffects(prev => [...prev, newEffect]);
+    setPerticles(prev => [...prev, newEffect]);
   }, []);
 
   // 全てのエフェクトの状態を更新（アニメーション）
-  const updateEffects = useCallback(() => {
-    setEffects(prev => 
+  const updatePerticles = useCallback(() => {
+    setPerticles(prev => 
       prev
-        .map(effect => ({
-          ...effect,
-          size: effect.size + 2,        // 徐々に大きく
-          opacity: effect.opacity - 0.02, // 徐々に透明に
-          rotation: effect.rotation + 0.05 // 回転
+        .map(perticle => ({
+          ...perticle,
+          size: perticle.size + 2,        // 徐々に大きく
+          opacity: perticle.opacity - 0.02, // 徐々に透明に
+          rotation: perticle.rotation + 0.05 // 回転
         }))
-        .filter(effect => effect.opacity > 0) // 消えたら削除
+        .filter(perticle => perticle.opacity > 0) // 消えたら削除
     );
   }, []);
 
-  return { effects, addEffect, updateEffects };
+  return { perticles: perticles, addPerticle: addPerticle, updatePerticles: updatePerticles };
 }

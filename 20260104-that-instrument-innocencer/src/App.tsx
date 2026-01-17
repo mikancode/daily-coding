@@ -2,14 +2,14 @@ import { useRef, useEffect } from 'react';
 import { mapRange } from './utils/math';
 import { usePointer } from './hooks/usePointer';
 import { useSound } from './hooks/useSound';
-import { useVisualEffects } from './hooks/usePerticles';
-import { drawEffect } from './utils/draw';
+import { useParticles } from './hooks/usePerticles';
+import { drawPerticle } from './utils/draw';
 import './App.css';
 
 function App() {
   const pointer = usePointer();
   const sound = useSound();
-  const { effects, addEffect } = useVisualEffects();
+  const { perticles, addPerticle: addEffect } = useParticles();
   // Canvasを操作するための参照
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -52,11 +52,11 @@ function App() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // 保存されているエフェクトをすべて描画
-    effects.forEach(effect => {
+    perticles.forEach(perticle => {
       // アニメーションがないので、サイズを 40 に固定して描画
-      drawEffect(ctx, { ...effect, size: 40 });
+      drawPerticle(ctx, { ...perticle, size: 40 });
     });
-  }, [effects]); // エフェクトが増えるたびに再描画
+  }, [perticles]); // エフェクトが増えるたびに再描画
 
   /* =====================
     * イベントハンドラ

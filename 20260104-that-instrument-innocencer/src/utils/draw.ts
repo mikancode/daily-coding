@@ -1,29 +1,29 @@
-import type { VisualEffect } from '../hooks/usePerticles'; // 型だけインポート
+import type { Particle } from '../hooks/usePerticles'; // 型だけインポート
 
-export const drawEffect = (ctx: CanvasRenderingContext2D, effect: VisualEffect) => {
+export const drawPerticle = (ctx: CanvasRenderingContext2D, perticle: Particle) => {
   ctx.save();
-  ctx.globalAlpha = effect.opacity;
+  ctx.globalAlpha = perticle.opacity;
   ctx.strokeStyle = 'white';
 
-  switch (effect.type) {
+  switch (perticle.type) {
     case 'circle':
       ctx.beginPath();
-      ctx.arc(effect.x, effect.y, effect.size, 0, Math.PI * 2);
+      ctx.arc(perticle.x, perticle.y, perticle.size, 0, Math.PI * 2);
       ctx.stroke();
       break;
     case 'square':
-      ctx.translate(effect.x, effect.y);
-      ctx.rotate(effect.rotation);
-      ctx.strokeRect(-effect.size/2, -effect.size/2, effect.size, effect.size);
+      ctx.translate(perticle.x, perticle.y);
+      ctx.rotate(perticle.rotation);
+      ctx.strokeRect(-perticle.size/2, -perticle.size/2, perticle.size, perticle.size);
       break;
     case 'triangle':
-        ctx.translate(effect.x, effect.y);
-        ctx.rotate(effect.rotation);
+        ctx.translate(perticle.x, perticle.y);
+        ctx.rotate(perticle.rotation);
         ctx.beginPath();
         for (let i = 0; i < 3; i++) {
           ctx.lineTo(
-            effect.size * Math.cos((i * 2 * Math.PI) / 3),
-            effect.size * Math.sin((i * 2 * Math.PI) / 3)
+            perticle.size * Math.cos((i * 2 * Math.PI) / 3),
+            perticle.size * Math.sin((i * 2 * Math.PI) / 3)
           );
         }
         ctx.closePath();
@@ -31,9 +31,9 @@ export const drawEffect = (ctx: CanvasRenderingContext2D, effect: VisualEffect) 
         break;
     case 'line':
         ctx.beginPath();
-        ctx.moveTo(effect.x - effect.size, effect.y);
-        ctx.lineTo(effect.x + effect.size, effect.y);
-        ctx.lineWidth = effect.lineWidth;
+        ctx.moveTo(perticle.x - perticle.size, perticle.y);
+        ctx.lineTo(perticle.x + perticle.size, perticle.y);
+        ctx.lineWidth = perticle.lineWidth;
         ctx.stroke();
         break;
     default:
