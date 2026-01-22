@@ -45,7 +45,7 @@ export function useParticles() {
       x,
       y,
       size: 30,
-      rotation: 0,
+      rotation: Math.random() * Math.PI * 2,
       opacity: 1,
       lineWidth: 2,
     };
