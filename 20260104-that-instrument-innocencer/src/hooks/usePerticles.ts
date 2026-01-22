@@ -1,5 +1,10 @@
 import { useState, useCallback } from 'react';
 
+// 「値」としての配列
+export const PARTICLE_TYPES = ['circle', 'square', 'triangle', 'line'] as const;
+// 配列から「型」を作る
+export type ParticleType = typeof PARTICLE_TYPES[number];
+
 // エフェクトの型定義
 /**
  * 視覚効果エフェクトのデータ構造
@@ -15,7 +20,7 @@ import { useState, useCallback } from 'react';
  */
 export interface Particle {
   id: number;
-  type: 'circle' | 'square' | 'triangle' | 'line';
+  type: ParticleType;
   x: number;
   y: number;
   size: number;

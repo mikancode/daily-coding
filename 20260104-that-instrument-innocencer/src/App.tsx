@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react';
 import { mapRange } from './utils/math';
 import { usePointer } from './hooks/usePointer';
 import { useSound } from './hooks/useSound';
-import { useParticles } from './hooks/usePerticles';
+import { useParticles, PARTICLE_TYPES } from './hooks/usePerticles';
 import { drawPerticle } from './utils/draw';
 import './App.css';
 
@@ -63,8 +63,11 @@ function App() {
     * ===================== */
   const handlePointerDown = (e: React.PointerEvent) => {
     pointer.onPointerDown(e);
-    // タッチした座標に円形エフェクトを追加
-    addEffect(e.clientX, e.clientY, 'circle'); //
+
+    const randomIndex = Math.floor(Math.random() * PARTICLE_TYPES.length);
+    const randomType = PARTICLE_TYPES[randomIndex];
+    // タッチした座標にエフェクトを追加
+    addEffect(e.clientX, e.clientY, randomType); //
   };
 
   /* =====================
