@@ -9,7 +9,7 @@ import './App.css';
 function App() {
   const pointer = usePointer();
   const sound = useSound();
-  const { perticles, addPerticle: addEffect } = useParticles();
+  const { perticles, addPerticle, updatePerticles } = useParticles();
   // Canvasを操作するための参照
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -48,14 +48,27 @@ function App() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 画面をクリア
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let animationFrameId: number;
+    const render = () => {
+      // 1. 画面をクリア
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // 2. 状態を更新
+      updatePerticles();
+      // 3. 保存されているエフェクトをすべて描画
+      perticles.forEach(perticle => {
+        drawPerticle(ctx, perticle);
+      });
+      // 4. 次のフレームを予約（秒間60回のループ）
+      animationFrameId = requestAnimationFrame(render);
+    }
 
-    // 保存されているエフェクトをすべて描画
-    perticles.forEach(perticle => {
-      // アニメーションがないので、サイズを 40 に固定して描画
-      drawPerticle(ctx, { ...perticle, size: 40 });
-    });
+    render();
+
+    // クリーンアップ関数
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+
   }, [perticles]); // エフェクトが増えるたびに再描画
 
   /* =====================
@@ -67,7 +80,7 @@ function App() {
     const randomIndex = Math.floor(Math.random() * PARTICLE_TYPES.length);
     const randomType = PARTICLE_TYPES[randomIndex];
     // タッチした座標にエフェクトを追加
-    addEffect(e.clientX, e.clientY, randomType); //
+    addPerticle(e.clientX, e.clientY, randomType);
   };
 
   /* =====================
