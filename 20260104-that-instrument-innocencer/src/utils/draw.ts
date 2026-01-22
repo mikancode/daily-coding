@@ -1,29 +1,29 @@
-import type { Particle } from '../hooks/usePerticles'; // 型だけインポート
+import type { Particle } from '../hooks/useParticles'; // 型だけインポート
 
-export const drawPerticle = (ctx: CanvasRenderingContext2D, perticle: Particle) => {
+export const drawParticle = (ctx: CanvasRenderingContext2D, particle: Particle) => {
   ctx.save();
-  ctx.globalAlpha = perticle.opacity;
+  ctx.globalAlpha = particle.opacity;
   ctx.strokeStyle = 'white';
 
-  switch (perticle.type) {
+  switch (particle.type) {
     case 'circle':
       ctx.beginPath();
-      ctx.arc(perticle.x, perticle.y, perticle.size, 0, Math.PI * 2);
+      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
       ctx.stroke();
       break;
     case 'square':
-      ctx.translate(perticle.x, perticle.y);
-      ctx.rotate(perticle.rotation);
-      ctx.strokeRect(-perticle.size/2, -perticle.size/2, perticle.size, perticle.size);
+      ctx.translate(particle.x, particle.y);
+      ctx.rotate(particle.rotation);
+      ctx.strokeRect(-particle.size/2, -particle.size/2, particle.size, particle.size);
       break;
     case 'triangle':
-        ctx.translate(perticle.x, perticle.y);
-        ctx.rotate(perticle.rotation);
+        ctx.translate(particle.x, particle.y);
+        ctx.rotate(particle.rotation);
         ctx.beginPath();
         for (let i = 0; i < 3; i++) {
           ctx.lineTo(
-            perticle.size * Math.cos((i * 2 * Math.PI) / 3),
-            perticle.size * Math.sin((i * 2 * Math.PI) / 3)
+            particle.size * Math.cos((i * 2 * Math.PI) / 3),
+            particle.size * Math.sin((i * 2 * Math.PI) / 3)
           );
         }
         ctx.closePath();
@@ -31,9 +31,9 @@ export const drawPerticle = (ctx: CanvasRenderingContext2D, perticle: Particle) 
         break;
     case 'line':
         ctx.beginPath();
-        ctx.moveTo(perticle.x - perticle.size, perticle.y);
-        ctx.lineTo(perticle.x + perticle.size, perticle.y);
-        ctx.lineWidth = perticle.lineWidth;
+        ctx.moveTo(particle.x - particle.size, particle.y);
+        ctx.lineTo(particle.x + particle.size, particle.y);
+        ctx.lineWidth = particle.lineWidth;
         ctx.stroke();
         break;
     default:

@@ -2,14 +2,14 @@ import { useRef, useEffect } from 'react';
 import { mapRange } from './utils/math';
 import { usePointer } from './hooks/usePointer';
 import { useSound } from './hooks/useSound';
-import { useParticles, PARTICLE_TYPES } from './hooks/usePerticles';
-import { drawPerticle } from './utils/draw';
+import { useParticles, PARTICLE_TYPES } from './hooks/useParticles';
+import { drawParticle } from './utils/draw';
 import './App.css';
 
 function App() {
   const pointer = usePointer();
   const sound = useSound();
-  const { perticles, addPerticle, updatePerticles } = useParticles();
+  const { particles, addParticle, updateParticles } = useParticles();
   // Canvasを操作するための参照
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -53,10 +53,10 @@ function App() {
       // 1. 画面をクリア
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       // 2. 状態を更新
-      updatePerticles();
+      updateParticles();
       // 3. 保存されているエフェクトをすべて描画
-      perticles.forEach(perticle => {
-        drawPerticle(ctx, perticle);
+      particles.forEach(particle => {
+        drawParticle(ctx, particle);
       });
       // 4. 次のフレームを予約（秒間60回のループ）
       animationFrameId = requestAnimationFrame(render);
@@ -69,7 +69,7 @@ function App() {
       cancelAnimationFrame(animationFrameId);
     };
 
-  }, [perticles]); // エフェクトが増えるたびに再描画
+  }, [particles]); // エフェクトが増えるたびに再描画
 
   /* =====================
     * イベントハンドラ
@@ -80,7 +80,7 @@ function App() {
     const randomIndex = Math.floor(Math.random() * PARTICLE_TYPES.length);
     const randomType = PARTICLE_TYPES[randomIndex];
     // タッチした座標にエフェクトを追加
-    addPerticle(e.clientX, e.clientY, randomType);
+    addParticle(e.clientX, e.clientY, randomType);
   };
 
   /* =====================

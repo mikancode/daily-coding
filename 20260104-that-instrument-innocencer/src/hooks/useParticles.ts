@@ -32,13 +32,13 @@ export interface Particle {
 /**
  * 視覚効果エフェクトを管理するカスタムフック
  * @function useParticles
- * @returns {perticles, addPerticle, updatePerticles}
+ * @returns {particles, addParticle, updateParticles}
  */
 export function useParticles() {
-  const [perticles, setPerticles] = useState<Particle[]>([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
 
 // 新しいエフェクトを追加する関数
-  const addPerticle = useCallback((x: number, y: number, type: Particle['type']) => {
+  const addParticle = useCallback((x: number, y: number, type: Particle['type']) => {
     const newEffect: Particle = {
       id: Date.now(),
       type,
@@ -47,24 +47,24 @@ export function useParticles() {
       size: 30,
       rotation: Math.random() * Math.PI * 2,
       opacity: 1,
-      lineWidth: 2,
+      lineWidth: 20,
     };
-    setPerticles(prev => [...prev, newEffect]);
+    setParticles(prev => [...prev, newEffect]);
   }, []);
 
   // 全てのエフェクトの状態を更新（アニメーション）
-  const updatePerticles = useCallback(() => {
-    setPerticles(prev => 
+  const updateParticles = useCallback(() => {
+    setParticles(prev => 
       prev
-        .map(perticle => ({
-          ...perticle,
-          size: perticle.size + 2,        // 徐々に大きく
-          opacity: perticle.opacity - 0.02, // 徐々に透明に
-          rotation: perticle.rotation + 0.05 // 回転
+        .map(particle => ({
+          ...particle,
+          size: particle.size + 5,        // 徐々に大きく
+          opacity: particle.opacity - 0.005, // 徐々に透明に
+          rotation: particle.rotation + 0.01 // 回転
         }))
-        .filter(perticle => perticle.opacity > 0) // 消えたら削除
+        .filter(particle => particle.opacity > 0) // 消えたら削除
     );
   }, []);
 
-  return { perticles: perticles, addPerticle: addPerticle, updatePerticles: updatePerticles };
+  return { particles: particles, addParticle: addParticle, updateParticles: updateParticles };
 }
