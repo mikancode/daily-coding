@@ -98,8 +98,6 @@ export function useParticles() {
           size: particle.size + config.sizeDelta * deltaTime,
           opacity: particle.opacity - config.opacityDelta * deltaTime,
           rotation: particle.rotation + config.rotationDelta * deltaTime,
-          lineWidth: config.lineWidth,
-          color: config.color,
         };
       })
       .filter(particle => particle.opacity > 0);
