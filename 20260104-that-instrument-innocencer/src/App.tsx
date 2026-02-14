@@ -42,6 +42,13 @@ function App() {
     * 描画の管理
     * 状態に同期させるためuseEffectを使用
     * ===================== */
+  // 最新のparticlesを常に参照するためのRef
+  const particlesRef = useRef(particles);
+  useEffect(() => {
+    particlesRef.current = particles;
+  }, [particles]);
+
+  /* --- 描画・更新ループ（無限ループ対策版） --- */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -69,7 +76,7 @@ function App() {
       cancelAnimationFrame(animationFrameId);
     };
 
-  }, [particles]); // エフェクトが増えるたびに再描画
+  }, [updateParticles]); // エフェクトが更新されるたびに再描画
 
   /* =====================
     * イベントハンドラ

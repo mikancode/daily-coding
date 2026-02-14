@@ -3,22 +3,25 @@ import type { Particle } from '../hooks/useParticles'; // 型だけインポー�
 export const drawParticle = (ctx: CanvasRenderingContext2D, particle: Particle) => {
   ctx.save();
   ctx.globalAlpha = particle.opacity;
-  ctx.strokeStyle = 'white';
+  ctx.strokeStyle = '#00ffcc';
+  ctx.lineWidth = particle.lineWidth;
+
+  // 丸以外は座標移動と回転が必要なので、まとめてしまう
+  if (particle.type !== 'circle') {
+    ctx.translate(particle.x, particle.y);
+    ctx.rotate(particle.rotation);
+  }
 
   switch (particle.type) {
     case 'circle':
       ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      ctx.arc(particle.x, particle.y, particle.size/2, 0, Math.PI * 2);
       ctx.stroke();
       break;
     case 'square':
-      ctx.translate(particle.x, particle.y);
-      ctx.rotate(particle.rotation);
       ctx.strokeRect(-particle.size/2, -particle.size/2, particle.size, particle.size);
       break;
     case 'triangle':
-        ctx.translate(particle.x, particle.y);
-        ctx.rotate(particle.rotation);
         ctx.beginPath();
         for (let i = 0; i < 3; i++) {
           ctx.lineTo(
@@ -31,9 +34,8 @@ export const drawParticle = (ctx: CanvasRenderingContext2D, particle: Particle) 
         break;
     case 'line':
         ctx.beginPath();
-        ctx.moveTo(particle.x - particle.size, particle.y);
-        ctx.lineTo(particle.x + particle.size, particle.y);
-        ctx.lineWidth = particle.lineWidth;
+        ctx.moveTo(-particle.size, 0); 
+        ctx.lineTo(particle.size, 0);
         ctx.stroke();
         break;
     default:
