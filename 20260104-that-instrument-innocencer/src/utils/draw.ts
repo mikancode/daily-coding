@@ -1,10 +1,14 @@
-import type { Particle } from '../hooks/useParticles'; // 型だけインポート
+import type { Particle } from '../hooks/useParticles';
+import { PARTICLE_CONFIG } from '../hooks/useParticles';
 
 export const drawParticle = (ctx: CanvasRenderingContext2D, particle: Particle) => {
   ctx.save();
   ctx.globalAlpha = particle.opacity;
-  ctx.strokeStyle = '#00ffcc';
-  ctx.lineWidth = particle.lineWidth;
+  // 設定値をtypeごとに参照
+  const config = PARTICLE_CONFIG[particle.type] || PARTICLE_CONFIG.circle;
+  // 色や線の太さは、PARTICLE_CONFIGに含める場合はここで参照
+  if (config.color) ctx.strokeStyle = config.color;
+  if (config.lineWidth) ctx.lineWidth = config.lineWidth;
 
   // 丸以外は座標移動と回転が必要なので、まとめてしまう
   if (particle.type !== 'circle') {
@@ -25,8 +29,8 @@ export const drawParticle = (ctx: CanvasRenderingContext2D, particle: Particle) 
         ctx.beginPath();
         for (let i = 0; i < 3; i++) {
           ctx.lineTo(
-            particle.size * Math.cos((i * 2 * Math.PI) / 3),
-            particle.size * Math.sin((i * 2 * Math.PI) / 3)
+            particle.size/2 * Math.cos((i * 2 * Math.PI) / 3),
+            particle.size/2 * Math.sin((i * 2 * Math.PI) / 3)
           );
         }
         ctx.closePath();
