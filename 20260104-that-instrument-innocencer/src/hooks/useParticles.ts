@@ -4,7 +4,7 @@ const COMMON_CONFIG = {
   initialSize: 30,
   lineWidth: 20,
   rotationDelta: 1,
-  sizeDelta: 2000,
+  sizeDelta: window.innerWidth + window.innerHeight / 60, // 1秒で画面全体を覆う大きさに
   opacityDelta: 1,
   color: '#00ffcc',
 };
