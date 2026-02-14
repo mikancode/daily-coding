@@ -56,20 +56,23 @@ function App() {
     if (!ctx) return;
 
     let animationFrameId: number;
-    const render = () => {
+    let lastTime = performance.now();
+    const render = (currentTime: number) => {
+      const deltaTime = (currentTime - lastTime) / 1000;
+      lastTime = currentTime;
       // 1. 画面をクリア
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       // 2. 状態を更新
-      updateParticles();
+      updateParticles(deltaTime);
       // 3. 保存されているエフェクトをすべて描画
-      particles.forEach(particle => {
+      particlesRef.current.forEach(particle => {
         drawParticle(ctx, particle);
       });
       // 4. 次のフレームを予約（秒間60回のループ）
       animationFrameId = requestAnimationFrame(render);
-    }
-
-    render();
+    };
+    // 初回呼び出し
+    animationFrameId = requestAnimationFrame(render);
 
     // クリーンアップ関数
     return () => {
