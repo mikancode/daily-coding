@@ -1,33 +1,5 @@
 import { useRef, useCallback } from 'react';
 
-// 共通パラメータ
-const COMMON_CONFIG = {
-  initialOpacity: 1,
-  initialSize: 30,
-  lineWidth: 20,
-  rotationDelta: 1,
-  sizeDelta: (window.innerWidth + window.innerHeight)/2,
-  opacityDelta: 1,
-  color: '#00ffcc',
-};
-
-// 個別パラメータ（typeごとに上書き）
-export const PARTICLE_CONFIG = {
-  circle: {
-    ...COMMON_CONFIG,
-  },
-  square: {
-    ...COMMON_CONFIG,
-  },
-  triangle: {
-    ...COMMON_CONFIG,
-  },
-  line: {
-    ...COMMON_CONFIG,
-    initialSize: window.innerWidth + window.innerHeight, // 画面全体を覆う長さからスタート
-  },
-};
-
 // 「値」としての配列
 export const PARTICLE_TYPES = ['circle', 'square', 'triangle', 'line'] as const;
 // 配列から「型」を作る
@@ -68,6 +40,34 @@ export function useParticles() {
 
 // 新しいエフェクトを追加する関数
   const addParticle = useCallback((x: number, y: number, type: Particle['type']) => {
+    // 共通パラメータ
+    const COMMON_CONFIG = {
+      initialOpacity: 1,
+      initialSize: 30,
+      lineWidth: 20,
+      rotationDelta: 1,
+      sizeDelta: (window.innerWidth + window.innerHeight) / 2,
+      opacityDelta: 1,
+      color: '#00ffcc',
+    };
+
+    // 個別パラメータ（typeごとに上書き）
+    const PARTICLE_CONFIG = {
+      circle: {
+        ...COMMON_CONFIG,
+      },
+      square: {
+        ...COMMON_CONFIG,
+      },
+      triangle: {
+        ...COMMON_CONFIG,
+      },
+      line: {
+        ...COMMON_CONFIG,
+        initialSize: window.innerWidth + window.innerHeight, // 画面全体を覆う長さからスタート
+      },
+    };
+
     const config = PARTICLE_CONFIG[type] || PARTICLE_CONFIG.circle;
     const newEffect: Particle = {
       id: Date.now(),
@@ -85,6 +85,34 @@ export function useParticles() {
 
   // 全てのエフェクトの状態を更新（アニメーション）
   const updateParticles = (particles: Particle[], deltaTime = 1) => {
+    // 共通パラメータ
+    const COMMON_CONFIG = {
+      initialOpacity: 1,
+      initialSize: 30,
+      lineWidth: 20,
+      rotationDelta: 1,
+      sizeDelta: (window.innerWidth + window.innerHeight) / 2,
+      opacityDelta: 1,
+      color: '#00ffcc',
+    };
+
+    // 個別パラメータ（typeごとに上書き）
+    const PARTICLE_CONFIG = {
+      circle: {
+        ...COMMON_CONFIG,
+      },
+      square: {
+        ...COMMON_CONFIG,
+      },
+      triangle: {
+        ...COMMON_CONFIG,
+      },
+      line: {
+        ...COMMON_CONFIG,
+        initialSize: window.innerWidth + window.innerHeight, // 画面全体を覆う長さからスタート
+      },
+    };
+
     return particles
       .map(particle => {
         const config = PARTICLE_CONFIG[particle.type] || PARTICLE_CONFIG.circle;

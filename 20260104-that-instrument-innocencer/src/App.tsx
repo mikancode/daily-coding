@@ -24,13 +24,44 @@ function App() {
       const freq = mapRange(pointer.position.x, 0, window.innerWidth, 261.63, 523.25);
       sound.setFrequency(freq);
     }
-  }, [pointer.position.x, pointer.isDown]);
+  }, [pointer.position.x, pointer.isDown, sound]);
 
   /* =====================
     * 描画の管理
     * 状態に同期させるためuseEffectを使用
     * ===================== */
   // 不要になったparticlesRefのuseRefと同期処理を削除
+
+  /* --- Canvas のリサイズとDPI対応 --- */
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resizeCanvas = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      
+      // CSS表示サイズに合わせて解像度を設定
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      
+      // コンテキストをDPRに合わせてスケール
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+      }
+    };
+
+    // 初期化
+    resizeCanvas();
+
+    // リサイズイベントのリスナー
+    window.addEventListener('resize', resizeCanvas);
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, []);
 
   /* --- 描画・更新ループ（無限ループ対策版） --- */
   useEffect(() => {
@@ -69,13 +100,18 @@ function App() {
     * イベントハンドラ
     * ===================== */
   const handlePointerDown = async (e: React.PointerEvent) => {
-    await sound.startAudio();
-    const freq = mapRange(e.clientX, 0, window.innerWidth, 261.63, 523.25);
-    sound.playSound(freq);
+    // 入力状態・座標は先に更新して UI を即座に反映させる
     pointer.onPointerDown(e);
+    const x = e.clientX;
+    const y = e.clientY;
+    const freq = mapRange(x, 0, window.innerWidth, 261.63, 523.25);
     const randomIndex = Math.floor(Math.random() * PARTICLE_TYPES.length);
     const randomType = PARTICLE_TYPES[randomIndex];
-    addParticle(e.clientX, e.clientY, randomType);
+    addParticle(x, y, randomType);
+
+    // 音声の初期化・再生はその後に行う
+    await sound.startAudio();
+    sound.playSound(freq);
   };
   const handlePointerUp = () => {
     sound.stopSound();
@@ -95,11 +131,7 @@ function App() {
       style={{ touchAction: 'none' }}
     >
       {/* 描画用のキャンバス */}
-      <canvas 
-        ref={canvasRef} 
-        width={window.innerWidth} 
-        height={window.innerHeight} 
-      />
+      <canvas ref={canvasRef} />
 
       <div className="info-display">
         <h1>{pointer.isDown ? 'TOUCHING' : 'WAITING'}</h1>
