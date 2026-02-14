@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 
 // 共通パラメータ
 const COMMON_CONFIG = {
@@ -64,7 +64,7 @@ export interface Particle {
  * @returns {particles, addParticle, updateParticles}
  */
 export function useParticles() {
-  const [particles, setParticles] = useState<Particle[]>([]);
+  const particlesRef = useRef<Particle[]>([]);
 
 // 新しいエフェクトを追加する関数
   const addParticle = useCallback((x: number, y: number, type: Particle['type']) => {
@@ -80,25 +80,25 @@ export function useParticles() {
       lineWidth: config.lineWidth,
       color: config.color,
     };
-    setParticles(prev => [...prev, newEffect]);
+    particlesRef.current = [...particlesRef.current, newEffect];
   }, []);
 
   // 全てのエフェクトの状態を更新（アニメーション）
-  const updateParticles = useCallback((deltaTime = 1) => {
-    setParticles(prev =>
-      prev
-        .map(particle => {
-          const config = PARTICLE_CONFIG[particle.type] || PARTICLE_CONFIG.circle;
-          return {
-            ...particle,
-            size: particle.size + config.sizeDelta * deltaTime,
-            opacity: particle.opacity - config.opacityDelta * deltaTime,
-            rotation: particle.rotation + config.rotationDelta * deltaTime,
-          };
-        })
-        .filter(particle => particle.opacity > 0)
-    );
-  }, []);
+  const updateParticles = (particles: Particle[], deltaTime = 1) => {
+    return particles
+      .map(particle => {
+        const config = PARTICLE_CONFIG[particle.type] || PARTICLE_CONFIG.circle;
+        return {
+          ...particle,
+          size: particle.size + config.sizeDelta * deltaTime,
+          opacity: particle.opacity - config.opacityDelta * deltaTime,
+          rotation: particle.rotation + config.rotationDelta * deltaTime,
+          lineWidth: config.lineWidth,
+          color: config.color,
+        };
+      })
+      .filter(particle => particle.opacity > 0);
+  };
 
-  return { particles: particles, addParticle: addParticle, updateParticles: updateParticles };
+  return { particlesRef, addParticle, updateParticles };
 }

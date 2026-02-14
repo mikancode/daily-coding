@@ -9,7 +9,7 @@ import './App.css';
 function App() {
   const pointer = usePointer();
   const sound = useSound();
-  const { particles, addParticle, updateParticles } = useParticles();
+  const { particlesRef, addParticle, updateParticles } = useParticles();
   // Canvasを操作するための参照
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -30,11 +30,7 @@ function App() {
     * 描画の管理
     * 状態に同期させるためuseEffectを使用
     * ===================== */
-  // 最新のparticlesを常に参照するためのRef
-  const particlesRef = useRef(particles);
-  useEffect(() => {
-    particlesRef.current = particles;
-  }, [particles]);
+  // 不要になったparticlesRefのuseRefと同期処理を削除
 
   /* --- 描画・更新ループ（無限ループ対策版） --- */
   useEffect(() => {
@@ -50,8 +46,8 @@ function App() {
       lastTime = currentTime;
       // 1. 画面をクリア
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // 2. 状態を更新
-      updateParticles(deltaTime);
+      // 2. 状態を更新（refの中身を直接更新）
+      particlesRef.current = updateParticles(particlesRef.current, deltaTime);
       // 3. 保存されているエフェクトをすべて描画
       particlesRef.current.forEach(particle => {
         drawParticle(ctx, particle);
@@ -67,7 +63,7 @@ function App() {
       cancelAnimationFrame(animationFrameId);
     };
 
-  }, [updateParticles]); // エフェクトが更新されるたびに再描画
+  }, [updateParticles, particlesRef]);
 
   /* =====================
     * イベントハンドラ
