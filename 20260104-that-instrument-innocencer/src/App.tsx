@@ -17,26 +17,14 @@ function App() {
     * 音の管理
     * 状態に同期させるためuseEffectを使用
     * ===================== */
-  // 音の再生・停止
-  useEffect(() => {
-    if (pointer.isDown) {
-      sound.startAudio();
-      const freq = mapRange(pointer.position.x, 0, window.innerWidth, 261.63, 523.25);
-      sound.playSound(freq);
-    } else {
-      sound.stopSound();
-    }
-    // 依存配列
-  }, [pointer.isDown]);
 
-  // 音程のリアルタイム変更
+  // 音程のリアルタイム変更のみuseEffectで管理
   useEffect(() => {
     if (pointer.isDown) {
       const freq = mapRange(pointer.position.x, 0, window.innerWidth, 261.63, 523.25);
       sound.setFrequency(freq);
     }
-    // 依存配列
-  }, [pointer.position.x]);
+  }, [pointer.position.x, pointer.isDown]);
 
   /* =====================
     * 描画の管理
@@ -84,13 +72,18 @@ function App() {
   /* =====================
     * イベントハンドラ
     * ===================== */
-  const handlePointerDown = (e: React.PointerEvent) => {
+  const handlePointerDown = async (e: React.PointerEvent) => {
+    await sound.startAudio();
+    const freq = mapRange(e.clientX, 0, window.innerWidth, 261.63, 523.25);
+    sound.playSound(freq);
     pointer.onPointerDown(e);
-
     const randomIndex = Math.floor(Math.random() * PARTICLE_TYPES.length);
     const randomType = PARTICLE_TYPES[randomIndex];
-    // タッチした座標にエフェクトを追加
     addParticle(e.clientX, e.clientY, randomType);
+  };
+  const handlePointerUp = () => {
+    sound.stopSound();
+    pointer.onPointerUp();
   };
 
   /* =====================
@@ -101,8 +94,8 @@ function App() {
       className="app-container"
       onPointerDown={handlePointerDown}
       onPointerMove={pointer.onPointerMove}
-      onPointerUp={pointer.onPointerUp}
-      onPointerLeave={pointer.onPointerUp}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
       style={{ touchAction: 'none' }}
     >
       {/* 描画用のキャンバス */}
