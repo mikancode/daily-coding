@@ -1,4 +1,3 @@
-// src/hooks/usePointer.ts
 import { useState } from 'react';
 
 export type PointerPosition = {

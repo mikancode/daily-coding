@@ -1,15 +1,10 @@
 import type { Particle } from '../hooks/useParticles';
-import { PARTICLE_CONFIG } from '../hooks/useParticles';
 
 export const drawParticle = (ctx: CanvasRenderingContext2D, particle: Particle) => {
   ctx.save();
   ctx.globalAlpha = particle.opacity;
-  // 設定値をtypeごとに参照
-  const config = PARTICLE_CONFIG[particle.type] || PARTICLE_CONFIG.circle;
-  // 色や線の太さは、PARTICLE_CONFIGに含める場合はここで参照
-  if (config.color) ctx.strokeStyle = config.color;
-  if (config.lineWidth) ctx.lineWidth = config.lineWidth;
-
+  ctx.lineWidth = particle.lineWidth;
+  if (particle.color) ctx.strokeStyle = particle.color;
   // 丸以外は座標移動と回転が必要なので、まとめてしまう
   if (particle.type !== 'circle') {
     ctx.translate(particle.x, particle.y);

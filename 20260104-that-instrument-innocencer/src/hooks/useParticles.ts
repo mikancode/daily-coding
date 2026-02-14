@@ -1,10 +1,12 @@
+import { useState, useCallback } from 'react';
+
 // 共通パラメータ
 const COMMON_CONFIG = {
   initialOpacity: 1,
   initialSize: 30,
   lineWidth: 20,
   rotationDelta: 1,
-  sizeDelta: window.innerWidth + window.innerHeight / 60, // 1秒で画面全体を覆う大きさに
+  sizeDelta: (window.innerWidth + window.innerHeight)/2,
   opacityDelta: 1,
   color: '#00ffcc',
 };
@@ -25,7 +27,6 @@ export const PARTICLE_CONFIG = {
     initialSize: window.innerWidth + window.innerHeight, // 画面全体を覆う長さからスタート
   },
 };
-import { useState, useCallback } from 'react';
 
 // 「値」としての配列
 export const PARTICLE_TYPES = ['circle', 'square', 'triangle', 'line'] as const;
@@ -54,6 +55,7 @@ export interface Particle {
   rotation: number;
   opacity: number;
   lineWidth: number;
+  color?: string;
 }
 
 /**
@@ -76,6 +78,7 @@ export function useParticles() {
       rotation: Math.random() * Math.PI * 2,
       opacity: config.initialOpacity,
       lineWidth: config.lineWidth,
+      color: config.color,
     };
     setParticles(prev => [...prev, newEffect]);
   }, []);
