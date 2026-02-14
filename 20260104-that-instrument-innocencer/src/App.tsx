@@ -45,7 +45,8 @@ function App() {
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       
-      // コンテキストをDPRに合わせてスケール
+      // width/heightを設定すると自動的にコンテキストがリセットされるので、
+      // 改めてコンテキストを取得してDPRに合わせてスケール
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.scale(dpr, dpr);

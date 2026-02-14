@@ -38,8 +38,8 @@ export interface Particle {
 export function useParticles() {
   const particlesRef = useRef<Particle[]>([]);
 
-// 新しいエフェクトを追加する関数
-  const addParticle = useCallback((x: number, y: number, type: Particle['type']) => {
+  // 設定を生成するヘルパー関数（重複を避けるため）
+  const getParticleConfig = () => {
     // 共通パラメータ
     const COMMON_CONFIG = {
       initialOpacity: 1,
@@ -52,7 +52,7 @@ export function useParticles() {
     };
 
     // 個別パラメータ（typeごとに上書き）
-    const PARTICLE_CONFIG = {
+    return {
       circle: {
         ...COMMON_CONFIG,
       },
@@ -67,7 +67,11 @@ export function useParticles() {
         initialSize: window.innerWidth + window.innerHeight, // 画面全体を覆う長さからスタート
       },
     };
+  };
 
+// 新しいエフェクトを追加する関数
+  const addParticle = useCallback((x: number, y: number, type: Particle['type']) => {
+    const PARTICLE_CONFIG = getParticleConfig();
     const config = PARTICLE_CONFIG[type] || PARTICLE_CONFIG.circle;
     const newEffect: Particle = {
       id: Date.now(),
@@ -85,34 +89,7 @@ export function useParticles() {
 
   // 全てのエフェクトの状態を更新（アニメーション）
   const updateParticles = (particles: Particle[], deltaTime = 1) => {
-    // 共通パラメータ
-    const COMMON_CONFIG = {
-      initialOpacity: 1,
-      initialSize: 30,
-      lineWidth: 20,
-      rotationDelta: 1,
-      sizeDelta: (window.innerWidth + window.innerHeight) / 2,
-      opacityDelta: 1,
-      color: '#00ffcc',
-    };
-
-    // 個別パラメータ（typeごとに上書き）
-    const PARTICLE_CONFIG = {
-      circle: {
-        ...COMMON_CONFIG,
-      },
-      square: {
-        ...COMMON_CONFIG,
-      },
-      triangle: {
-        ...COMMON_CONFIG,
-      },
-      line: {
-        ...COMMON_CONFIG,
-        initialSize: window.innerWidth + window.innerHeight, // 画面全体を覆う長さからスタート
-      },
-    };
-
+    const PARTICLE_CONFIG = getParticleConfig();
     return particles
       .map(particle => {
         const config = PARTICLE_CONFIG[particle.type] || PARTICLE_CONFIG.circle;
