@@ -22,8 +22,7 @@ export const PARTICLE_CONFIG = {
   },
   line: {
     ...COMMON_CONFIG,
-    lineWidth: 40,
-    sizeDelta: -1,
+    initialSize: window.innerWidth + window.innerHeight, // 画面全体を覆う長さからスタート
   },
 };
 import { useState, useCallback } from 'react';
