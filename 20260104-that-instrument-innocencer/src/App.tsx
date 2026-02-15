@@ -14,23 +14,9 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   /* =====================
-    * 音の管理
-    * 状態に同期させるためuseEffectを使用
-    * ===================== */
-
-  // 音程のリアルタイム変更のみuseEffectで管理
-  useEffect(() => {
-    if (pointer.isDown) {
-      const freq = mapRange(pointer.position.x, 0, window.innerWidth, 261.63, 523.25);
-      sound.setFrequency(freq);
-    }
-  }, [pointer.position.x, pointer.isDown]);
-
-  /* =====================
     * 描画の管理
     * 状態に同期させるためuseEffectを使用
     * ===================== */
-  // 不要になったparticlesRefのuseRefと同期処理を削除
 
   /* --- 描画・更新ループ（無限ループ対策版） --- */
   useEffect(() => {
@@ -68,18 +54,34 @@ function App() {
   /* =====================
     * イベントハンドラ
     * ===================== */
-  const handlePointerDown = async (e: React.PointerEvent) => {
-    await sound.startAudio();
-    const freq = mapRange(e.clientX, 0, window.innerWidth, 261.63, 523.25);
-    sound.playSound(freq);
-    pointer.onPointerDown(e);
+  // --- 和音対応: pointerIdごとに音を管理するためのactivePointersを追加 ---
+  const activePointers = useRef(new Map<number, { x: number, y: number }>());
+
+  // --- 和音対応: pointerIdごとに音を鳴らす ---
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const freq = mapRange(e.clientY, 0, window.innerHeight, 261.63, 523.25);
+    sound.startAudio();
+    sound.playSound(e.pointerId, freq);
+    // 必要ならaddParticle等もpointerIdごとに
     const randomIndex = Math.floor(Math.random() * PARTICLE_TYPES.length);
     const randomType = PARTICLE_TYPES[randomIndex];
     addParticle(e.clientX, e.clientY, randomType);
   };
-  const handlePointerUp = () => {
-    sound.stopSound();
-    pointer.onPointerUp();
+
+  // --- 和音対応: pointerIdごとに音程を変える ---
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointers.current.has(e.pointerId)) {
+      activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const freq = mapRange(e.clientY, 0, window.innerHeight, 261.63, 523.25);
+      sound.setFrequency(e.pointerId, freq);
+    }
+  };
+
+  // --- 和音対応: pointerIdごとに音を止める ---
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    activePointers.current.delete(e.pointerId);
+    sound.stopSound(e.pointerId);
   };
 
   /* =====================
@@ -88,23 +90,19 @@ function App() {
   return (
     <div
       className="app-container"
-      onPointerDown={handlePointerDown}
-      onPointerMove={pointer.onPointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
       style={{ touchAction: 'none' }}
     >
-      {/* 描画用のキャンバス */}
+      {/* --- 和音対応: pointerイベントはcanvasにのみバインド --- */}
       <canvas 
         ref={canvasRef} 
         width={window.innerWidth} 
         height={window.innerHeight} 
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
       />
 
-      <div className="info-display">
-        <h1>{pointer.isDown ? 'TOUCHING' : 'WAITING'}</h1>
-        <p>X: {Math.round(pointer.position.x)} Y: {Math.round(pointer.position.y)}</p>
-      </div>
     </div>
   );
 }
