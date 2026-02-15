@@ -55,7 +55,7 @@ function App() {
     * イベントハンドラ
     * ===================== */
   // --- 和音対応: pointerIdごとに音を管理するためのactivePointersを追加 ---
-  const activePointers = useRef(new Map<number, { x: number, y: number }>());
+  const activePointers = useRef(new Map<number, { x: number, y: number, freq?: number }>());
 
   // --- 和音対応: pointerIdごとに音を鳴らす ---
   // --- 2オクターブ対応: 画面上下で音域を切り替え ---
@@ -111,21 +111,31 @@ function App() {
     return notes[idx];
   }
 
+  // --- パーティクルもpointerIdごとに管理 ---
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const freq = getNoteFromPointer(e);
     sound.startAudio();
     sound.playSound(e.pointerId, freq);
-    // 必要ならaddParticle等もpointerIdごとに
+    // pointerIdごとにパーティクルを発生（音の発生と同時）
     const randomIndex = Math.floor(Math.random() * PARTICLE_TYPES.length);
     const randomType = PARTICLE_TYPES[randomIndex];
     addParticle(e.clientX, e.clientY, randomType);
+    // 現在の音階をpointerIdごとに記録
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, freq });
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (activePointers.current.has(e.pointerId)) {
-      activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const prev = activePointers.current.get(e.pointerId);
       const freq = getNoteFromPointer(e);
+      // 音階が変わった時のみパーティクルを発生
+      if (!prev || prev.freq !== freq) {
+        const randomIndex = Math.floor(Math.random() * PARTICLE_TYPES.length);
+        const randomType = PARTICLE_TYPES[randomIndex];
+        addParticle(e.clientX, e.clientY, randomType);
+      }
+      activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, freq });
       sound.setFrequency(e.pointerId, freq);
     }
   };
