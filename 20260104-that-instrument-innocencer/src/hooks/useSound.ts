@@ -1,42 +1,58 @@
+
 import { useRef } from 'react';
 import * as Tone from 'tone';
 
+/**
+ * pointerIdごとにSynthを管理し、複数音同時再生を可能にするカスタムフック
+ */
 export function useSound() {
-  const synthRef = useRef<Tone.Synth | null>(null);
+  // pointerIdごとにSynthを管理
+  const synthMapRef = useRef<Map<number, Tone.Synth>>(new Map());
   const isStartedRef = useRef(false);
 
+  // AudioContextの初期化
   const startAudio = async () => {
     if (!isStartedRef.current) {
-        await Tone.start();
-        isStartedRef.current = true;
-    }
-
-    if (!synthRef.current) {
-        synthRef.current = new Tone.Synth().toDestination();
+      await Tone.start();
+      isStartedRef.current = true;
     }
   };
 
-/**
- * 特定の周波数で音を再生する関数
- * @param frequency 音の高さ（周波数）
- */
-const playSound = (frequency: number = 220) => {
-    synthRef.current?.triggerAttack(frequency);
+  /**
+   * 指定pointerIdで音を再生
+   * @param pointerId pointer/touchのID
+   * @param frequency 周波数
+   */
+  const playSound = (pointerId: number, frequency: number = 220) => {
+    if (!synthMapRef.current.has(pointerId)) {
+      const synth = new Tone.Synth().toDestination();
+      synth.triggerAttack(frequency);
+      synthMapRef.current.set(pointerId, synth);
+    }
   };
 
-/**
- * 音の高さをリアルタイムに変えるための関数
- * @param frequency 音の高さ（周波数）
- */
-  const setFrequency = (frequency: number) => {
-    synthRef.current?.setNote(frequency);
+  /**
+   * pointerIdごとに音の高さを変更
+   * @param pointerId pointer/touchのID
+   * @param frequency 周波数
+   */
+  const setFrequency = (pointerId: number, frequency: number) => {
+    const synth = synthMapRef.current.get(pointerId);
+    if (synth) {
+      synth.setNote(frequency);
+    }
   };
 
-/**
- * 音を停止する関数
- */
-  const stopSound = () => {
-    synthRef.current?.triggerRelease();
+  /**
+   * 指定pointerIdの音を停止
+   * @param pointerId pointer/touchのID
+   */
+  const stopSound = (pointerId: number) => {
+    const synth = synthMapRef.current.get(pointerId);
+    if (synth) {
+      synth.triggerRelease();
+      synthMapRef.current.delete(pointerId);
+    }
   };
 
   return {
