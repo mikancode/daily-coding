@@ -58,30 +58,57 @@ function App() {
   const activePointers = useRef(new Map<number, { x: number, y: number }>());
 
   // --- 和音対応: pointerIdごとに音を鳴らす ---
-  // --- ドレミファソラシド音階割り当て ---
-  // 画面の長い方を7分割し、各領域にC4〜B4を割り当て
-  const scaleNotes = [
+  // --- 2オクターブ対応: 画面上下で音域を切り替え ---
+  // 下段: C4〜C5, 上段: C5〜C6
+  const scaleNotesLow = [
     261.63, // C4 ド
     293.66, // D4 レ
     329.63, // E4 ミ
     349.23, // F4 ファ
     392.00, // G4 ソ
     440.00, // A4 ラ
-    493.88  // B4 シ
+    493.88, // B4 シ
+    523.25  // C5 高いド
+  ];
+  const scaleNotesHigh = [
+    523.25, // C5 中くらいのド
+    587.33, // D5 レ
+    659.25, // E5 ミ
+    698.46, // F5 ファ
+    783.99, // G5 ソ
+    880.00, // A5 ラ
+    987.77, // B5 シ
+    1046.50 // C6 高いド
   ];
 
-  // pointer位置から音階インデックスを決定
+
+  /**
+   * 画面を上下で2分割して音域を切り替える
+   * 横方向を7分割して音階を決定する
+   * @param e PointerEvent<HTMLCanvasElement>
+   * @returns 音階の周波数
+   * @abstraction
+   * 画面の長辺でドレミを切り替え、短辺でオクターブを切り替える
+   * 例: 縦長ならYでドレミ、Xでオクターブ。横長ならXでドレミ、Yでオクターブ。
+   */
   function getNoteFromPointer(e: React.PointerEvent<HTMLCanvasElement>): number {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const isLandscape = w >= h;
+    // 長辺でドレミ（scaleNotes）、短辺でオクターブ
     const mainLen = isLandscape ? w : h;
-    const pos = isLandscape ? e.clientX : e.clientY;
+    const subLen = isLandscape ? h : w;
+    const mainPos = isLandscape ? e.clientX : e.clientY;
+    const subPos = isLandscape ? e.clientY : e.clientX;
+    // 短辺の上半分/左半分で低オクターブ、下半分/右半分で高オクターブ
+    const isHighOctave = subPos > subLen / 2;
+    const notes = isHighOctave ? scaleNotesHigh : scaleNotesLow;
+    // 長辺方向で7分割
     const idx = Math.min(
-      scaleNotes.length - 1,
-      Math.floor(pos / (mainLen / scaleNotes.length))
+      notes.length - 1,
+      Math.floor(mainPos / (mainLen / notes.length))
     );
-    return scaleNotes[idx];
+    return notes[idx];
   }
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
