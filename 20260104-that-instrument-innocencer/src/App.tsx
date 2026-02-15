@@ -58,9 +58,35 @@ function App() {
   const activePointers = useRef(new Map<number, { x: number, y: number }>());
 
   // --- 和音対応: pointerIdごとに音を鳴らす ---
+  // --- ドレミファソラシド音階割り当て ---
+  // 画面の長い方を7分割し、各領域にC4〜B4を割り当て
+  const scaleNotes = [
+    261.63, // C4 ド
+    293.66, // D4 レ
+    329.63, // E4 ミ
+    349.23, // F4 ファ
+    392.00, // G4 ソ
+    440.00, // A4 ラ
+    493.88  // B4 シ
+  ];
+
+  // pointer位置から音階インデックスを決定
+  function getNoteFromPointer(e: React.PointerEvent<HTMLCanvasElement>): number {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const isLandscape = w >= h;
+    const mainLen = isLandscape ? w : h;
+    const pos = isLandscape ? e.clientX : e.clientY;
+    const idx = Math.min(
+      scaleNotes.length - 1,
+      Math.floor(pos / (mainLen / scaleNotes.length))
+    );
+    return scaleNotes[idx];
+  }
+
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    const freq = mapRange(e.clientY, 0, window.innerHeight, 261.63, 523.25);
+    const freq = getNoteFromPointer(e);
     sound.startAudio();
     sound.playSound(e.pointerId, freq);
     // 必要ならaddParticle等もpointerIdごとに
@@ -69,11 +95,10 @@ function App() {
     addParticle(e.clientX, e.clientY, randomType);
   };
 
-  // --- 和音対応: pointerIdごとに音程を変える ---
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (activePointers.current.has(e.pointerId)) {
       activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      const freq = mapRange(e.clientY, 0, window.innerHeight, 261.63, 523.25);
+      const freq = getNoteFromPointer(e);
       sound.setFrequency(e.pointerId, freq);
     }
   };
