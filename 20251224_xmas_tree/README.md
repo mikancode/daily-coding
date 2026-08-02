@@ -8,4 +8,10 @@
 - **Performance**: アニメーションフレーム内で `redraw=False` を指定し、ブラウザ側での描画負荷を最適化しています。
 
 ## 実行方法
-`xmas_tree.ipynb` を実行すると、同ディレクトリに `index.html` が生成されます。
+```bash
+pip install -r requirement.txt
+```
+`xmax_tree.ipynb` を実行すると、同ディレクトリに `index.html` が生成されます。
+
+## Demo
+[Interactive 3D Tree](https://mikancode.github.io/daily-coding/20251224_xmas_tree/index.html)
