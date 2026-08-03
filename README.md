@@ -66,19 +66,11 @@ daily-coding/
 ```
 
 フォルダは日付を接頭辞に付けることで、時系列に並ぶようにしています。
-命名規約の詳細は [#1 リポジトリ・フォルダ命名規則の定義](https://github.com/mikancode/daily-coding/issues/1) を参照してください。
 
 ## 🛠 Environment
 
-プロダクトごとに言語もツールチェインも異なるため、**環境構築は各フォルダの README に従ってください**。
-リポジトリ全体で共通の依存関係はありません。
-
-| Project | Setup |
-| :--- | :--- |
-| Innocencer | `cd 20260104-that-instrument-innocencer && npm install && npm run dev -- --host` |
-| Digital Xmas Tree | `cd 20251224_xmas_tree && pip install -r requirement.txt` |
-| Corp URL Finder | Google Colab で Notebook を開く（ローカル環境構築は不要） |
-| One-Stroke Grid Puzzle | `cd 20251226-one-stroke-puzzle/app && npm install && npm run dev` |
+プロダクトごとに言語もツールチェインも異なり、リポジトリ全体で共通の依存関係はありません。
+**環境構築と実行方法は、各プロダクトの README を参照してください。**
 
 ## 📝 Contributing
 
