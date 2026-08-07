@@ -1,5 +1,7 @@
 # Innocencer（あの楽器）
 
+> **Note**: 本プロジェクトは独立リポジトリへの移行を予定しています（[#35](https://github.com/mikancode/daily-coding/issues/35)）。
+
 **画面をタッチすると、音と波紋が生まれる。**  
 Innocencer は、直感的な操作で演奏できるWeb楽器アプリです。
 
