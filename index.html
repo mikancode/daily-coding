@@ -276,7 +276,8 @@ async function buildAudioGraph(){
   padSynth = new Tone.PolySynth(Tone.Synth, {
     oscillator: { type: 'triangle' },
     envelope: { attack: 1.2, decay: 0.6, sustain: 0.65, release: 3 },
-    volume: -16
+    volume: -16,
+    maxPolyphony: 64
   }).connect(warmFilter);
 
   melodySynth = new Tone.Synth({
@@ -285,13 +286,16 @@ async function buildAudioGraph(){
     volume: -12
   }).connect(delay);
 
-  // ピアノ: 短いアタックのプラック系トライアングル波
-  pianoSynth = new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: 'triangle' },
-    envelope: { attack: 0.005, decay: 0.5, sustain: 0.05, release: 0.6 },
-    volume: -14
+  // ピアノ: FMSynthで、パッド(トライアングル波)/メロディ(サイン波)とは違う
+  // パーカッシブな質感にする
+  pianoSynth = new Tone.PolySynth(Tone.FMSynth, {
+    harmonicity: 3,
+    modulationIndex: 4,
+    envelope: { attack: 0.003, decay: 0.4, sustain: 0, release: 0.3 },
+    modulationEnvelope: { attack: 0.003, decay: 0.2, sustain: 0, release: 0.2 },
+    volume: -10,
+    maxPolyphony: 64
   }).connect(warmFilter);
-  pianoSynth.connect(delay);
 
   // ドラム: キック/スネア/ハイハットをローファイ用に軽くフィルターしてから出力
   drumFilter = new Tone.Filter({ frequency: 4500, type: 'lowpass' }).toDestination();
@@ -488,12 +492,17 @@ document.getElementById('layerGroup').addEventListener('click', (e) => {
 });
 
 const tempoSlider = document.getElementById('tempo');
+let tempoDebounceId = null;
 tempoSlider.addEventListener('input', () => {
   document.getElementById('tempoVal').textContent = tempoSlider.value;
   bpm = parseInt(tempoSlider.value);
+  // ドラッグ中は連続でスケジューラを再起動しない(ポリフォニー超過対策)
   if (isPlaying) {
-    stopSchedulers();
-    startSchedulers();
+    if (tempoDebounceId) clearTimeout(tempoDebounceId);
+    tempoDebounceId = setTimeout(() => {
+      stopSchedulers();
+      startSchedulers();
+    }, 250);
   }
 });
 
