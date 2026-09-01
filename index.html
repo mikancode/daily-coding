@@ -138,6 +138,7 @@
   .moods{
     display:flex; gap:8px; margin-top: 4px; flex-wrap: wrap;
   }
+  #layerGroup .mood-btn{ min-width: 70px; flex-basis: 30%; }
   .mood-btn{
     flex:1;
     min-width: 90px;
@@ -212,10 +213,13 @@
       </div>
 
       <div>
-        <label style="display:block; margin-bottom:8px;">レイヤー</label>
+        <label style="display:block; margin-bottom:8px;">パート</label>
         <div class="moods" id="layerGroup">
+          <button class="mood-btn active" data-layer="pad">パッド</button>
+          <button class="mood-btn active" data-layer="melody">メロディ</button>
           <button class="mood-btn active" data-layer="piano">ピアノ</button>
           <button class="mood-btn active" data-layer="drums">ドラム</button>
+          <button class="mood-btn active" data-layer="noise">ノイズ</button>
         </div>
       </div>
     </div>
@@ -257,8 +261,11 @@ let currentMood = 'dreamy';
 let density = 0.42;
 let bpm = 70;
 let chordIndex = 0;
+let padEnabled = true;
+let melodyEnabled = true;
 let pianoEnabled = true;
 let drumsEnabled = true;
+let noiseEnabled = true;
 
 // ---------- 音源チェーン ----------
 let padSynth, melodySynth, noiseLayer, reverb, delay, warmFilter, noiseGain;
@@ -343,88 +350,87 @@ function pickMelodyNote(scale){
 // ---------- setInterval ベースのスケジューラ ----------
 // (Tone.Transport/Tone.Loopのコールバックがこの実行環境では発火しなかったため、
 //  素朴なsetIntervalで代替している)
-let chordTimerId = null;
-let melodyTimerId = null;
-let pianoTimerId = null;
-let drumTimerId = null;
-let drumStep = 0;
+// 全パートを「16分音符ステップ」という共通の歩数で管理する単一クロック方式。
+// (コードとドラムが別々のタイマーだとズレていく問題があったため統一した)
+let masterTimerId = null;
+let stepCounter = 0;
+let pianoStep = 0;
 
-// 16ステップのローファイなビート(キック/スネア/ハイハット)
+// 16ステップ = 1小節ぶんのローファイなビート(キック/スネア/ハイハット)
 const KICK_PATTERN  = [1,0,0,0, 0,0,1,0, 0,1,0,0, 0,0,0,0];
 const SNARE_PATTERN = [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0];
 const HAT_PATTERN   = [1,0,1,1, 1,0,1,1, 1,0,1,1, 1,0,1,1];
+
+const STEPS_PER_BAR = 16;   // 16分音符 x16 = 1小節
+const CHORD_BARS = 2;       // コードは2小節ごとに切り替え(ドラムのループと同期させる)
+const CHORD_STEPS = STEPS_PER_BAR * CHORD_BARS;
 
 function beatMs(){
   return (60 / bpm) * 1000;
 }
 
-function startSchedulers(){
-  stopSchedulers(); // 既存タイマーを必ず止めてから開始する(多重起動防止)
-
-  const chordIntervalMs = beatMs() * 8;
-  const playChord = () => {
-    const chord = currentChord();
+function playPadChordIfEnabled(){
+  const chord = currentChord();
+  if (padEnabled) {
     padSynth.releaseAll();
-    padSynth.triggerAttackRelease(chord.notes, chordIntervalMs / 1000 * 0.95, undefined, 0.55);
-    document.getElementById('chordReadout').textContent = chord.name;
-    chordIndex++;
-  };
-  playChord();
-  chordTimerId = setInterval(playChord, chordIntervalMs);
+    padSynth.triggerAttackRelease(chord.notes, (beatMs() * 8) / 1000 * 0.95, undefined, 0.55);
+  }
+  document.getElementById('chordReadout').textContent = padEnabled ? chord.name : (chord.name + ' (パッドOFF)');
+}
 
-  const eighthMs = beatMs() / 2;
-  melodyTimerId = setInterval(() => {
-    if (Math.random() < density) {
+function tick(sixteenthMs){
+  const barStep = stepCounter % STEPS_PER_BAR;
+  const chordStep = stepCounter % CHORD_STEPS;
+
+  if (chordStep === 0) {
+    playPadChordIfEnabled();
+    chordIndex++;
+  }
+
+  if (barStep % 2 === 0) {
+    if (melodyEnabled && Math.random() < density) {
       const chord = currentChord();
       const note = pickMelodyNote(chord.scale);
       const dur = Math.random() < 0.3 ? '4n' : '8n';
       melodySynth.triggerAttackRelease(note, dur, undefined, 0.5 + Math.random() * 0.3);
     }
-  }, eighthMs);
-
-  // ピアノ: コード構成音を順になぞるアルペジオ
-  let pianoStep = 0;
-  pianoTimerId = setInterval(() => {
-    if (!pianoEnabled) return;
-    if (Math.random() < 0.35) {
+    if (pianoEnabled && Math.random() < 0.55) {
       const chord = currentChord();
       const idx = pianoStep % chord.notes.length;
       const note = chord.notes[idx].replace(/(\d)/, (m, oct) => String(Number(oct) + 1));
-      pianoSynth.triggerAttackRelease(note, '8n', undefined, 0.4 + Math.random() * 0.25);
+      pianoSynth.releaseAll();
+      pianoSynth.triggerAttackRelease(note, '16n', undefined, 0.35 + Math.random() * 0.2);
       pianoStep++;
     }
-  }, eighthMs);
+  }
 
-  // ドラム: 16分音符グリッドのステップシーケンサー(スウィング付き)
-  const sixteenthMs = beatMs() / 4;
-  drumStep = 0;
-  drumTimerId = setInterval(() => {
-    if (!drumsEnabled) { drumStep = (drumStep + 1) % 16; return; }
-    const step = drumStep;
-    const isOffbeat = step % 2 === 1;
+  if (drumsEnabled) {
+    const isOffbeat = barStep % 2 === 1;
     const swingDelay = isOffbeat ? sixteenthMs * 0.12 : 0;
-
     setTimeout(() => {
-      if (KICK_PATTERN[step]) kickSynth.triggerAttackRelease('C1', '8n');
-      if (SNARE_PATTERN[step]) snareSynth.triggerAttackRelease('16n');
-      if (HAT_PATTERN[step] && Math.random() < 0.85) {
+      if (KICK_PATTERN[barStep]) kickSynth.triggerAttackRelease('C1', '8n');
+      if (SNARE_PATTERN[barStep]) snareSynth.triggerAttackRelease('16n');
+      if (HAT_PATTERN[barStep] && Math.random() < 0.85) {
         hatSynth.triggerAttackRelease('32n', undefined, 0.5 + Math.random() * 0.3);
       }
     }, swingDelay);
+  }
 
-    drumStep = (drumStep + 1) % 16;
-  }, sixteenthMs);
+  stepCounter++;
+}
+
+function startSchedulers(){
+  stopSchedulers();
+  const sixteenthMs = beatMs() / 4;
+  stepCounter = 0;
+  pianoStep = 0;
+  tick(sixteenthMs);
+  masterTimerId = setInterval(() => tick(sixteenthMs), sixteenthMs);
 }
 
 function stopSchedulers(){
-  if (chordTimerId) clearInterval(chordTimerId);
-  if (melodyTimerId) clearInterval(melodyTimerId);
-  if (pianoTimerId) clearInterval(pianoTimerId);
-  if (drumTimerId) clearInterval(drumTimerId);
-  chordTimerId = null;
-  melodyTimerId = null;
-  pianoTimerId = null;
-  drumTimerId = null;
+  if (masterTimerId) clearInterval(masterTimerId);
+  masterTimerId = null;
   if (padSynth) padSynth.releaseAll();
   if (melodySynth) melodySynth.triggerRelease();
   if (pianoSynth) pianoSynth.releaseAll();
@@ -452,6 +458,7 @@ playBtn.addEventListener('click', async () => {
       bpm = parseInt(document.getElementById('tempo').value);
       chordIndex = 0;
       noiseLayer.start();
+      updateNoiseGain();
       startSchedulers();
       isPlaying = true;
       playBtn.textContent = '止める';
@@ -487,8 +494,16 @@ document.getElementById('layerGroup').addEventListener('click', (e) => {
   const btn = e.target.closest('.mood-btn');
   if (!btn) return;
   btn.classList.toggle('active');
-  if (btn.dataset.layer === 'piano') pianoEnabled = btn.classList.contains('active');
-  if (btn.dataset.layer === 'drums') drumsEnabled = btn.classList.contains('active');
+  const on = btn.classList.contains('active');
+  const layer = btn.dataset.layer;
+  if (layer === 'pad') padEnabled = on;
+  if (layer === 'melody') melodyEnabled = on;
+  if (layer === 'piano') pianoEnabled = on;
+  if (layer === 'drums') drumsEnabled = on;
+  if (layer === 'noise') {
+    noiseEnabled = on;
+    updateNoiseGain();
+  }
 });
 
 const tempoSlider = document.getElementById('tempo');
@@ -513,11 +528,18 @@ densitySlider.addEventListener('input', () => {
   density = v / 100;
 });
 
+function updateNoiseGain(){
+  if (!noiseGain) return;
+  const v = parseInt(document.getElementById('noise').value);
+  const target = noiseEnabled ? (v / 100) * 0.05 : 0;
+  noiseGain.gain.rampTo(target, 0.2);
+}
+
 const noiseSlider = document.getElementById('noise');
 noiseSlider.addEventListener('input', () => {
   const v = parseInt(noiseSlider.value);
   document.getElementById('noiseVal').textContent = v + '%';
-  if (noiseGain) noiseGain.gain.rampTo((v / 100) * 0.05, 0.2);
+  updateNoiseGain();
 });
 </script>
 
