@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>hazegen — 生成チルBGM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500&family=Space+Grotesk:wght@400;500&display=swap');
+
+  :root{
+    --ink: #efe6da;
+    --ink-dim: #a99e91;
+    --night: #191622;
+    --night-2: #221e2f;
+    --tape: #d7a15e;
+    --tape-dim: #8a6a3f;
+    --teal: #6f9490;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 20% -10%, #2a2338 0%, transparent 55%),
+      radial-gradient(ellipse at 90% 110%, #202538 0%, transparent 50%),
+      var(--night);
+    color: var(--ink);
+    font-family: 'Space Grotesk', sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 32px 18px;
+  }
+
+  .wrap{ width:100%; max-width: 460px; }
+
+  h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 2.1rem;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .sub{
+    color: var(--ink-dim);
+    font-size: 0.92rem;
+    margin: 0 0 28px;
+    line-height:1.5;
+    max-width: 40ch;
+  }
+
+  .deck{
+    background: linear-gradient(180deg, var(--night-2), #1c1828);
+    border: 1px solid #332c45;
+    border-radius: 18px;
+    padding: 26px;
+    box-shadow: 0 30px 60px -30px rgba(0,0,0,0.6);
+  }
+
+  .reels{
+    display:flex;
+    justify-content: center;
+    align-items:center;
+    gap: 46px;
+    padding: 18px 0 26px;
+  }
+  .reel{
+    width: 84px; height:84px; border-radius:50%;
+    background: radial-gradient(circle at center, #3a3350 0 18%, #262032 19% 40%, #2f2840 41% 100%);
+    border: 1px solid #443a5c;
+    position:relative;
+    animation: spin 5s linear infinite paused;
+  }
+  .reel::before{
+    content:'';
+    position:absolute; inset:38%;
+    border-radius:50%;
+    background: var(--night);
+    border: 1px solid #443a5c;
+  }
+  .reel.spin{ animation-play-state: running; }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .chord-readout{
+    text-align:center;
+    font-family:'Fraunces', serif;
+    font-size: 1.4rem;
+    color: var(--tape);
+    min-height: 1.6em;
+    margin-bottom: 22px;
+    letter-spacing: 0.02em;
+  }
+
+  .transport{
+    display:flex; justify-content:center; margin-bottom: 28px;
+  }
+  #playBtn{
+    background: var(--tape);
+    color: #1c1628;
+    border:none;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:500;
+    font-size: 0.95rem;
+    padding: 13px 34px;
+    border-radius: 999px;
+    cursor:pointer;
+    transition: transform 0.15s ease, background 0.2s ease;
+  }
+  #playBtn:hover{ background:#e6b676; }
+  #playBtn:active{ transform: scale(0.97); }
+  #playBtn.playing{ background: var(--teal); color: #10201d; }
+
+  .controls{
+    display:grid;
+    gap: 18px;
+  }
+  .row{ display:grid; grid-template-columns: 84px 1fr 46px; align-items:center; gap: 12px; }
+  .row label{ font-size: 0.82rem; color: var(--ink-dim); }
+  .row .val{ font-size: 0.82rem; color: var(--ink-dim); text-align:right; }
+
+  input[type=range]{
+    -webkit-appearance:none;
+    width:100%; height: 2px;
+    background: #443a5c;
+    border-radius: 2px;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width: 14px; height:14px; border-radius:50%;
+    background: var(--tape);
+    cursor:pointer;
+    margin-top:-6px;
+  }
+
+  .moods{
+    display:flex; gap:8px; margin-top: 4px; flex-wrap: wrap;
+  }
+  .mood-btn{
+    flex:1;
+    min-width: 90px;
+    background: transparent;
+    border: 1px solid #443a5c;
+    color: var(--ink-dim);
+    padding: 9px 10px;
+    border-radius: 10px;
+    font-family:'Space Grotesk', sans-serif;
+    font-size: 0.8rem;
+    cursor:pointer;
+    transition: all 0.15s ease;
+  }
+  .mood-btn.active{
+    border-color: var(--tape-dim);
+    color: var(--tape);
+    background: rgba(215,161,94,0.08);
+  }
+
+  .foot{
+    margin-top: 18px;
+    font-size: 0.75rem;
+    color: #6c6379;
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>hazegen</h1>
+  <p class="sub">ペンタトニックスケール上でメロディとコードをその場生成する、終わらないチルBGM。再生するたびに違う流れになります。</p>
+
+  <div class="deck">
+    <div class="reels">
+      <div class="reel" id="reelL"></div>
+      <div class="reel" id="reelR"></div>
+    </div>
+
+    <div class="chord-readout" id="chordReadout">— 静止中 —</div>
+
+    <div class="transport">
+      <button id="playBtn">再生する</button>
+    </div>
+
+    <div class="controls">
+      <div>
+        <label style="display:block; margin-bottom:8px;">気分</label>
+        <div class="moods" id="moodGroup">
+          <button class="mood-btn active" data-mood="dreamy">dreamy</button>
+          <button class="mood-btn" data-mood="rainyday">rainy day</button>
+          <button class="mood-btn" data-mood="latenight">late night</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>テンポ</label>
+        <input type="range" id="tempo" min="58" max="86" value="70">
+        <div class="val" id="tempoVal">70</div>
+      </div>
+
+      <div class="row">
+        <label>密度</label>
+        <input type="range" id="density" min="10" max="80" value="42">
+        <div class="val" id="densityVal">42%</div>
+      </div>
+
+      <div class="row">
+        <label>ノイズ質感</label>
+        <input type="range" id="noise" min="0" max="100" value="28">
+        <div class="val" id="noiseVal">28%</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot">ヘッドホン推奨・ブラウザタブを閉じると停止します</p>
+</div>
+
+<script>
+// ---------- 音楽データ ----------
+const MOODS = {
+  dreamy: {
+    chords: [
+      { name: 'Cmaj7',  notes: ['C3','E3','G3','B3'], scale: ['C4','D4','E4','G4','A4'] },
+      { name: 'Am7',    notes: ['A2','C3','E3','G3'], scale: ['A3','C4','D4','E4','G4'] },
+      { name: 'Fmaj7',  notes: ['F2','A2','C3','E3'], scale: ['F3','G3','A3','C4','D4'] },
+      { name: 'G6/9',   notes: ['G2','B2','D3','E3'], scale: ['G3','A3','B3','D4','E4'] },
+    ]
+  },
+  rainyday: {
+    chords: [
+      { name: 'Dm9',    notes: ['D2','F2','A2','C3'], scale: ['D4','F4','G4','A4','C5'] },
+      { name: 'Gm7',    notes: ['G2','Bb2','D3','F3'], scale: ['G3','Bb3','C4','D4','F4'] },
+      { name: 'Cmaj7',  notes: ['C2','E2','G2','B2'], scale: ['C4','D4','E4','G4','A4'] },
+      { name: 'A7sus4', notes: ['A2','D3','E3','G3'], scale: ['A3','C4','D4','E4','G4'] },
+    ]
+  },
+  latenight: {
+    chords: [
+      { name: 'Ebmaj7', notes: ['Eb2','G2','Bb2','D3'], scale: ['Eb4','F4','G4','Bb4','C5'] },
+      { name: 'Cm9',    notes: ['C2','Eb2','G2','Bb2'], scale: ['C4','Eb4','F4','G4','Bb4'] },
+      { name: 'Abmaj7', notes: ['Ab2','C3','Eb3','G3'], scale: ['Ab3','Bb3','C4','Eb4','F4'] },
+      { name: 'Bb7',    notes: ['Bb2','D3','F3','Ab3'], scale: ['Bb3','C4','D4','F4','G4'] },
+    ]
+  }
+};
+
+let currentMood = 'dreamy';
+let density = 0.42;
+let bpm = 70;
+let chordIndex = 0;
+
+// ---------- 音源チェーン ----------
+let padSynth, melodySynth, noiseLayer, reverb, delay, warmFilter, noiseGain;
+let built = false;
+
+async function buildAudioGraph(){
+  reverb = new Tone.Reverb({ decay: 5, wet: 0.35 });
+  await reverb.generate();
+  reverb.toDestination();
+
+  warmFilter = new Tone.Filter({ frequency: 1600, type: 'lowpass', rolloff: -12 }).connect(reverb);
+  delay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.28, wet: 0.22 }).connect(warmFilter);
+
+  padSynth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 1.2, decay: 0.6, sustain: 0.65, release: 3 },
+    volume: -16
+  }).connect(warmFilter);
+
+  melodySynth = new Tone.Synth({
+    oscillator: { type: 'sine' },
+    envelope: { attack: 0.02, decay: 0.3, sustain: 0.1, release: 1.2 },
+    volume: -12
+  }).connect(delay);
+
+  noiseLayer = new Tone.Noise('pink');
+  const noiseFilter = new Tone.Filter({ frequency: 6000, type: 'highpass', Q: 1.2 });
+  noiseGain = new Tone.Gain(parseInt(document.getElementById('noise').value) / 100 * 0.05).toDestination();
+  noiseLayer.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+
+  built = true;
+}
+
+function currentChord(){
+  return MOODS[currentMood].chords[chordIndex % MOODS[currentMood].chords.length];
+}
+
+function pickMelodyNote(scale){
+  return scale[Math.floor(Math.random() * scale.length)];
+}
+
+// ---------- setInterval ベースのスケジューラ ----------
+// (Tone.Transport/Tone.Loopのコールバックがこの実行環境では発火しなかったため、
+//  素朴なsetIntervalで代替している)
+let chordTimerId = null;
+let melodyTimerId = null;
+
+function beatMs(){
+  return (60 / bpm) * 1000;
+}
+
+function startSchedulers(){
+  const chordIntervalMs = beatMs() * 8;
+  const playChord = () => {
+    const chord = currentChord();
+    padSynth.triggerAttackRelease(chord.notes, chordIntervalMs / 1000 * 0.95, undefined, 0.55);
+    document.getElementById('chordReadout').textContent = chord.name;
+    chordIndex++;
+  };
+  playChord();
+  chordTimerId = setInterval(playChord, chordIntervalMs);
+
+  const eighthMs = beatMs() / 2;
+  melodyTimerId = setInterval(() => {
+    if (Math.random() < density) {
+      const chord = currentChord();
+      const note = pickMelodyNote(chord.scale);
+      const dur = Math.random() < 0.3 ? '4n' : '8n';
+      melodySynth.triggerAttackRelease(note, dur, undefined, 0.5 + Math.random() * 0.3);
+    }
+  }, eighthMs);
+}
+
+function stopSchedulers(){
+  if (chordTimerId) clearInterval(chordTimerId);
+  if (melodyTimerId) clearInterval(melodyTimerId);
+  chordTimerId = null;
+  melodyTimerId = null;
+}
+
+// ---------- UI 制御 ----------
+const playBtn = document.getElementById('playBtn');
+const reelL = document.getElementById('reelL');
+const reelR = document.getElementById('reelR');
+let isPlaying = false;
+
+playBtn.addEventListener('click', async () => {
+  await Tone.start();
+  if (!built) {
+    playBtn.textContent = '準備中…';
+    await buildAudioGraph();
+  }
+
+  if (!isPlaying) {
+    bpm = parseInt(document.getElementById('tempo').value);
+    chordIndex = 0;
+    noiseLayer.start();
+    startSchedulers();
+    isPlaying = true;
+    playBtn.textContent = '止める';
+    playBtn.classList.add('playing');
+    reelL.classList.add('spin');
+    reelR.classList.add('spin');
+  } else {
+    stopSchedulers();
+    noiseLayer.stop();
+    isPlaying = false;
+    playBtn.textContent = '再生する';
+    playBtn.classList.remove('playing');
+    reelL.classList.remove('spin');
+    reelR.classList.remove('spin');
+    document.getElementById('chordReadout').textContent = '— 静止中 —';
+  }
+});
+
+document.getElementById('moodGroup').addEventListener('click', (e) => {
+  const btn = e.target.closest('.mood-btn');
+  if (!btn) return;
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentMood = btn.dataset.mood;
+  chordIndex = 0;
+});
+
+const tempoSlider = document.getElementById('tempo');
+tempoSlider.addEventListener('input', () => {
+  document.getElementById('tempoVal').textContent = tempoSlider.value;
+  bpm = parseInt(tempoSlider.value);
+  if (isPlaying) {
+    stopSchedulers();
+    startSchedulers();
+  }
+});
+
+const densitySlider = document.getElementById('density');
+densitySlider.addEventListener('input', () => {
+  const v = parseInt(densitySlider.value);
+  document.getElementById('densityVal').textContent = v + '%';
+  density = v / 100;
+});
+
+const noiseSlider = document.getElementById('noise');
+noiseSlider.addEventListener('input', () => {
+  const v = parseInt(noiseSlider.value);
+  document.getElementById('noiseVal').textContent = v + '%';
+  if (noiseGain) noiseGain.gain.rampTo((v / 100) * 0.05, 0.2);
+});
+</script>
+
+</body>
+</html>
