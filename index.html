@@ -268,7 +268,8 @@ let drumsEnabled = true;
 let noiseEnabled = true;
 
 // ---------- 音源チェーン ----------
-let padSynth, melodySynth, noiseLayer, reverb, delay, warmFilter, noiseGain;
+let padVoices = []; // PolySynthを使わず、コード用に固定4声を使い回す(ポリフォニー管理の不具合を回避)
+let melodySynth, noiseLayer, reverb, delay, warmFilter, noiseGain;
 let pianoSynth, kickSynth, snareSynth, hatSynth, drumFilter;
 let built = false;
 
@@ -280,12 +281,14 @@ async function buildAudioGraph(){
   warmFilter = new Tone.Filter({ frequency: 1600, type: 'lowpass', rolloff: -12 }).connect(reverb);
   delay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.28, wet: 0.22 }).connect(warmFilter);
 
-  padSynth = new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: 'triangle' },
-    envelope: { attack: 1.2, decay: 0.6, sustain: 0.65, release: 3 },
-    volume: -16,
-    maxPolyphony: 64
-  }).connect(warmFilter);
+  padVoices = [];
+  for (let i = 0; i < 4; i++) {
+    padVoices.push(new Tone.Synth({
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 1.2, decay: 0.6, sustain: 0.65, release: 1.5 },
+      volume: -16
+    }).connect(warmFilter));
+  }
 
   melodySynth = new Tone.Synth({
     oscillator: { type: 'sine' },
@@ -293,16 +296,15 @@ async function buildAudioGraph(){
     volume: -12
   }).connect(delay);
 
-  // ピアノ: FMSynthで、パッド(トライアングル波)/メロディ(サイン波)とは違う
-  // パーカッシブな質感にする
-  pianoSynth = new Tone.PolySynth(Tone.FMSynth, {
-    harmonicity: 3,
-    modulationIndex: 4,
-    envelope: { attack: 0.003, decay: 0.4, sustain: 0, release: 0.3 },
-    modulationEnvelope: { attack: 0.003, decay: 0.2, sustain: 0, release: 0.2 },
-    volume: -10,
-    maxPolyphony: 64
-  }).connect(warmFilter);
+  // ピアノ: 矩形波の単音シンセ。メロディ(サイン波)・パッド(トライアングル波)とは
+  // はっきり違う質感にする。PolySynthではなく単音シンセにしてポリフォニー管理の
+  // 不具合も避ける(常に1音ずつしか鳴らさないため問題ない)
+  const pianoHighpass = new Tone.Filter({ frequency: 300, type: 'highpass' }).toDestination();
+  pianoSynth = new Tone.Synth({
+    oscillator: { type: 'square' },
+    envelope: { attack: 0.006, decay: 0.9, sustain: 0.08, release: 0.8 },
+    volume: -20
+  }).connect(pianoHighpass);
 
   // ドラム: キック/スネア/ハイハットをローファイ用に軽くフィルターしてから出力
   drumFilter = new Tone.Filter({ frequency: 4500, type: 'lowpass' }).toDestination();
@@ -372,8 +374,10 @@ function beatMs(){
 function playPadChordIfEnabled(){
   const chord = currentChord();
   if (padEnabled) {
-    padSynth.releaseAll();
-    padSynth.triggerAttackRelease(chord.notes, (beatMs() * 8) / 1000 * 0.95, undefined, 0.55);
+    const dur = (beatMs() * 8) / 1000 * 0.95;
+    chord.notes.forEach((note, i) => {
+      padVoices[i].triggerAttackRelease(note, dur, undefined, 0.55);
+    });
   }
   document.getElementById('chordReadout').textContent = padEnabled ? chord.name : (chord.name + ' (パッドOFF)');
 }
@@ -398,7 +402,6 @@ function tick(sixteenthMs){
       const chord = currentChord();
       const idx = pianoStep % chord.notes.length;
       const note = chord.notes[idx].replace(/(\d)/, (m, oct) => String(Number(oct) + 1));
-      pianoSynth.releaseAll();
       pianoSynth.triggerAttackRelease(note, '16n', undefined, 0.35 + Math.random() * 0.2);
       pianoStep++;
     }
@@ -431,9 +434,9 @@ function startSchedulers(){
 function stopSchedulers(){
   if (masterTimerId) clearInterval(masterTimerId);
   masterTimerId = null;
-  if (padSynth) padSynth.releaseAll();
+  padVoices.forEach(v => v && v.triggerRelease());
   if (melodySynth) melodySynth.triggerRelease();
-  if (pianoSynth) pianoSynth.releaseAll();
+  if (pianoSynth) pianoSynth.triggerRelease();
 }
 
 // ---------- UI 制御 ----------
@@ -496,9 +499,18 @@ document.getElementById('layerGroup').addEventListener('click', (e) => {
   btn.classList.toggle('active');
   const on = btn.classList.contains('active');
   const layer = btn.dataset.layer;
-  if (layer === 'pad') padEnabled = on;
+  if (layer === 'pad') {
+    padEnabled = on;
+    if (isPlaying) {
+      if (on) playPadChordIfEnabled();
+      else { padVoices.forEach(v => v.triggerRelease()); document.getElementById('chordReadout').textContent = currentChord().name + ' (パッドOFF)'; }
+    }
+  }
   if (layer === 'melody') melodyEnabled = on;
-  if (layer === 'piano') pianoEnabled = on;
+  if (layer === 'piano') {
+    pianoEnabled = on;
+    if (isPlaying && !on) pianoSynth.triggerRelease();
+  }
   if (layer === 'drums') drumsEnabled = on;
   if (layer === 'noise') {
     noiseEnabled = on;
