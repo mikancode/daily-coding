@@ -268,7 +268,7 @@ let drumsEnabled = true;
 let noiseEnabled = true;
 
 // ---------- 音源チェーン ----------
-let padVoices = []; // PolySynthを使わず、コード用に固定4声を使い回す(ポリフォニー管理の不具合を回避)
+let padVoices = []; // PolySynthを使わず、8声(4声x2グループ交互)を固定で使い回す(ポリフォニー管理の不具合を回避)
 let melodySynth, noiseLayer, reverb, delay, warmFilter, noiseGain;
 let pianoSynth, kickSynth, snareSynth, hatSynth, drumFilter;
 let built = false;
@@ -281,11 +281,13 @@ async function buildAudioGraph(){
   warmFilter = new Tone.Filter({ frequency: 1600, type: 'lowpass', rolloff: -12 }).connect(reverb);
   delay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.28, wet: 0.22 }).connect(warmFilter);
 
+  // パッド: 8声(4声x2グループ)を交互に使い、前のコードの余韻に次のコードを被せて
+  // 隙間を作らないようにする(クロスフェード)
   padVoices = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 8; i++) {
     padVoices.push(new Tone.Synth({
       oscillator: { type: 'triangle' },
-      envelope: { attack: 1.2, decay: 0.6, sustain: 0.65, release: 1.5 },
+      envelope: { attack: 1.2, decay: 0.6, sustain: 0.65, release: 2.2 },
       volume: -16
     }).connect(warmFilter));
   }
@@ -296,14 +298,15 @@ async function buildAudioGraph(){
     volume: -12
   }).connect(delay);
 
-  // ピアノ: 矩形波の単音シンセ。メロディ(サイン波)・パッド(トライアングル波)とは
-  // はっきり違う質感にする。PolySynthではなく単音シンセにしてポリフォニー管理の
-  // 不具合も避ける(常に1音ずつしか鳴らさないため問題ない)
-  const pianoHighpass = new Tone.Filter({ frequency: 300, type: 'highpass' }).toDestination();
-  pianoSynth = new Tone.Synth({
-    oscillator: { type: 'square' },
-    envelope: { attack: 0.006, decay: 0.9, sustain: 0.08, release: 0.8 },
-    volume: -20
+  // ピアノ: のこぎり波+フィルターエンベロープのMonoSynth。アタックで軽くフィルターが開いて
+  // すぐ閉じる、くぐもったマレット/プラック系の質感(矩形波はチップチューン的すぎたため変更)
+  const pianoHighpass = new Tone.Filter({ frequency: 250, type: 'highpass' }).toDestination();
+  pianoSynth = new Tone.MonoSynth({
+    oscillator: { type: 'sawtooth' },
+    envelope: { attack: 0.005, decay: 0.6, sustain: 0.05, release: 0.6 },
+    filterEnvelope: { attack: 0.005, decay: 0.3, sustain: 0.1, release: 0.4, baseFrequency: 200, octaves: 3 },
+    filter: { type: 'lowpass', rolloff: -24, Q: 1 },
+    volume: -16
   }).connect(pianoHighpass);
 
   // ドラム: キック/スネア/ハイハットをローファイ用に軽くフィルターしてから出力
@@ -357,6 +360,11 @@ function pickMelodyNote(scale){
 let masterTimerId = null;
 let stepCounter = 0;
 let pianoStep = 0;
+let padGroup = 0;
+let melodyScaleIdx = 2; // ランダムウォークの現在位置(スケール内インデックス)
+
+// ピアノのコンピングパターン(2小節=16個の8分音符スロット、シンコペーション気味)
+const PIANO_PATTERN = [1,0,0,1, 0,0,1,0, 0,1,0,0, 1,0,1,0];
 
 // 16ステップ = 1小節ぶんのローファイなビート(キック/スネア/ハイハット)
 const KICK_PATTERN  = [1,0,0,0, 0,0,1,0, 0,1,0,0, 0,0,0,0];
@@ -374,10 +382,12 @@ function beatMs(){
 function playPadChordIfEnabled(){
   const chord = currentChord();
   if (padEnabled) {
-    const dur = (beatMs() * 8) / 1000 * 0.95;
+    const dur = (beatMs() * 8) / 1000 * 1.15; // 次のコードに少しかぶるくらい長めに
+    const groupStart = padGroup * 4;
     chord.notes.forEach((note, i) => {
-      padVoices[i].triggerAttackRelease(note, dur, undefined, 0.55);
+      padVoices[groupStart + i].triggerAttackRelease(note, dur, undefined, 0.55);
     });
+    padGroup = 1 - padGroup; // 次回は別の4声グループを使う(前の音と被らない)
   }
   document.getElementById('chordReadout').textContent = padEnabled ? chord.name : (chord.name + ' (パッドOFF)');
 }
@@ -394,16 +404,27 @@ function tick(sixteenthMs){
   if (barStep % 2 === 0) {
     if (melodyEnabled && Math.random() < density) {
       const chord = currentChord();
-      const note = pickMelodyNote(chord.scale);
+      // ランダムウォーク: 前の音から±1(たまに±2)だけ動く、スケール内でつながりのある動き
+      const move = Math.random() < 0.75
+        ? (Math.random() < 0.5 ? -1 : 1)
+        : (Math.random() < 0.5 ? -2 : 2);
+      melodyScaleIdx = Math.max(0, Math.min(chord.scale.length - 1, melodyScaleIdx + move));
+      const note = chord.scale[melodyScaleIdx];
       const dur = Math.random() < 0.3 ? '4n' : '8n';
       melodySynth.triggerAttackRelease(note, dur, undefined, 0.5 + Math.random() * 0.3);
     }
-    if (pianoEnabled && Math.random() < 0.55) {
-      const chord = currentChord();
-      const idx = pianoStep % chord.notes.length;
-      const note = chord.notes[idx].replace(/(\d)/, (m, oct) => String(Number(oct) + 1));
-      pianoSynth.triggerAttackRelease(note, '16n', undefined, 0.35 + Math.random() * 0.2);
-      pianoStep++;
+    if (pianoEnabled) {
+      const eighthSlot = Math.floor(chordStep / 2) % 16;
+      const scheduled = PIANO_PATTERN[eighthSlot] === 1;
+      // 決まったコンピングパターンに沿わせつつ、たまに抜けたり足したりして人間味を出す
+      const shouldPlay = scheduled ? Math.random() < 0.85 : Math.random() < 0.08;
+      if (shouldPlay) {
+        const chord = currentChord();
+        const idx = pianoStep % chord.notes.length;
+        const note = chord.notes[idx].replace(/(\d)/, (m, oct) => String(Number(oct) + 1));
+        pianoSynth.triggerAttackRelease(note, '16n', undefined, 0.35 + Math.random() * 0.2);
+        pianoStep++;
+      }
     }
   }
 
