@@ -210,6 +210,14 @@
         <input type="range" id="noise" min="0" max="100" value="28">
         <div class="val" id="noiseVal">28%</div>
       </div>
+
+      <div>
+        <label style="display:block; margin-bottom:8px;">レイヤー</label>
+        <div class="moods" id="layerGroup">
+          <button class="mood-btn active" data-layer="piano">ピアノ</button>
+          <button class="mood-btn active" data-layer="drums">ドラム</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -249,9 +257,12 @@ let currentMood = 'dreamy';
 let density = 0.42;
 let bpm = 70;
 let chordIndex = 0;
+let pianoEnabled = true;
+let drumsEnabled = true;
 
 // ---------- 音源チェーン ----------
 let padSynth, melodySynth, noiseLayer, reverb, delay, warmFilter, noiseGain;
+let pianoSynth, kickSynth, snareSynth, hatSynth, drumFilter;
 let built = false;
 
 async function buildAudioGraph(){
@@ -273,6 +284,40 @@ async function buildAudioGraph(){
     envelope: { attack: 0.02, decay: 0.3, sustain: 0.1, release: 1.2 },
     volume: -12
   }).connect(delay);
+
+  // ピアノ: 短いアタックのプラック系トライアングル波
+  pianoSynth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 0.005, decay: 0.5, sustain: 0.05, release: 0.6 },
+    volume: -14
+  }).connect(warmFilter);
+  pianoSynth.connect(delay);
+
+  // ドラム: キック/スネア/ハイハットをローファイ用に軽くフィルターしてから出力
+  drumFilter = new Tone.Filter({ frequency: 4500, type: 'lowpass' }).toDestination();
+
+  kickSynth = new Tone.MembraneSynth({
+    pitchDecay: 0.04,
+    octaves: 5,
+    envelope: { attack: 0.001, decay: 0.35, sustain: 0 },
+    volume: -8
+  }).connect(drumFilter);
+
+  snareSynth = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.001, decay: 0.15, sustain: 0 },
+    volume: -18
+  });
+  const snareFilter = new Tone.Filter({ frequency: 1800, type: 'bandpass', Q: 0.8 }).connect(drumFilter);
+  snareSynth.connect(snareFilter);
+
+  hatSynth = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.001, decay: 0.04, sustain: 0 },
+    volume: -24
+  });
+  const hatFilter = new Tone.Filter({ frequency: 7500, type: 'highpass' }).connect(drumFilter);
+  hatSynth.connect(hatFilter);
 
   noiseLayer = new Tone.Noise('pink');
   const noiseFilter = new Tone.Filter({ frequency: 6000, type: 'highpass', Q: 1.2 });
@@ -296,6 +341,14 @@ function pickMelodyNote(scale){
 //  素朴なsetIntervalで代替している)
 let chordTimerId = null;
 let melodyTimerId = null;
+let pianoTimerId = null;
+let drumTimerId = null;
+let drumStep = 0;
+
+// 16ステップのローファイなビート(キック/スネア/ハイハット)
+const KICK_PATTERN  = [1,0,0,0, 0,0,1,0, 0,1,0,0, 0,0,0,0];
+const SNARE_PATTERN = [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0];
+const HAT_PATTERN   = [1,0,1,1, 1,0,1,1, 1,0,1,1, 1,0,1,1];
 
 function beatMs(){
   return (60 / bpm) * 1000;
@@ -324,15 +377,53 @@ function startSchedulers(){
       melodySynth.triggerAttackRelease(note, dur, undefined, 0.5 + Math.random() * 0.3);
     }
   }, eighthMs);
+
+  // ピアノ: コード構成音を順になぞるアルペジオ
+  let pianoStep = 0;
+  pianoTimerId = setInterval(() => {
+    if (!pianoEnabled) return;
+    if (Math.random() < 0.35) {
+      const chord = currentChord();
+      const idx = pianoStep % chord.notes.length;
+      const note = chord.notes[idx].replace(/(\d)/, (m, oct) => String(Number(oct) + 1));
+      pianoSynth.triggerAttackRelease(note, '8n', undefined, 0.4 + Math.random() * 0.25);
+      pianoStep++;
+    }
+  }, eighthMs);
+
+  // ドラム: 16分音符グリッドのステップシーケンサー(スウィング付き)
+  const sixteenthMs = beatMs() / 4;
+  drumStep = 0;
+  drumTimerId = setInterval(() => {
+    if (!drumsEnabled) { drumStep = (drumStep + 1) % 16; return; }
+    const step = drumStep;
+    const isOffbeat = step % 2 === 1;
+    const swingDelay = isOffbeat ? sixteenthMs * 0.12 : 0;
+
+    setTimeout(() => {
+      if (KICK_PATTERN[step]) kickSynth.triggerAttackRelease('C1', '8n');
+      if (SNARE_PATTERN[step]) snareSynth.triggerAttackRelease('16n');
+      if (HAT_PATTERN[step] && Math.random() < 0.85) {
+        hatSynth.triggerAttackRelease('32n', undefined, 0.5 + Math.random() * 0.3);
+      }
+    }, swingDelay);
+
+    drumStep = (drumStep + 1) % 16;
+  }, sixteenthMs);
 }
 
 function stopSchedulers(){
   if (chordTimerId) clearInterval(chordTimerId);
   if (melodyTimerId) clearInterval(melodyTimerId);
+  if (pianoTimerId) clearInterval(pianoTimerId);
+  if (drumTimerId) clearInterval(drumTimerId);
   chordTimerId = null;
   melodyTimerId = null;
+  pianoTimerId = null;
+  drumTimerId = null;
   if (padSynth) padSynth.releaseAll();
   if (melodySynth) melodySynth.triggerRelease();
+  if (pianoSynth) pianoSynth.releaseAll();
 }
 
 // ---------- UI 制御 ----------
@@ -382,10 +473,18 @@ playBtn.addEventListener('click', async () => {
 document.getElementById('moodGroup').addEventListener('click', (e) => {
   const btn = e.target.closest('.mood-btn');
   if (!btn) return;
-  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#moodGroup .mood-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   currentMood = btn.dataset.mood;
   chordIndex = 0;
+});
+
+document.getElementById('layerGroup').addEventListener('click', (e) => {
+  const btn = e.target.closest('.mood-btn');
+  if (!btn) return;
+  btn.classList.toggle('active');
+  if (btn.dataset.layer === 'piano') pianoEnabled = btn.classList.contains('active');
+  if (btn.dataset.layer === 'drums') drumsEnabled = btn.classList.contains('active');
 });
 
 const tempoSlider = document.getElementById('tempo');
