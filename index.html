@@ -302,9 +302,12 @@ function beatMs(){
 }
 
 function startSchedulers(){
+  stopSchedulers(); // 既存タイマーを必ず止めてから開始する(多重起動防止)
+
   const chordIntervalMs = beatMs() * 8;
   const playChord = () => {
     const chord = currentChord();
+    padSynth.releaseAll();
     padSynth.triggerAttackRelease(chord.notes, chordIntervalMs / 1000 * 0.95, undefined, 0.55);
     document.getElementById('chordReadout').textContent = chord.name;
     chordIndex++;
@@ -328,6 +331,8 @@ function stopSchedulers(){
   if (melodyTimerId) clearInterval(melodyTimerId);
   chordTimerId = null;
   melodyTimerId = null;
+  if (padSynth) padSynth.releaseAll();
+  if (melodySynth) melodySynth.triggerRelease();
 }
 
 // ---------- UI 制御 ----------
@@ -335,33 +340,42 @@ const playBtn = document.getElementById('playBtn');
 const reelL = document.getElementById('reelL');
 const reelR = document.getElementById('reelR');
 let isPlaying = false;
+let isBusy = false; // ビルド中/切り替え中の多重クリック防止
 
 playBtn.addEventListener('click', async () => {
-  await Tone.start();
-  if (!built) {
-    playBtn.textContent = '準備中…';
-    await buildAudioGraph();
-  }
+  if (isBusy) return;
+  isBusy = true;
+  playBtn.disabled = true;
+  try {
+    await Tone.start();
+    if (!built) {
+      playBtn.textContent = '準備中…';
+      await buildAudioGraph();
+    }
 
-  if (!isPlaying) {
-    bpm = parseInt(document.getElementById('tempo').value);
-    chordIndex = 0;
-    noiseLayer.start();
-    startSchedulers();
-    isPlaying = true;
-    playBtn.textContent = '止める';
-    playBtn.classList.add('playing');
-    reelL.classList.add('spin');
-    reelR.classList.add('spin');
-  } else {
-    stopSchedulers();
-    noiseLayer.stop();
-    isPlaying = false;
-    playBtn.textContent = '再生する';
-    playBtn.classList.remove('playing');
-    reelL.classList.remove('spin');
-    reelR.classList.remove('spin');
-    document.getElementById('chordReadout').textContent = '— 静止中 —';
+    if (!isPlaying) {
+      bpm = parseInt(document.getElementById('tempo').value);
+      chordIndex = 0;
+      noiseLayer.start();
+      startSchedulers();
+      isPlaying = true;
+      playBtn.textContent = '止める';
+      playBtn.classList.add('playing');
+      reelL.classList.add('spin');
+      reelR.classList.add('spin');
+    } else {
+      stopSchedulers();
+      noiseLayer.stop();
+      isPlaying = false;
+      playBtn.textContent = '再生する';
+      playBtn.classList.remove('playing');
+      reelL.classList.remove('spin');
+      reelR.classList.remove('spin');
+      document.getElementById('chordReadout').textContent = '— 静止中 —';
+    }
+  } finally {
+    isBusy = false;
+    playBtn.disabled = false;
   }
 });
 
