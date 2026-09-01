@@ -401,6 +401,7 @@ function tick(sixteenthMs){
     chordIndex++;
   }
 
+  // メロディ: 8分音符グリッド(2ステップに1回)
   if (barStep % 2 === 0) {
     if (melodyEnabled && Math.random() < density) {
       const chord = currentChord();
@@ -413,18 +414,18 @@ function tick(sixteenthMs){
       const dur = Math.random() < 0.3 ? '4n' : '8n';
       melodySynth.triggerAttackRelease(note, dur, undefined, 0.5 + Math.random() * 0.3);
     }
-    if (pianoEnabled) {
-      const eighthSlot = Math.floor(chordStep / 2) % 16;
-      const scheduled = PIANO_PATTERN[eighthSlot] === 1;
-      // 決まったコンピングパターンに沿わせつつ、たまに抜けたり足したりして人間味を出す
-      const shouldPlay = scheduled ? Math.random() < 0.85 : Math.random() < 0.08;
-      if (shouldPlay) {
-        const chord = currentChord();
-        const idx = pianoStep % chord.notes.length;
-        const note = chord.notes[idx].replace(/(\d)/, (m, oct) => String(Number(oct) + 1));
-        pianoSynth.triggerAttackRelease(note, '16n', undefined, 0.35 + Math.random() * 0.2);
-        pianoStep++;
-      }
+  }
+
+  // ピアノ: 16分音符グリッド(毎ステップ判定、メロディの倍の速さ)
+  if (pianoEnabled) {
+    const scheduled = PIANO_PATTERN[barStep] === 1;
+    const shouldPlay = scheduled ? Math.random() < 0.85 : Math.random() < 0.08;
+    if (shouldPlay) {
+      const chord = currentChord();
+      const idx = pianoStep % chord.notes.length;
+      const note = chord.notes[idx].replace(/(\d)/, (m, oct) => String(Number(oct) + 1));
+      pianoSynth.triggerAttackRelease(note, '32n', undefined, 0.35 + Math.random() * 0.2);
+      pianoStep++;
     }
   }
 
