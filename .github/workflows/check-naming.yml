@@ -1,0 +1,16 @@
+name: check-naming
+
+# フォルダ名の規約違反を PR の時点で弾く。
+# エージェントが規約外の名前でディレクトリを作っても CI が落ちて気づける。
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-naming:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: フォルダ名の命名規約を検査
+        run: ./scripts/check-naming.sh
