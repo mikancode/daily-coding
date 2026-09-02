@@ -10,7 +10,7 @@
 | [🎹 Innocencer（あの楽器）](./20260104-that-instrument-innocencer/) | 画面をタッチすると音と波紋が生まれる Web 楽器 | React / Vite / Tone.js / Canvas | 🟢 Live |
 | [🏢 Corp URL Finder](./20251230-corp-url-finder/) | gBizINFO API から企業の公式 URL を特定する調査ノート | Colab / requests / pandas | ✅ Done |
 | [🧩 One-Stroke Grid Puzzle](./20251226-one-stroke-puzzle/) | ハミルトンパスを題材にした一筆書きパズル | Next.js / TypeScript / Zustand | 💤 Paused |
-| [🎄 Digital Xmas Tree](./20251224_xmas_tree/) | 数学的なサンプリングで組み上げた 3D ツリー | Python / Plotly / NumPy | ✅ Done |
+| [🎄 Digital Xmas Tree](./20251224-xmas-tree/) | 数学的なサンプリングで組み上げた 3D ツリー | Python / Plotly / NumPy | ✅ Done |
 
 > **Status の凡例**
 > 🟢 Live = 公開稼働中 ／ ✅ Done = 完成・凍結 ／ 💤 Paused = 開発中断 ／ 🚧 WIP = 開発中
@@ -48,9 +48,9 @@
 円錐の方程式による点群サンプリングと、正弦波を用いた周期的なアニメーション制御で構築した 3D ツリーです。
 Notebook を実行すると、そのまま公開できる `index.html` が生成されます。
 
-- **Demo**: [Interactive 3D Tree](https://mikancode.github.io/daily-coding/20251224_xmas_tree/index.html)
+- **Demo**: [Interactive 3D Tree](https://mikancode.github.io/daily-coding/20251224-xmas-tree/index.html)
 - **Stack**: Python, Plotly, NumPy, Seaborn
-- **Docs**: [README](./20251224_xmas_tree/README.md)
+- **Docs**: [README](./20251224-xmas-tree/README.md)
 
 ---
 
