@@ -60,8 +60,10 @@ Notebook を実行すると、そのまま公開できる `index.html` が生成
 daily-coding/
 ├── YYYYMMDD-project-name/   # 1 プロダクト = 1 フォルダ。実行環境も各フォルダで完結する
 ├── scripts/                 # リポジトリ横断のユーティリティ
+│   ├── check-naming.sh           # フォルダ名の命名規約を検査（CI から実行）
 │   └── license-simple-check.py   # 依存ライブラリのライセンス検査
-├── .gitmessage              # コミットメッセージのテンプレート
+├── .claude/                 # セッション開始時に dotfiles の規約・スキルを取り込む
+├── CLAUDE.md                # エージェント向けのリポジトリ固有情報
 └── README.md                # このファイル
 ```
 
@@ -80,11 +82,10 @@ daily-coding/
 2. `feat/<Issue番号>-<機能名>` 形式でブランチを切る
 3. Pull Request を作成し、本文に `Closes #<番号>` を含める
 
-コミットメッセージは `.gitmessage` のテンプレートに従います。
+コミットメッセージは Conventional Commits 形式です。
+テンプレートは [dotfiles](https://github.com/mikancode/dotfiles) がグローバル設定（`commit.template`）として配布しています。
 
-```bash
-git config commit.template .gitmessage
-```
+フォルダ名は `YYYYMMDD-kebab-case` で、PR 時に CI（[`scripts/check-naming.sh`](./scripts/check-naming.sh)）が検査します。
 
 ## 📄 License
 
