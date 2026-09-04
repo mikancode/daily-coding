@@ -13,13 +13,17 @@ readonly NAME_PATTERN='^[0-9]{8}-[a-z0-9]+(-[a-z0-9]+)*$'
 
 # プロジェクトフォルダではない、リポジトリ運営用のディレクトリ
 readonly IGNORED_DIRS=(
-  ".git"
-  ".github"
   "scripts"
 )
 
 is_ignored() {
   local name="$1"
+
+  # ドットで始まる名前（.github / .claude など）は一律で除外する。
+  # プロジェクトフォルダは必ず数字で始まるため検査能力は落ちず、ツール用の
+  # ディレクトリが増えるたびに除外リストを直す必要がなくなる。
+  [[ "$name" == .* ]] && return 0
+
   for ignored in "${IGNORED_DIRS[@]}"; do
     [ "$name" = "$ignored" ] && return 0
   done

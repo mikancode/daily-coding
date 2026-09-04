@@ -1,0 +1,45 @@
+{
+  "_comment": "dotfiles の規約・スキルをセッション開始時に取り込む。原本は dotfiles/scripts/settings-template.json。コンテナが毎回作り直される環境では ~/.claude/settings.json が間に合わない（hook はセッション開始時に読まれ、install.sh はその後に走る）ため、このリポジトリ側にも同じ hook を置く。",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -d ~/dotfiles ]; then git -C ~/dotfiles pull --ff-only; else git clone https://github.com/mikancode/dotfiles.git ~/dotfiles; fi && bash ~/dotfiles/install.sh && ~/dotfiles/scripts/inbox-status.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/dotfiles/scripts/nudge.sh plan-done"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__github__merge_pull_request",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/dotfiles/scripts/nudge.sh pr-merged"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/dotfiles/scripts/nudge.sh bash-command"
+          }
+        ]
+      }
+    ]
+  }
+}
