@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -d ~/dotfiles ]; then git -C ~/dotfiles pull --ff-only; else git clone https://github.com/mikancode/dotfiles.git ~/dotfiles; fi && bash ~/dotfiles/install.sh && ~/dotfiles/scripts/inbox-status.sh"
+            "command": "if [ -d ~/dotfiles ]; then git -C ~/dotfiles pull --ff-only; else git clone https://github.com/mikancode/dotfiles.git ~/dotfiles; fi && bash ~/dotfiles/install.sh && ~/dotfiles/scripts/inbox-status.sh || echo 'dotfiles: 取り込み失敗。規約とスキルは未ロード（mikancode/dotfiles をセッションのスコープに追加して再試行するか、手動で git clone/pull と install.sh を確認）'"
           }
         ]
       }
