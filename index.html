@@ -299,7 +299,7 @@ async function buildAudioGraph(){
   }).connect(delay);
 
   // ピアノ: のこぎり波+フィルターエンベロープのMonoSynth。アタックで軽くフィルターが開いて
-  // すぐ閉じる、くぐもったマレット/プラック系の質感(矩形波はチップチューン的すぎたため変更)
+  // すぐ閉じる、くぐもったマレット/プラック系の質感(矩形波だとチップチューン的すぎたため変更)
   const pianoHighpass = new Tone.Filter({ frequency: 250, type: 'highpass' }).toDestination();
   pianoSynth = new Tone.MonoSynth({
     oscillator: { type: 'sawtooth' },
@@ -348,23 +348,58 @@ function currentChord(){
   return MOODS[currentMood].chords[chordIndex % MOODS[currentMood].chords.length];
 }
 
+function playPadChordIfEnabled(){
+  const chord = currentChord();
+  if (padEnabled) {
+    const dur = (beatMs() * 8) / 1000 * 1.15; // 次のコードに少しかぶるくらい長めに
+    const groupStart = padGroup * 4;
+    chord.notes.forEach((note, i) => {
+      padVoices[groupStart + i].triggerAttackRelease(note, dur, undefined, 0.55);
+    });
+    padGroup = 1 - padGroup; // 次回は別の4声グループを使う(前の音と被らない)
+  }
+  document.getElementById('chordReadout').textContent = padEnabled ? chord.name : (chord.name + ' (パッドOFF)');
+}
+
 function pickMelodyNote(scale){
   return scale[Math.floor(Math.random() * scale.length)];
 }
 
-// ---------- setInterval ベースのスケジューラ ----------
-// (Tone.Transport/Tone.Loopのコールバックがこの実行環境では発火しなかったため、
-//  素朴なsetIntervalで代替している)
-// 全パートを「16分音符ステップ」という共通の歩数で管理する単一クロック方式。
-// (コードとドラムが別々のタイマーだとズレていく問題があったため統一した)
+// ---------- 音楽理論寄りのピアノ用ヘルパー ----------
+// 音名 <-> MIDIノート番号の相互変換、および「直前の音から一番近いコードトーン」を選ぶ
+// ボイスリーディング(声部進行)。ジャズピアノのガイドトーン・ライン(3度・7度を
+// つないで滑らかに動かす手法)の考え方を単純化して取り入れている。
+const NOTE_BASE = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 };
+function noteToMidi(note){
+  const m = note.match(/^([A-G])(b|#)?(-?\d+)$/);
+  let semis = NOTE_BASE[m[1]];
+  if (m[2] === '#') semis += 1;
+  if (m[2] === 'b') semis -= 1;
+  return semis + (parseInt(m[3]) + 1) * 12;
+}
+function midiToNote(midi){
+  const NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const octave = Math.floor(midi / 12) - 1;
+  return NAMES[((midi % 12) + 12) % 12] + octave;
+}
+function nearestChordTone(candidateNotes, refMidi){
+  let best = null, bestDist = Infinity;
+  candidateNotes.forEach(n => {
+    const base = noteToMidi(n);
+    for (let oct = -1; oct <= 2; oct++) {
+      const candidate = base + oct * 12;
+      const dist = Math.abs(candidate - refMidi);
+      if (dist < bestDist) { bestDist = dist; best = candidate; }
+    }
+  });
+  return best;
+}
+
+// ---------- 単一クロックのスケジューラ (Tone.Transportは使わない) ----------
+// 全パートを「16分音符ステップ」という共通の歩数で管理することで、
+// コード/メロディ/ピアノ/ドラムが互いにズレないようにする。
 let masterTimerId = null;
 let stepCounter = 0;
-let pianoStep = 0;
-let padGroup = 0;
-let melodyScaleIdx = 2; // ランダムウォークの現在位置(スケール内インデックス)
-
-// ピアノのコンピングパターン(2小節=16個の8分音符スロット、シンコペーション気味)
-const PIANO_PATTERN = [1,0,0,1, 0,0,1,0, 0,1,0,0, 1,0,1,0];
 
 // 16ステップ = 1小節ぶんのローファイなビート(キック/スネア/ハイハット)
 const KICK_PATTERN  = [1,0,0,0, 0,0,1,0, 0,1,0,0, 0,0,0,0];
@@ -379,23 +414,27 @@ function beatMs(){
   return (60 / bpm) * 1000;
 }
 
-function playPadChordIfEnabled(){
-  const chord = currentChord();
-  if (padEnabled) {
-    const dur = (beatMs() * 8) / 1000 * 1.15; // 次のコードに少しかぶるくらい長めに
-    const groupStart = padGroup * 4;
-    chord.notes.forEach((note, i) => {
-      padVoices[groupStart + i].triggerAttackRelease(note, dur, undefined, 0.55);
-    });
-    padGroup = 1 - padGroup; // 次回は別の4声グループを使う(前の音と被らない)
-  }
-  document.getElementById('chordReadout').textContent = padEnabled ? chord.name : (chord.name + ' (パッドOFF)');
-}
+let padGroup = 0;
+let melodyScaleIdx = 2; // ランダムウォークの現在位置(スケール内インデックス)
+let lastPianoMidi = noteToMidi('E4'); // ボイスリーディングの基準(直前に弾いた音)
+
+// ピアノのコンピングパターン(2小節=32個の16分音符スロット)。
+// 「チャールストン」と呼ばれるジャズの定番コンピングリズム(1拍目 + 2拍目の裏)を
+// ベースに、2小節目は少し変化をつけている。
+const PIANO_PATTERN = [
+  1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,0,  // 1小節目: 1拍目 & 2拍目の裏 & 3拍目の裏(チャールストン+α)
+  1,0,0,0, 0,0,0,0, 0,0,1,0, 0,0,1,0,  // 2小節目: 少し変化をつけて次のコードへの推進力を出す
+];
+// ガイドトーン(3度・7度に相当するインデックス)を中心に使う。コード配列は
+// [ルート, 3度, 5度, 7度] の並びで定義しているため、[1,3] がガイドトーン。
+const GUIDE_TONE_IDX = [1, 3];
 
 function tick(sixteenthMs){
-  const barStep = stepCounter % STEPS_PER_BAR;
-  const chordStep = stepCounter % CHORD_STEPS;
+  const barStep = stepCounter % STEPS_PER_BAR;      // ドラムの位置 (0-15)
+  const chordStep = stepCounter % CHORD_STEPS;       // コードの位置 (0-31)
 
+  // コード: 2小節の頭で必ず切り替わる。ドラムのループ頭と同じタイミングにするため
+  // 「歩数」で判定しているのがポイント(独立タイマーだとズレていく)
   if (chordStep === 0) {
     playPadChordIfEnabled();
     chordIndex++;
@@ -416,19 +455,22 @@ function tick(sixteenthMs){
     }
   }
 
-  // ピアノ: 16分音符グリッド(毎ステップ判定、メロディの倍の速さ)
+  // ピアノ: 16分音符グリッド(毎ステップ判定)。コード進行(2小節=32ステップ)全体で
+  // 1つのパターンとして機能させるため chordStep を使う
   if (pianoEnabled) {
-    const scheduled = PIANO_PATTERN[barStep] === 1;
-    const shouldPlay = scheduled ? Math.random() < 0.85 : Math.random() < 0.08;
+    const scheduled = PIANO_PATTERN[chordStep] === 1;
+    // 決まったコンピングパターンに沿わせつつ、たまに抜けたり足したりして人間味を出す
+    const shouldPlay = scheduled ? Math.random() < 0.9 : Math.random() < 0.05;
     if (shouldPlay) {
       const chord = currentChord();
-      const idx = pianoStep % chord.notes.length;
-      const note = chord.notes[idx].replace(/(\d)/, (m, oct) => String(Number(oct) + 1));
-      pianoSynth.triggerAttackRelease(note, '32n', undefined, 0.35 + Math.random() * 0.2);
-      pianoStep++;
+      const guideTones = GUIDE_TONE_IDX.map(i => chord.notes[i]);
+      const targetMidi = nearestChordTone(guideTones, lastPianoMidi);
+      pianoSynth.triggerAttackRelease(midiToNote(targetMidi), '8n', undefined, 0.35 + Math.random() * 0.2);
+      lastPianoMidi = targetMidi;
     }
   }
 
+  // ドラム: 毎ステップ判定(スウィング付き)
   if (drumsEnabled) {
     const isOffbeat = barStep % 2 === 1;
     const swingDelay = isOffbeat ? sixteenthMs * 0.12 : 0;
@@ -445,11 +487,11 @@ function tick(sixteenthMs){
 }
 
 function startSchedulers(){
-  stopSchedulers();
+  stopSchedulers(); // 念のため既存タイマーを必ず止めてから開始する(多重起動防止)
   const sixteenthMs = beatMs() / 4;
   stepCounter = 0;
-  pianoStep = 0;
-  tick(sixteenthMs);
+  lastPianoMidi = noteToMidi('E4');
+  tick(sixteenthMs); // 即座に1ステップ目を実行
   masterTimerId = setInterval(() => tick(sixteenthMs), sixteenthMs);
 }
 
