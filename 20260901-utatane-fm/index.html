@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>utatane.fm — 生成チルBGM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500&family=Space+Grotesk:wght@400;500&display=swap');
+
+  :root{
+    --ink: #efe6da;
+    --ink-dim: #a99e91;
+    --night: #191622;
+    --night-2: #221e2f;
+    --tape: #d7a15e;
+    --tape-dim: #8a6a3f;
+    --teal: #6f9490;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 20% -10%, #2a2338 0%, transparent 55%),
+      radial-gradient(ellipse at 90% 110%, #202538 0%, transparent 50%),
+      var(--night);
+    color: var(--ink);
+    font-family: 'Space Grotesk', sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 32px 18px;
+  }
+
+  .wrap{ width:100%; max-width: 460px; }
+
+  h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 2.1rem;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .sub{
+    color: var(--ink-dim);
+    font-size: 0.92rem;
+    margin: 0 0 28px;
+    line-height:1.5;
+    max-width: 40ch;
+  }
+
+  .deck{
+    background: linear-gradient(180deg, var(--night-2), #1c1828);
+    border: 1px solid #332c45;
+    border-radius: 18px;
+    padding: 26px;
+    box-shadow: 0 30px 60px -30px rgba(0,0,0,0.6);
+  }
+
+  .reels{
+    display:flex;
+    justify-content: center;
+    align-items:center;
+    gap: 46px;
+    padding: 18px 0 26px;
+  }
+  .reel{
+    width: 84px; height:84px; border-radius:50%;
+    background: radial-gradient(circle at center, #3a3350 0 18%, #262032 19% 40%, #2f2840 41% 100%);
+    border: 1px solid #443a5c;
+    position:relative;
+    animation: spin 5s linear infinite paused;
+  }
+  .reel::before{
+    content:'';
+    position:absolute; inset:38%;
+    border-radius:50%;
+    background: var(--night);
+    border: 1px solid #443a5c;
+  }
+  .reel.spin{ animation-play-state: running; }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .chord-readout{
+    text-align:center;
+    font-family:'Fraunces', serif;
+    font-size: 1.4rem;
+    color: var(--tape);
+    min-height: 1.6em;
+    margin-bottom: 22px;
+    letter-spacing: 0.02em;
+  }
+
+  .transport{
+    display:flex; justify-content:center; margin-bottom: 28px;
+  }
+  #playBtn{
+    background: var(--tape);
+    color: #1c1628;
+    border:none;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:500;
+    font-size: 0.95rem;
+    padding: 13px 34px;
+    border-radius: 999px;
+    cursor:pointer;
+    transition: transform 0.15s ease, background 0.2s ease;
+  }
+  #playBtn:hover{ background:#e6b676; }
+  #playBtn:active{ transform: scale(0.97); }
+  #playBtn.playing{ background: var(--teal); color: #10201d; }
+
+  .controls{
+    display:grid;
+    gap: 18px;
+  }
+  .row{ display:grid; grid-template-columns: 84px 1fr 46px; align-items:center; gap: 12px; }
+  .row label{ font-size: 0.82rem; color: var(--ink-dim); }
+  .row .val{ font-size: 0.82rem; color: var(--ink-dim); text-align:right; }
+
+  input[type=range]{
+    -webkit-appearance:none;
+    width:100%; height: 2px;
+    background: #443a5c;
+    border-radius: 2px;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width: 14px; height:14px; border-radius:50%;
+    background: var(--tape);
+    cursor:pointer;
+    margin-top:-6px;
+  }
+
+  .moods{
+    display:flex; gap:8px; margin-top: 4px; flex-wrap: wrap;
+  }
+  #layerGroup .mood-btn{ min-width: 70px; flex-basis: 30%; }
+  .mood-btn{
+    flex:1;
+    min-width: 90px;
+    background: transparent;
+    border: 1px solid #443a5c;
+    color: var(--ink-dim);
+    padding: 9px 10px;
+    border-radius: 10px;
+    font-family:'Space Grotesk', sans-serif;
+    font-size: 0.8rem;
+    cursor:pointer;
+    transition: all 0.15s ease;
+  }
+  .mood-btn.active{
+    border-color: var(--tape-dim);
+    color: var(--tape);
+    background: rgba(215,161,94,0.08);
+  }
+
+  .foot{
+    margin-top: 18px;
+    font-size: 0.75rem;
+    color: #6c6379;
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>utatane.fm</h1>
+  <p class="sub">ペンタトニックスケール上でメロディとコードをその場生成する、終わらないチルBGM。再生するたびに違う流れになります。</p>
+
+  <div class="deck">
+    <div class="reels">
+      <div class="reel" id="reelL"></div>
+      <div class="reel" id="reelR"></div>
+    </div>
+
+    <div class="chord-readout" id="chordReadout">— 静止中 —</div>
+
+    <div class="transport">
+      <button id="playBtn">再生する</button>
+    </div>
+
+    <div class="controls">
+      <div>
+        <label style="display:block; margin-bottom:8px;">気分</label>
+        <div class="moods" id="moodGroup">
+          <button class="mood-btn active" data-mood="dreamy">dreamy</button>
+          <button class="mood-btn" data-mood="rainyday">rainy day</button>
+          <button class="mood-btn" data-mood="latenight">late night</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>テンポ</label>
+        <input type="range" id="tempo" min="58" max="86" value="70">
+        <div class="val" id="tempoVal">70</div>
+      </div>
+
+      <div class="row">
+        <label>密度</label>
+        <input type="range" id="density" min="10" max="80" value="42">
+        <div class="val" id="densityVal">42%</div>
+      </div>
+
+      <div class="row">
+        <label>ノイズ質感</label>
+        <input type="range" id="noise" min="0" max="100" value="28">
+        <div class="val" id="noiseVal">28%</div>
+      </div>
+
+      <div>
+        <label style="display:block; margin-bottom:8px;">パート</label>
+        <div class="moods" id="layerGroup">
+          <button class="mood-btn active" data-layer="pad">パッド</button>
+          <button class="mood-btn active" data-layer="melody">メロディ</button>
+          <button class="mood-btn active" data-layer="piano">ピアノ</button>
+          <button class="mood-btn active" data-layer="drums">ドラム</button>
+          <button class="mood-btn active" data-layer="noise">ノイズ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot">ヘッドホン推奨・ブラウザタブを閉じると停止します</p>
+</div>
+
+<script>
+// ---------- 音楽データ ----------
+const MOODS = {
+  dreamy: {
+    chords: [
+      { name: 'Cmaj7',  notes: ['C3','E3','G3','B3'], scale: ['C4','D4','E4','G4','A4'] },
+      { name: 'Am7',    notes: ['A2','C3','E3','G3'], scale: ['A3','C4','D4','E4','G4'] },
+      { name: 'Fmaj7',  notes: ['F2','A2','C3','E3'], scale: ['F3','G3','A3','C4','D4'] },
+      { name: 'G6/9',   notes: ['G2','B2','D3','E3'], scale: ['G3','A3','B3','D4','E4'] },
+    ]
+  },
+  rainyday: {
+    chords: [
+      { name: 'Dm9',    notes: ['D2','F2','A2','C3'], scale: ['D4','F4','G4','A4','C5'] },
+      { name: 'Gm7',    notes: ['G2','Bb2','D3','F3'], scale: ['G3','Bb3','C4','D4','F4'] },
+      { name: 'Cmaj7',  notes: ['C2','E2','G2','B2'], scale: ['C4','D4','E4','G4','A4'] },
+      { name: 'A7sus4', notes: ['A2','D3','E3','G3'], scale: ['A3','C4','D4','E4','G4'] },
+    ]
+  },
+  latenight: {
+    chords: [
+      { name: 'Ebmaj7', notes: ['Eb2','G2','Bb2','D3'], scale: ['Eb4','F4','G4','Bb4','C5'] },
+      { name: 'Cm9',    notes: ['C2','Eb2','G2','Bb2'], scale: ['C4','Eb4','F4','G4','Bb4'] },
+      { name: 'Abmaj7', notes: ['Ab2','C3','Eb3','G3'], scale: ['Ab3','Bb3','C4','Eb4','F4'] },
+      { name: 'Bb7',    notes: ['Bb2','D3','F3','Ab3'], scale: ['Bb3','C4','D4','F4','G4'] },
+    ]
+  }
+};
+
+let currentMood = 'dreamy';
+let density = 0.42;
+let bpm = 70;
+let chordIndex = 0;
+let padEnabled = true;
+let melodyEnabled = true;
+let pianoEnabled = true;
+let drumsEnabled = true;
+let noiseEnabled = true;
+
+// ---------- 音源チェーン ----------
+let padVoices = []; // PolySynthを使わず、8声(4声x2グループ交互)を固定で使い回す(ポリフォニー管理の不具合を回避)
+let melodySynth, noiseLayer, reverb, delay, warmFilter, noiseGain;
+let pianoSynth, kickSynth, snareSynth, hatSynth, drumFilter;
+let built = false;
+
+async function buildAudioGraph(){
+  reverb = new Tone.Reverb({ decay: 5, wet: 0.35 });
+  await reverb.generate();
+  reverb.toDestination();
+
+  warmFilter = new Tone.Filter({ frequency: 1600, type: 'lowpass', rolloff: -12 }).connect(reverb);
+  delay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.28, wet: 0.22 }).connect(warmFilter);
+
+  // パッド: 8声(4声x2グループ)を交互に使い、前のコードの余韻に次のコードを被せて
+  // 隙間を作らないようにする(クロスフェード)
+  padVoices = [];
+  for (let i = 0; i < 8; i++) {
+    padVoices.push(new Tone.Synth({
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 1.2, decay: 0.6, sustain: 0.65, release: 2.2 },
+      volume: -16
+    }).connect(warmFilter));
+  }
+
+  melodySynth = new Tone.Synth({
+    oscillator: { type: 'sine' },
+    envelope: { attack: 0.02, decay: 0.3, sustain: 0.1, release: 1.2 },
+    volume: -12
+  }).connect(delay);
+
+  // ピアノ: のこぎり波+フィルターエンベロープのMonoSynth。アタックで軽くフィルターが開いて
+  // すぐ閉じる、くぐもったマレット/プラック系の質感(矩形波だとチップチューン的すぎたため変更)
+  const pianoHighpass = new Tone.Filter({ frequency: 250, type: 'highpass' }).toDestination();
+  pianoSynth = new Tone.MonoSynth({
+    oscillator: { type: 'sawtooth' },
+    envelope: { attack: 0.005, decay: 0.6, sustain: 0.05, release: 0.6 },
+    filterEnvelope: { attack: 0.005, decay: 0.3, sustain: 0.1, release: 0.4, baseFrequency: 200, octaves: 3 },
+    filter: { type: 'lowpass', rolloff: -24, Q: 1 },
+    volume: -16
+  }).connect(pianoHighpass);
+
+  // ドラム: キック/スネア/ハイハットをローファイ用に軽くフィルターしてから出力
+  drumFilter = new Tone.Filter({ frequency: 4500, type: 'lowpass' }).toDestination();
+
+  kickSynth = new Tone.MembraneSynth({
+    pitchDecay: 0.04,
+    octaves: 5,
+    envelope: { attack: 0.001, decay: 0.35, sustain: 0 },
+    volume: -8
+  }).connect(drumFilter);
+
+  snareSynth = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.001, decay: 0.15, sustain: 0 },
+    volume: -18
+  });
+  const snareFilter = new Tone.Filter({ frequency: 1800, type: 'bandpass', Q: 0.8 }).connect(drumFilter);
+  snareSynth.connect(snareFilter);
+
+  hatSynth = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.001, decay: 0.04, sustain: 0 },
+    volume: -24
+  });
+  const hatFilter = new Tone.Filter({ frequency: 7500, type: 'highpass' }).connect(drumFilter);
+  hatSynth.connect(hatFilter);
+
+  noiseLayer = new Tone.Noise('pink');
+  const noiseFilter = new Tone.Filter({ frequency: 6000, type: 'highpass', Q: 1.2 });
+  noiseGain = new Tone.Gain(parseInt(document.getElementById('noise').value) / 100 * 0.05).toDestination();
+  noiseLayer.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+
+  built = true;
+}
+
+function currentChord(){
+  return MOODS[currentMood].chords[chordIndex % MOODS[currentMood].chords.length];
+}
+
+function playPadChordIfEnabled(){
+  const chord = currentChord();
+  if (padEnabled) {
+    const dur = (beatMs() * 8) / 1000 * 1.15; // 次のコードに少しかぶるくらい長めに
+    const groupStart = padGroup * 4;
+    chord.notes.forEach((note, i) => {
+      padVoices[groupStart + i].triggerAttackRelease(note, dur, undefined, 0.55);
+    });
+    padGroup = 1 - padGroup; // 次回は別の4声グループを使う(前の音と被らない)
+  }
+  document.getElementById('chordReadout').textContent = padEnabled ? chord.name : (chord.name + ' (パッドOFF)');
+}
+
+function pickMelodyNote(scale){
+  return scale[Math.floor(Math.random() * scale.length)];
+}
+
+// ---------- 音楽理論寄りのピアノ用ヘルパー ----------
+// 音名 <-> MIDIノート番号の相互変換、および「直前の音から一番近いコードトーン」を選ぶ
+// ボイスリーディング(声部進行)。ジャズピアノのガイドトーン・ライン(3度・7度を
+// つないで滑らかに動かす手法)の考え方を単純化して取り入れている。
+const NOTE_BASE = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 };
+function noteToMidi(note){
+  const m = note.match(/^([A-G])(b|#)?(-?\d+)$/);
+  let semis = NOTE_BASE[m[1]];
+  if (m[2] === '#') semis += 1;
+  if (m[2] === 'b') semis -= 1;
+  return semis + (parseInt(m[3]) + 1) * 12;
+}
+function midiToNote(midi){
+  const NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const octave = Math.floor(midi / 12) - 1;
+  return NAMES[((midi % 12) + 12) % 12] + octave;
+}
+function nearestChordTone(candidateNotes, refMidi){
+  let best = null, bestDist = Infinity;
+  candidateNotes.forEach(n => {
+    const base = noteToMidi(n);
+    for (let oct = -1; oct <= 2; oct++) {
+      const candidate = base + oct * 12;
+      const dist = Math.abs(candidate - refMidi);
+      if (dist < bestDist) { bestDist = dist; best = candidate; }
+    }
+  });
+  return best;
+}
+
+// ---------- 単一クロックのスケジューラ (Tone.Transportは使わない) ----------
+// 全パートを「16分音符ステップ」という共通の歩数で管理することで、
+// コード/メロディ/ピアノ/ドラムが互いにズレないようにする。
+let masterTimerId = null;
+let stepCounter = 0;
+
+// 16ステップ = 1小節ぶんのローファイなビート(キック/スネア/ハイハット)
+const KICK_PATTERN  = [1,0,0,0, 0,0,1,0, 0,1,0,0, 0,0,0,0];
+const SNARE_PATTERN = [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0];
+const HAT_PATTERN   = [1,0,1,1, 1,0,1,1, 1,0,1,1, 1,0,1,1];
+
+const STEPS_PER_BAR = 16;   // 16分音符 x16 = 1小節
+const CHORD_BARS = 2;       // コードは2小節ごとに切り替え(ドラムのループと同期させる)
+const CHORD_STEPS = STEPS_PER_BAR * CHORD_BARS;
+
+function beatMs(){
+  return (60 / bpm) * 1000;
+}
+
+let padGroup = 0;
+let melodyScaleIdx = 2; // ランダムウォークの現在位置(スケール内インデックス)
+let lastPianoMidi = noteToMidi('E4'); // ボイスリーディングの基準(直前に弾いた音)
+
+// ピアノのコンピングパターン(2小節=32個の16分音符スロット)。
+// 「チャールストン」と呼ばれるジャズの定番コンピングリズム(1拍目 + 2拍目の裏)を
+// ベースに、2小節目は少し変化をつけている。
+const PIANO_PATTERN = [
+  1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,0,  // 1小節目: 1拍目 & 2拍目の裏 & 3拍目の裏(チャールストン+α)
+  1,0,0,0, 0,0,0,0, 0,0,1,0, 0,0,1,0,  // 2小節目: 少し変化をつけて次のコードへの推進力を出す
+];
+// ガイドトーン(3度・7度に相当するインデックス)を中心に使う。コード配列は
+// [ルート, 3度, 5度, 7度] の並びで定義しているため、[1,3] がガイドトーン。
+const GUIDE_TONE_IDX = [1, 3];
+
+function tick(sixteenthMs){
+  const barStep = stepCounter % STEPS_PER_BAR;      // ドラムの位置 (0-15)
+  const chordStep = stepCounter % CHORD_STEPS;       // コードの位置 (0-31)
+
+  // コード: 2小節の頭で必ず切り替わる。ドラムのループ頭と同じタイミングにするため
+  // 「歩数」で判定しているのがポイント(独立タイマーだとズレていく)
+  if (chordStep === 0) {
+    playPadChordIfEnabled();
+    chordIndex++;
+  }
+
+  // メロディ: 8分音符グリッド(2ステップに1回)
+  if (barStep % 2 === 0) {
+    if (melodyEnabled && Math.random() < density) {
+      const chord = currentChord();
+      // ランダムウォーク: 前の音から±1(たまに±2)だけ動く、スケール内でつながりのある動き
+      const move = Math.random() < 0.75
+        ? (Math.random() < 0.5 ? -1 : 1)
+        : (Math.random() < 0.5 ? -2 : 2);
+      melodyScaleIdx = Math.max(0, Math.min(chord.scale.length - 1, melodyScaleIdx + move));
+      const note = chord.scale[melodyScaleIdx];
+      const dur = Math.random() < 0.3 ? '4n' : '8n';
+      melodySynth.triggerAttackRelease(note, dur, undefined, 0.5 + Math.random() * 0.3);
+    }
+  }
+
+  // ピアノ: 16分音符グリッド(毎ステップ判定)。コード進行(2小節=32ステップ)全体で
+  // 1つのパターンとして機能させるため chordStep を使う
+  if (pianoEnabled) {
+    const scheduled = PIANO_PATTERN[chordStep] === 1;
+    // 決まったコンピングパターンに沿わせつつ、たまに抜けたり足したりして人間味を出す
+    const shouldPlay = scheduled ? Math.random() < 0.9 : Math.random() < 0.05;
+    if (shouldPlay) {
+      const chord = currentChord();
+      const guideTones = GUIDE_TONE_IDX.map(i => chord.notes[i]);
+      const targetMidi = nearestChordTone(guideTones, lastPianoMidi);
+      pianoSynth.triggerAttackRelease(midiToNote(targetMidi), '8n', undefined, 0.35 + Math.random() * 0.2);
+      lastPianoMidi = targetMidi;
+    }
+  }
+
+  // ドラム: 毎ステップ判定(スウィング付き)
+  if (drumsEnabled) {
+    const isOffbeat = barStep % 2 === 1;
+    const swingDelay = isOffbeat ? sixteenthMs * 0.12 : 0;
+    setTimeout(() => {
+      if (KICK_PATTERN[barStep]) kickSynth.triggerAttackRelease('C1', '8n');
+      if (SNARE_PATTERN[barStep]) snareSynth.triggerAttackRelease('16n');
+      if (HAT_PATTERN[barStep] && Math.random() < 0.85) {
+        hatSynth.triggerAttackRelease('32n', undefined, 0.5 + Math.random() * 0.3);
+      }
+    }, swingDelay);
+  }
+
+  stepCounter++;
+}
+
+function startSchedulers(){
+  stopSchedulers(); // 念のため既存タイマーを必ず止めてから開始する(多重起動防止)
+  const sixteenthMs = beatMs() / 4;
+  stepCounter = 0;
+  lastPianoMidi = noteToMidi('E4');
+  tick(sixteenthMs); // 即座に1ステップ目を実行
+  masterTimerId = setInterval(() => tick(sixteenthMs), sixteenthMs);
+}
+
+function stopSchedulers(){
+  if (masterTimerId) clearInterval(masterTimerId);
+  masterTimerId = null;
+  padVoices.forEach(v => v && v.triggerRelease());
+  if (melodySynth) melodySynth.triggerRelease();
+  if (pianoSynth) pianoSynth.triggerRelease();
+}
+
+// ---------- UI 制御 ----------
+const playBtn = document.getElementById('playBtn');
+const reelL = document.getElementById('reelL');
+const reelR = document.getElementById('reelR');
+let isPlaying = false;
+let isBusy = false; // ビルド中/切り替え中の多重クリック防止
+
+playBtn.addEventListener('click', async () => {
+  if (isBusy) return;
+  isBusy = true;
+  playBtn.disabled = true;
+  try {
+    await Tone.start();
+    if (!built) {
+      playBtn.textContent = '準備中…';
+      await buildAudioGraph();
+    }
+
+    if (!isPlaying) {
+      bpm = parseInt(document.getElementById('tempo').value);
+      chordIndex = 0;
+      noiseLayer.start();
+      updateNoiseGain();
+      startSchedulers();
+      isPlaying = true;
+      playBtn.textContent = '止める';
+      playBtn.classList.add('playing');
+      reelL.classList.add('spin');
+      reelR.classList.add('spin');
+    } else {
+      stopSchedulers();
+      noiseLayer.stop();
+      isPlaying = false;
+      playBtn.textContent = '再生する';
+      playBtn.classList.remove('playing');
+      reelL.classList.remove('spin');
+      reelR.classList.remove('spin');
+      document.getElementById('chordReadout').textContent = '— 静止中 —';
+    }
+  } finally {
+    isBusy = false;
+    playBtn.disabled = false;
+  }
+});
+
+document.getElementById('moodGroup').addEventListener('click', (e) => {
+  const btn = e.target.closest('.mood-btn');
+  if (!btn) return;
+  document.querySelectorAll('#moodGroup .mood-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentMood = btn.dataset.mood;
+  chordIndex = 0;
+});
+
+document.getElementById('layerGroup').addEventListener('click', (e) => {
+  const btn = e.target.closest('.mood-btn');
+  if (!btn) return;
+  btn.classList.toggle('active');
+  const on = btn.classList.contains('active');
+  const layer = btn.dataset.layer;
+  if (layer === 'pad') {
+    padEnabled = on;
+    if (isPlaying) {
+      if (on) playPadChordIfEnabled();
+      else { padVoices.forEach(v => v.triggerRelease()); document.getElementById('chordReadout').textContent = currentChord().name + ' (パッドOFF)'; }
+    }
+  }
+  if (layer === 'melody') melodyEnabled = on;
+  if (layer === 'piano') {
+    pianoEnabled = on;
+    if (isPlaying && !on) pianoSynth.triggerRelease();
+  }
+  if (layer === 'drums') drumsEnabled = on;
+  if (layer === 'noise') {
+    noiseEnabled = on;
+    updateNoiseGain();
+  }
+});
+
+const tempoSlider = document.getElementById('tempo');
+let tempoDebounceId = null;
+tempoSlider.addEventListener('input', () => {
+  document.getElementById('tempoVal').textContent = tempoSlider.value;
+  bpm = parseInt(tempoSlider.value);
+  // ドラッグ中は連続でスケジューラを再起動しない(ポリフォニー超過対策)
+  if (isPlaying) {
+    if (tempoDebounceId) clearTimeout(tempoDebounceId);
+    tempoDebounceId = setTimeout(() => {
+      stopSchedulers();
+      startSchedulers();
+    }, 250);
+  }
+});
+
+const densitySlider = document.getElementById('density');
+densitySlider.addEventListener('input', () => {
+  const v = parseInt(densitySlider.value);
+  document.getElementById('densityVal').textContent = v + '%';
+  density = v / 100;
+});
+
+function updateNoiseGain(){
+  if (!noiseGain) return;
+  const v = parseInt(document.getElementById('noise').value);
+  const target = noiseEnabled ? (v / 100) * 0.05 : 0;
+  noiseGain.gain.rampTo(target, 0.2);
+}
+
+const noiseSlider = document.getElementById('noise');
+noiseSlider.addEventListener('input', () => {
+  const v = parseInt(noiseSlider.value);
+  document.getElementById('noiseVal').textContent = v + '%';
+  updateNoiseGain();
+});
+</script>
+
+</body>
+</html>
