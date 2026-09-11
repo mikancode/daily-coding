@@ -35,8 +35,7 @@ open 20260901-utatane-fm/index.html
 
 ```text
 20260901-utatane-fm/
-├── index.html    # UI・音源グラフ・スケジューラを含む単一ファイル実装
-└── .gitignore
+└── index.html    # UI・音源グラフ・スケジューラを含む単一ファイル実装
 ```
 
 ## 状態
