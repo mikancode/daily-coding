@@ -403,6 +403,9 @@ function playPadChordIfEnabled(){
   const chord = currentChord();
   if (padEnabled) {
     const dur = (beatMs() * 8) / 1000 * 1.15; // 次のコードに少しかぶるくらい長めに
+    // chord.notesが4音であることを前提に8声(4声x2グループ)を確保している。
+    // 5音以上のコードをMOODSに追加する場合はpadVoicesの生成数
+    // (buildAudioGraph()内の`for (let i = 0; i < 8; i++)`)も合わせて見直すこと
     const groupStart = padGroup * 4;
     chord.notes.forEach((note, i) => {
       padVoices[groupStart + i].triggerAttackRelease(note, dur, undefined, 0.55);
@@ -479,6 +482,8 @@ const PIANO_PATTERN = [
 ];
 // ガイドトーン(3度・7度に相当するインデックス)を中心に使う。コード配列は
 // [ルート, 3度, 5度, 7度] の並びで定義しているため、[1,3] がガイドトーン。
+// このインデックスはコード配列が[ルート, 3度, 5度, 7度]の4音である前提。
+// 3和音や5和音以上のコードをMOODSに追加する場合はこの指定も見直すこと
 const GUIDE_TONE_IDX = [1, 3];
 
 function tick(sixteenthMs){
