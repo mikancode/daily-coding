@@ -260,7 +260,9 @@ const MOODS = {
 let currentMood = 'dreamy';
 let density = 0.42;
 let bpm = 70;
-let chordIndex = 0;
+// -1 スタート: advanceChord() が「インクリメント→pad再生」の順で動くため、
+// 初回のadvanceChord()呼び出しで0番目のコードから始まるようにしておく
+let chordIndex = -1;
 let padEnabled = true;
 let melodyEnabled = true;
 let pianoEnabled = true;
@@ -346,6 +348,14 @@ async function buildAudioGraph(){
 
 function currentChord(){
   return MOODS[currentMood].chords[chordIndex % MOODS[currentMood].chords.length];
+}
+
+// 先にインデックスを進めてからpadを鳴らすことで、同じ2小節サイクル内で
+// melody/pianoが参照するcurrentChord()とpadが実際に鳴らすコードを一致させる
+// (先にpadを鳴らしてから進めると、melody/pianoがpadより1コード先を参照してしまう)
+function advanceChord(){
+  chordIndex++;
+  playPadChordIfEnabled();
 }
 
 function playPadChordIfEnabled(){
@@ -436,8 +446,7 @@ function tick(sixteenthMs){
   // コード: 2小節の頭で必ず切り替わる。ドラムのループ頭と同じタイミングにするため
   // 「歩数」で判定しているのがポイント(独立タイマーだとズレていく)
   if (chordStep === 0) {
-    playPadChordIfEnabled();
-    chordIndex++;
+    advanceChord();
   }
 
   // メロディ: 8分音符グリッド(2ステップに1回)
@@ -523,7 +532,7 @@ playBtn.addEventListener('click', async () => {
 
     if (!isPlaying) {
       bpm = parseInt(document.getElementById('tempo').value);
-      chordIndex = 0;
+      chordIndex = -1;
       noiseLayer.start();
       updateNoiseGain();
       startSchedulers();
@@ -554,7 +563,14 @@ document.getElementById('moodGroup').addEventListener('click', (e) => {
   document.querySelectorAll('#moodGroup .mood-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   currentMood = btn.dataset.mood;
-  chordIndex = 0;
+  // mood間で音域・跳躍感が異なるため、コード位置だけでなくメロディ/ピアノの
+  // 状態も一緒にリセットして不自然な跳躍を避ける
+  chordIndex = -1;
+  melodyScaleIdx = 2;
+  lastPianoMidi = noteToMidi('E4');
+  // 再生中は次の2小節境界を待たず、即座に新moodの最初のコードでpadを鳴らし直す
+  // (待つと旧moodの音が伸びたまま新moodのmelody/pianoと不協和になる)
+  if (isPlaying) { advanceChord(); }
 });
 
 document.getElementById('layerGroup').addEventListener('click', (e) => {
