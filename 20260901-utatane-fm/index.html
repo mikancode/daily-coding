@@ -455,6 +455,11 @@ function nearestChordTone(candidateNotes, refMidi){
 let masterTimerId = null;
 let stepCounter = 0;
 let drumSwingTimeoutId = null; // ドラムのスウィング用setTimeoutのID(停止時にクリアするため保持)
+// mood切替時にadvanceChord()を手動発火した直後、stepCounterは据え置きのため
+// 次のtickでchordStep===0が再度成立してadvanceChord()が二重発火しうる
+// (padGroupが2回トグルされて元に戻り、次の本来の切替で同じ4声グループを
+// 連続使用してしまう)。それを防ぐため、直後1回分の自動発火だけスキップする
+let skipNextChordAdvance = false;
 
 // 16ステップ = 1小節ぶんのローファイなビート(キック/スネア/ハイハット)
 const KICK_PATTERN  = [1,0,0,0, 0,0,1,0, 0,1,0,0, 0,0,0,0];
@@ -493,7 +498,11 @@ function tick(sixteenthMs){
   // コード: 2小節の頭で必ず切り替わる。ドラムのループ頭と同じタイミングにするため
   // 「歩数」で判定しているのがポイント(独立タイマーだとズレていく)
   if (chordStep === 0) {
-    advanceChord();
+    if (skipNextChordAdvance) {
+      skipNextChordAdvance = false;
+    } else {
+      advanceChord();
+    }
   }
 
   // メロディ: 8分音符グリッド(2ステップに1回)
@@ -547,6 +556,9 @@ function startSchedulers(){
   const sixteenthMs = beatMs() / 4;
   stepCounter = 0;
   lastPianoMidi = noteToMidi('E4');
+  // mood切替直後(skipNextChordAdvance=trueのまま)に停止していた場合、
+  // ここでリセットしておかないと初回tickのコード切替が誤ってスキップされる
+  skipNextChordAdvance = false;
   tick(sixteenthMs); // 即座に1ステップ目を実行
   masterTimerId = setInterval(() => tick(sixteenthMs), sixteenthMs);
 }
@@ -637,7 +649,11 @@ document.getElementById('moodGroup').addEventListener('click', (e) => {
   lastPianoMidi = noteToMidi('E4');
   // 再生中は次の2小節境界を待たず、即座に新moodの最初のコードでpadを鳴らし直す
   // (待つと旧moodの音が伸びたまま新moodのmelody/pianoと不協和になる)
-  if (isPlaying) { advanceChord(); }
+  if (isPlaying) {
+    advanceChord();
+    // 直後のtickで自動advanceChord()が二重発火しないようにする
+    skipNextChordAdvance = true;
+  }
 });
 
 document.getElementById('layerGroup').addEventListener('click', (e) => {
