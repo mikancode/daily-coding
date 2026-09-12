@@ -276,74 +276,115 @@ let pianoSynth, kickSynth, snareSynth, hatSynth, drumFilter;
 let built = false;
 
 async function buildAudioGraph(){
-  reverb = new Tone.Reverb({ decay: 5, wet: 0.35 });
-  await reverb.generate();
-  reverb.toDestination();
+  // 途中で例外が起きた場合にここまで生成したノードをdisposeできるよう、
+  // グローバル変数への代入とは別に生成順で控えておく
+  const createdNodes = [];
+  try {
+    reverb = new Tone.Reverb({ decay: 5, wet: 0.35 });
+    createdNodes.push(reverb);
+    await reverb.generate();
+    reverb.toDestination();
 
-  warmFilter = new Tone.Filter({ frequency: 1600, type: 'lowpass', rolloff: -12 }).connect(reverb);
-  delay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.28, wet: 0.22 }).connect(warmFilter);
+    warmFilter = new Tone.Filter({ frequency: 1600, type: 'lowpass', rolloff: -12 }).connect(reverb);
+    createdNodes.push(warmFilter);
+    delay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.28, wet: 0.22 }).connect(warmFilter);
+    createdNodes.push(delay);
 
-  // パッド: 8声(4声x2グループ)を交互に使い、前のコードの余韻に次のコードを被せて
-  // 隙間を作らないようにする(クロスフェード)
-  padVoices = [];
-  for (let i = 0; i < 8; i++) {
-    padVoices.push(new Tone.Synth({
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 1.2, decay: 0.6, sustain: 0.65, release: 2.2 },
+    // パッド: 8声(4声x2グループ)を交互に使い、前のコードの余韻に次のコードを被せて
+    // 隙間を作らないようにする(クロスフェード)
+    padVoices = [];
+    for (let i = 0; i < 8; i++) {
+      const voice = new Tone.Synth({
+        oscillator: { type: 'triangle' },
+        envelope: { attack: 1.2, decay: 0.6, sustain: 0.65, release: 2.2 },
+        volume: -16
+      }).connect(warmFilter);
+      padVoices.push(voice);
+      createdNodes.push(voice);
+    }
+
+    melodySynth = new Tone.Synth({
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.02, decay: 0.3, sustain: 0.1, release: 1.2 },
+      volume: -12
+    }).connect(delay);
+    createdNodes.push(melodySynth);
+
+    // ピアノ: のこぎり波+フィルターエンベロープのMonoSynth。アタックで軽くフィルターが開いて
+    // すぐ閉じる、くぐもったマレット/プラック系の質感(矩形波だとチップチューン的すぎたため変更)
+    const pianoHighpass = new Tone.Filter({ frequency: 250, type: 'highpass' }).toDestination();
+    createdNodes.push(pianoHighpass);
+    pianoSynth = new Tone.MonoSynth({
+      oscillator: { type: 'sawtooth' },
+      envelope: { attack: 0.005, decay: 0.6, sustain: 0.05, release: 0.6 },
+      filterEnvelope: { attack: 0.005, decay: 0.3, sustain: 0.1, release: 0.4, baseFrequency: 200, octaves: 3 },
+      filter: { type: 'lowpass', rolloff: -24, Q: 1 },
       volume: -16
-    }).connect(warmFilter));
+    }).connect(pianoHighpass);
+    createdNodes.push(pianoSynth);
+
+    // ドラム: キック/スネア/ハイハットをローファイ用に軽くフィルターしてから出力
+    drumFilter = new Tone.Filter({ frequency: 4500, type: 'lowpass' }).toDestination();
+    createdNodes.push(drumFilter);
+
+    kickSynth = new Tone.MembraneSynth({
+      pitchDecay: 0.04,
+      octaves: 5,
+      envelope: { attack: 0.001, decay: 0.35, sustain: 0 },
+      volume: -8
+    }).connect(drumFilter);
+    createdNodes.push(kickSynth);
+
+    snareSynth = new Tone.NoiseSynth({
+      noise: { type: 'white' },
+      envelope: { attack: 0.001, decay: 0.15, sustain: 0 },
+      volume: -18
+    });
+    createdNodes.push(snareSynth);
+    const snareFilter = new Tone.Filter({ frequency: 1800, type: 'bandpass', Q: 0.8 }).connect(drumFilter);
+    createdNodes.push(snareFilter);
+    snareSynth.connect(snareFilter);
+
+    hatSynth = new Tone.NoiseSynth({
+      noise: { type: 'white' },
+      envelope: { attack: 0.001, decay: 0.04, sustain: 0 },
+      volume: -24
+    });
+    createdNodes.push(hatSynth);
+    const hatFilter = new Tone.Filter({ frequency: 7500, type: 'highpass' }).connect(drumFilter);
+    createdNodes.push(hatFilter);
+    hatSynth.connect(hatFilter);
+
+    noiseLayer = new Tone.Noise('pink');
+    createdNodes.push(noiseLayer);
+    const noiseFilter = new Tone.Filter({ frequency: 6000, type: 'highpass', Q: 1.2 });
+    createdNodes.push(noiseFilter);
+    noiseGain = new Tone.Gain(parseInt(document.getElementById('noise').value) / 100 * 0.05).toDestination();
+    createdNodes.push(noiseGain);
+    noiseLayer.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+
+    built = true;
+  } catch (err) {
+    // 再試行時にbuildAudioGraph()を再度呼ぶと、破棄されていない古いノードを
+    // グローバル変数の上書きで見失いリークするため、失敗時は生成済みノードを
+    // すべてdisposeし、未生成の状態に戻してから呼び出し元に再送出する
+    createdNodes.forEach(n => { if (n && typeof n.dispose === 'function') n.dispose(); });
+    reverb = undefined;
+    warmFilter = undefined;
+    delay = undefined;
+    padVoices = [];
+    melodySynth = undefined;
+    pianoSynth = undefined;
+    kickSynth = undefined;
+    snareSynth = undefined;
+    hatSynth = undefined;
+    drumFilter = undefined;
+    noiseLayer = undefined;
+    noiseGain = undefined;
+    built = false;
+    throw err;
   }
-
-  melodySynth = new Tone.Synth({
-    oscillator: { type: 'sine' },
-    envelope: { attack: 0.02, decay: 0.3, sustain: 0.1, release: 1.2 },
-    volume: -12
-  }).connect(delay);
-
-  // ピアノ: のこぎり波+フィルターエンベロープのMonoSynth。アタックで軽くフィルターが開いて
-  // すぐ閉じる、くぐもったマレット/プラック系の質感(矩形波だとチップチューン的すぎたため変更)
-  const pianoHighpass = new Tone.Filter({ frequency: 250, type: 'highpass' }).toDestination();
-  pianoSynth = new Tone.MonoSynth({
-    oscillator: { type: 'sawtooth' },
-    envelope: { attack: 0.005, decay: 0.6, sustain: 0.05, release: 0.6 },
-    filterEnvelope: { attack: 0.005, decay: 0.3, sustain: 0.1, release: 0.4, baseFrequency: 200, octaves: 3 },
-    filter: { type: 'lowpass', rolloff: -24, Q: 1 },
-    volume: -16
-  }).connect(pianoHighpass);
-
-  // ドラム: キック/スネア/ハイハットをローファイ用に軽くフィルターしてから出力
-  drumFilter = new Tone.Filter({ frequency: 4500, type: 'lowpass' }).toDestination();
-
-  kickSynth = new Tone.MembraneSynth({
-    pitchDecay: 0.04,
-    octaves: 5,
-    envelope: { attack: 0.001, decay: 0.35, sustain: 0 },
-    volume: -8
-  }).connect(drumFilter);
-
-  snareSynth = new Tone.NoiseSynth({
-    noise: { type: 'white' },
-    envelope: { attack: 0.001, decay: 0.15, sustain: 0 },
-    volume: -18
-  });
-  const snareFilter = new Tone.Filter({ frequency: 1800, type: 'bandpass', Q: 0.8 }).connect(drumFilter);
-  snareSynth.connect(snareFilter);
-
-  hatSynth = new Tone.NoiseSynth({
-    noise: { type: 'white' },
-    envelope: { attack: 0.001, decay: 0.04, sustain: 0 },
-    volume: -24
-  });
-  const hatFilter = new Tone.Filter({ frequency: 7500, type: 'highpass' }).connect(drumFilter);
-  hatSynth.connect(hatFilter);
-
-  noiseLayer = new Tone.Noise('pink');
-  const noiseFilter = new Tone.Filter({ frequency: 6000, type: 'highpass', Q: 1.2 });
-  noiseGain = new Tone.Gain(parseInt(document.getElementById('noise').value) / 100 * 0.05).toDestination();
-  noiseLayer.connect(noiseFilter);
-  noiseFilter.connect(noiseGain);
-
-  built = true;
 }
 
 function currentChord(){
@@ -541,7 +582,14 @@ playBtn.addEventListener('click', async () => {
     await Tone.start();
     if (!built) {
       playBtn.textContent = '準備中…';
-      await buildAudioGraph();
+      try {
+        await buildAudioGraph();
+      } catch (err) {
+        console.error('音源の初期化に失敗しました', err);
+        playBtn.textContent = '再生する'; // 「準備中…」のまま固まるのを防ぐ
+        document.getElementById('chordReadout').textContent = '音源の準備に失敗しました。もう一度お試しください';
+        return; // isBusy/disabledの解除は外側のfinallyに任せる
+      }
     }
 
     if (!isPlaying) {
