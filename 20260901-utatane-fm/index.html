@@ -504,6 +504,15 @@ function startSchedulers(){
   masterTimerId = setInterval(() => tick(sixteenthMs), sixteenthMs);
 }
 
+// テンポスライダーのデバウンス再起動専用。startSchedulers()はstepCounterを0に
+// リセットしてしまい、テンポを動かすたびにコード進行が前倒しされてしまうため、
+// stepCounterはそのままにタイマー間隔だけ差し替える
+function restartTimerOnly(){
+  if (masterTimerId) clearInterval(masterTimerId);
+  const sixteenthMs = beatMs() / 4;
+  masterTimerId = setInterval(() => tick(sixteenthMs), sixteenthMs);
+}
+
 function stopSchedulers(){
   if (masterTimerId) clearInterval(masterTimerId);
   masterTimerId = null;
@@ -607,8 +616,7 @@ tempoSlider.addEventListener('input', () => {
   if (isPlaying) {
     if (tempoDebounceId) clearTimeout(tempoDebounceId);
     tempoDebounceId = setTimeout(() => {
-      stopSchedulers();
-      startSchedulers();
+      restartTimerOnly();
     }, 250);
   }
 });
