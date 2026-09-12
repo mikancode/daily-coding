@@ -410,6 +410,7 @@ function nearestChordTone(candidateNotes, refMidi){
 // コード/メロディ/ピアノ/ドラムが互いにズレないようにする。
 let masterTimerId = null;
 let stepCounter = 0;
+let drumSwingTimeoutId = null; // ドラムのスウィング用setTimeoutのID(停止時にクリアするため保持)
 
 // 16ステップ = 1小節ぶんのローファイなビート(キック/スネア/ハイハット)
 const KICK_PATTERN  = [1,0,0,0, 0,0,1,0, 0,1,0,0, 0,0,0,0];
@@ -483,7 +484,7 @@ function tick(sixteenthMs){
   if (drumsEnabled) {
     const isOffbeat = barStep % 2 === 1;
     const swingDelay = isOffbeat ? sixteenthMs * 0.12 : 0;
-    setTimeout(() => {
+    drumSwingTimeoutId = setTimeout(() => {
       if (KICK_PATTERN[barStep]) kickSynth.triggerAttackRelease('C1', '8n');
       if (SNARE_PATTERN[barStep]) snareSynth.triggerAttackRelease('16n');
       if (HAT_PATTERN[barStep] && Math.random() < 0.85) {
@@ -516,6 +517,10 @@ function restartTimerOnly(){
 function stopSchedulers(){
   if (masterTimerId) clearInterval(masterTimerId);
   masterTimerId = null;
+  // 停止後にこれらが遅延発火すると、止めたはずなのに音が再開してしまうため
+  // 保留中のテンポデバウンスとドラムのスウィングタイマーも合わせてクリアする
+  if (tempoDebounceId) { clearTimeout(tempoDebounceId); tempoDebounceId = null; }
+  if (drumSwingTimeoutId) { clearTimeout(drumSwingTimeoutId); drumSwingTimeoutId = null; }
   padVoices.forEach(v => v && v.triggerRelease());
   if (melodySynth) melodySynth.triggerRelease();
   if (pianoSynth) pianoSynth.triggerRelease();
