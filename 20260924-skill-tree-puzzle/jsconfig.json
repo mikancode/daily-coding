@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "strict": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM"]
+  },
+  // tests は対象外。node:test の型に @types/node が要り、依存定義ファイルなしでは入れられないため
+  "include": ["src"]
+}
