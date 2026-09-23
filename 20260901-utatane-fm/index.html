@@ -260,7 +260,9 @@ const MOODS = {
 let currentMood = 'dreamy';
 let density = 0.42;
 let bpm = 70;
-let chordIndex = 0;
+// -1 スタート: advanceChord() が「インクリメント→pad再生」の順で動くため、
+// 初回のadvanceChord()呼び出しで0番目のコードから始まるようにしておく
+let chordIndex = -1;
 let padEnabled = true;
 let melodyEnabled = true;
 let pianoEnabled = true;
@@ -274,84 +276,136 @@ let pianoSynth, kickSynth, snareSynth, hatSynth, drumFilter;
 let built = false;
 
 async function buildAudioGraph(){
-  reverb = new Tone.Reverb({ decay: 5, wet: 0.35 });
-  await reverb.generate();
-  reverb.toDestination();
+  // 途中で例外が起きた場合にここまで生成したノードをdisposeできるよう、
+  // グローバル変数への代入とは別に生成順で控えておく
+  const createdNodes = [];
+  try {
+    reverb = new Tone.Reverb({ decay: 5, wet: 0.35 });
+    createdNodes.push(reverb);
+    await reverb.generate();
+    reverb.toDestination();
 
-  warmFilter = new Tone.Filter({ frequency: 1600, type: 'lowpass', rolloff: -12 }).connect(reverb);
-  delay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.28, wet: 0.22 }).connect(warmFilter);
+    warmFilter = new Tone.Filter({ frequency: 1600, type: 'lowpass', rolloff: -12 }).connect(reverb);
+    createdNodes.push(warmFilter);
+    delay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.28, wet: 0.22 }).connect(warmFilter);
+    createdNodes.push(delay);
 
-  // パッド: 8声(4声x2グループ)を交互に使い、前のコードの余韻に次のコードを被せて
-  // 隙間を作らないようにする(クロスフェード)
-  padVoices = [];
-  for (let i = 0; i < 8; i++) {
-    padVoices.push(new Tone.Synth({
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 1.2, decay: 0.6, sustain: 0.65, release: 2.2 },
+    // パッド: 8声(4声x2グループ)を交互に使い、前のコードの余韻に次のコードを被せて
+    // 隙間を作らないようにする(クロスフェード)
+    padVoices = [];
+    for (let i = 0; i < 8; i++) {
+      const voice = new Tone.Synth({
+        oscillator: { type: 'triangle' },
+        envelope: { attack: 1.2, decay: 0.6, sustain: 0.65, release: 2.2 },
+        volume: -16
+      }).connect(warmFilter);
+      padVoices.push(voice);
+      createdNodes.push(voice);
+    }
+
+    melodySynth = new Tone.Synth({
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.02, decay: 0.3, sustain: 0.1, release: 1.2 },
+      volume: -12
+    }).connect(delay);
+    createdNodes.push(melodySynth);
+
+    // ピアノ: のこぎり波+フィルターエンベロープのMonoSynth。アタックで軽くフィルターが開いて
+    // すぐ閉じる、くぐもったマレット/プラック系の質感(矩形波だとチップチューン的すぎたため変更)
+    const pianoHighpass = new Tone.Filter({ frequency: 250, type: 'highpass' }).toDestination();
+    createdNodes.push(pianoHighpass);
+    pianoSynth = new Tone.MonoSynth({
+      oscillator: { type: 'sawtooth' },
+      envelope: { attack: 0.005, decay: 0.6, sustain: 0.05, release: 0.6 },
+      filterEnvelope: { attack: 0.005, decay: 0.3, sustain: 0.1, release: 0.4, baseFrequency: 200, octaves: 3 },
+      filter: { type: 'lowpass', rolloff: -24, Q: 1 },
       volume: -16
-    }).connect(warmFilter));
+    }).connect(pianoHighpass);
+    createdNodes.push(pianoSynth);
+
+    // ドラム: キック/スネア/ハイハットをローファイ用に軽くフィルターしてから出力
+    drumFilter = new Tone.Filter({ frequency: 4500, type: 'lowpass' }).toDestination();
+    createdNodes.push(drumFilter);
+
+    kickSynth = new Tone.MembraneSynth({
+      pitchDecay: 0.04,
+      octaves: 5,
+      envelope: { attack: 0.001, decay: 0.35, sustain: 0 },
+      volume: -8
+    }).connect(drumFilter);
+    createdNodes.push(kickSynth);
+
+    snareSynth = new Tone.NoiseSynth({
+      noise: { type: 'white' },
+      envelope: { attack: 0.001, decay: 0.15, sustain: 0 },
+      volume: -18
+    });
+    createdNodes.push(snareSynth);
+    const snareFilter = new Tone.Filter({ frequency: 1800, type: 'bandpass', Q: 0.8 }).connect(drumFilter);
+    createdNodes.push(snareFilter);
+    snareSynth.connect(snareFilter);
+
+    hatSynth = new Tone.NoiseSynth({
+      noise: { type: 'white' },
+      envelope: { attack: 0.001, decay: 0.04, sustain: 0 },
+      volume: -24
+    });
+    createdNodes.push(hatSynth);
+    const hatFilter = new Tone.Filter({ frequency: 7500, type: 'highpass' }).connect(drumFilter);
+    createdNodes.push(hatFilter);
+    hatSynth.connect(hatFilter);
+
+    noiseLayer = new Tone.Noise('pink');
+    createdNodes.push(noiseLayer);
+    const noiseFilter = new Tone.Filter({ frequency: 6000, type: 'highpass', Q: 1.2 });
+    createdNodes.push(noiseFilter);
+    noiseGain = new Tone.Gain(parseInt(document.getElementById('noise').value) / 100 * 0.05).toDestination();
+    createdNodes.push(noiseGain);
+    noiseLayer.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+
+    built = true;
+  } catch (err) {
+    // 再試行時にbuildAudioGraph()を再度呼ぶと、破棄されていない古いノードを
+    // グローバル変数の上書きで見失いリークするため、失敗時は生成済みノードを
+    // すべてdisposeし、未生成の状態に戻してから呼び出し元に再送出する
+    createdNodes.forEach(n => { if (n && typeof n.dispose === 'function') n.dispose(); });
+    reverb = undefined;
+    warmFilter = undefined;
+    delay = undefined;
+    padVoices = [];
+    melodySynth = undefined;
+    pianoSynth = undefined;
+    kickSynth = undefined;
+    snareSynth = undefined;
+    hatSynth = undefined;
+    drumFilter = undefined;
+    noiseLayer = undefined;
+    noiseGain = undefined;
+    built = false;
+    throw err;
   }
-
-  melodySynth = new Tone.Synth({
-    oscillator: { type: 'sine' },
-    envelope: { attack: 0.02, decay: 0.3, sustain: 0.1, release: 1.2 },
-    volume: -12
-  }).connect(delay);
-
-  // ピアノ: のこぎり波+フィルターエンベロープのMonoSynth。アタックで軽くフィルターが開いて
-  // すぐ閉じる、くぐもったマレット/プラック系の質感(矩形波だとチップチューン的すぎたため変更)
-  const pianoHighpass = new Tone.Filter({ frequency: 250, type: 'highpass' }).toDestination();
-  pianoSynth = new Tone.MonoSynth({
-    oscillator: { type: 'sawtooth' },
-    envelope: { attack: 0.005, decay: 0.6, sustain: 0.05, release: 0.6 },
-    filterEnvelope: { attack: 0.005, decay: 0.3, sustain: 0.1, release: 0.4, baseFrequency: 200, octaves: 3 },
-    filter: { type: 'lowpass', rolloff: -24, Q: 1 },
-    volume: -16
-  }).connect(pianoHighpass);
-
-  // ドラム: キック/スネア/ハイハットをローファイ用に軽くフィルターしてから出力
-  drumFilter = new Tone.Filter({ frequency: 4500, type: 'lowpass' }).toDestination();
-
-  kickSynth = new Tone.MembraneSynth({
-    pitchDecay: 0.04,
-    octaves: 5,
-    envelope: { attack: 0.001, decay: 0.35, sustain: 0 },
-    volume: -8
-  }).connect(drumFilter);
-
-  snareSynth = new Tone.NoiseSynth({
-    noise: { type: 'white' },
-    envelope: { attack: 0.001, decay: 0.15, sustain: 0 },
-    volume: -18
-  });
-  const snareFilter = new Tone.Filter({ frequency: 1800, type: 'bandpass', Q: 0.8 }).connect(drumFilter);
-  snareSynth.connect(snareFilter);
-
-  hatSynth = new Tone.NoiseSynth({
-    noise: { type: 'white' },
-    envelope: { attack: 0.001, decay: 0.04, sustain: 0 },
-    volume: -24
-  });
-  const hatFilter = new Tone.Filter({ frequency: 7500, type: 'highpass' }).connect(drumFilter);
-  hatSynth.connect(hatFilter);
-
-  noiseLayer = new Tone.Noise('pink');
-  const noiseFilter = new Tone.Filter({ frequency: 6000, type: 'highpass', Q: 1.2 });
-  noiseGain = new Tone.Gain(parseInt(document.getElementById('noise').value) / 100 * 0.05).toDestination();
-  noiseLayer.connect(noiseFilter);
-  noiseFilter.connect(noiseGain);
-
-  built = true;
 }
 
 function currentChord(){
   return MOODS[currentMood].chords[chordIndex % MOODS[currentMood].chords.length];
 }
 
+// 先にインデックスを進めてからpadを鳴らすことで、同じ2小節サイクル内で
+// melody/pianoが参照するcurrentChord()とpadが実際に鳴らすコードを一致させる
+// (先にpadを鳴らしてから進めると、melody/pianoがpadより1コード先を参照してしまう)
+function advanceChord(){
+  chordIndex++;
+  playPadChordIfEnabled();
+}
+
 function playPadChordIfEnabled(){
   const chord = currentChord();
   if (padEnabled) {
     const dur = (beatMs() * 8) / 1000 * 1.15; // 次のコードに少しかぶるくらい長めに
+    // chord.notesが4音であることを前提に8声(4声x2グループ)を確保している。
+    // 5音以上のコードをMOODSに追加する場合はpadVoicesの生成数
+    // (buildAudioGraph()内の`for (let i = 0; i < 8; i++)`)も合わせて見直すこと
     const groupStart = padGroup * 4;
     chord.notes.forEach((note, i) => {
       padVoices[groupStart + i].triggerAttackRelease(note, dur, undefined, 0.55);
@@ -400,6 +454,12 @@ function nearestChordTone(candidateNotes, refMidi){
 // コード/メロディ/ピアノ/ドラムが互いにズレないようにする。
 let masterTimerId = null;
 let stepCounter = 0;
+let drumSwingTimeoutId = null; // ドラムのスウィング用setTimeoutのID(停止時にクリアするため保持)
+// mood切替時にadvanceChord()を手動発火した直後、stepCounterは据え置きのため
+// 次のtickでchordStep===0が再度成立してadvanceChord()が二重発火しうる
+// (padGroupが2回トグルされて元に戻り、次の本来の切替で同じ4声グループを
+// 連続使用してしまう)。それを防ぐため、直後1回分の自動発火だけスキップする
+let skipNextChordAdvance = false;
 
 // 16ステップ = 1小節ぶんのローファイなビート(キック/スネア/ハイハット)
 const KICK_PATTERN  = [1,0,0,0, 0,0,1,0, 0,1,0,0, 0,0,0,0];
@@ -427,6 +487,8 @@ const PIANO_PATTERN = [
 ];
 // ガイドトーン(3度・7度に相当するインデックス)を中心に使う。コード配列は
 // [ルート, 3度, 5度, 7度] の並びで定義しているため、[1,3] がガイドトーン。
+// このインデックスはコード配列が[ルート, 3度, 5度, 7度]の4音である前提。
+// 3和音や5和音以上のコードをMOODSに追加する場合はこの指定も見直すこと
 const GUIDE_TONE_IDX = [1, 3];
 
 function tick(sixteenthMs){
@@ -436,8 +498,11 @@ function tick(sixteenthMs){
   // コード: 2小節の頭で必ず切り替わる。ドラムのループ頭と同じタイミングにするため
   // 「歩数」で判定しているのがポイント(独立タイマーだとズレていく)
   if (chordStep === 0) {
-    playPadChordIfEnabled();
-    chordIndex++;
+    if (skipNextChordAdvance) {
+      skipNextChordAdvance = false;
+    } else {
+      advanceChord();
+    }
   }
 
   // メロディ: 8分音符グリッド(2ステップに1回)
@@ -474,7 +539,7 @@ function tick(sixteenthMs){
   if (drumsEnabled) {
     const isOffbeat = barStep % 2 === 1;
     const swingDelay = isOffbeat ? sixteenthMs * 0.12 : 0;
-    setTimeout(() => {
+    drumSwingTimeoutId = setTimeout(() => {
       if (KICK_PATTERN[barStep]) kickSynth.triggerAttackRelease('C1', '8n');
       if (SNARE_PATTERN[barStep]) snareSynth.triggerAttackRelease('16n');
       if (HAT_PATTERN[barStep] && Math.random() < 0.85) {
@@ -491,13 +556,29 @@ function startSchedulers(){
   const sixteenthMs = beatMs() / 4;
   stepCounter = 0;
   lastPianoMidi = noteToMidi('E4');
+  // mood切替直後(skipNextChordAdvance=trueのまま)に停止していた場合、
+  // ここでリセットしておかないと初回tickのコード切替が誤ってスキップされる
+  skipNextChordAdvance = false;
   tick(sixteenthMs); // 即座に1ステップ目を実行
+  masterTimerId = setInterval(() => tick(sixteenthMs), sixteenthMs);
+}
+
+// テンポスライダーのデバウンス再起動専用。startSchedulers()はstepCounterを0に
+// リセットしてしまい、テンポを動かすたびにコード進行が前倒しされてしまうため、
+// stepCounterはそのままにタイマー間隔だけ差し替える
+function restartTimerOnly(){
+  if (masterTimerId) clearInterval(masterTimerId);
+  const sixteenthMs = beatMs() / 4;
   masterTimerId = setInterval(() => tick(sixteenthMs), sixteenthMs);
 }
 
 function stopSchedulers(){
   if (masterTimerId) clearInterval(masterTimerId);
   masterTimerId = null;
+  // 停止後にこれらが遅延発火すると、止めたはずなのに音が再開してしまうため
+  // 保留中のテンポデバウンスとドラムのスウィングタイマーも合わせてクリアする
+  if (tempoDebounceId) { clearTimeout(tempoDebounceId); tempoDebounceId = null; }
+  if (drumSwingTimeoutId) { clearTimeout(drumSwingTimeoutId); drumSwingTimeoutId = null; }
   padVoices.forEach(v => v && v.triggerRelease());
   if (melodySynth) melodySynth.triggerRelease();
   if (pianoSynth) pianoSynth.triggerRelease();
@@ -518,12 +599,19 @@ playBtn.addEventListener('click', async () => {
     await Tone.start();
     if (!built) {
       playBtn.textContent = '準備中…';
-      await buildAudioGraph();
+      try {
+        await buildAudioGraph();
+      } catch (err) {
+        console.error('音源の初期化に失敗しました', err);
+        playBtn.textContent = '再生する'; // 「準備中…」のまま固まるのを防ぐ
+        document.getElementById('chordReadout').textContent = '音源の準備に失敗しました。もう一度お試しください';
+        return; // isBusy/disabledの解除は外側のfinallyに任せる
+      }
     }
 
     if (!isPlaying) {
       bpm = parseInt(document.getElementById('tempo').value);
-      chordIndex = 0;
+      chordIndex = -1;
       noiseLayer.start();
       updateNoiseGain();
       startSchedulers();
@@ -554,7 +642,18 @@ document.getElementById('moodGroup').addEventListener('click', (e) => {
   document.querySelectorAll('#moodGroup .mood-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   currentMood = btn.dataset.mood;
-  chordIndex = 0;
+  // mood間で音域・跳躍感が異なるため、コード位置だけでなくメロディ/ピアノの
+  // 状態も一緒にリセットして不自然な跳躍を避ける
+  chordIndex = -1;
+  melodyScaleIdx = 2;
+  lastPianoMidi = noteToMidi('E4');
+  // 再生中は次の2小節境界を待たず、即座に新moodの最初のコードでpadを鳴らし直す
+  // (待つと旧moodの音が伸びたまま新moodのmelody/pianoと不協和になる)
+  if (isPlaying) {
+    advanceChord();
+    // 直後のtickで自動advanceChord()が二重発火しないようにする
+    skipNextChordAdvance = true;
+  }
 });
 
 document.getElementById('layerGroup').addEventListener('click', (e) => {
@@ -591,8 +690,7 @@ tempoSlider.addEventListener('input', () => {
   if (isPlaying) {
     if (tempoDebounceId) clearTimeout(tempoDebounceId);
     tempoDebounceId = setTimeout(() => {
-      stopSchedulers();
-      startSchedulers();
+      restartTimerOnly();
     }, 250);
   }
 });
