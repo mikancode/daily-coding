@@ -61,6 +61,7 @@ daily-coding/
 ├── YYYYMMDD-project-name/   # 1 プロダクト = 1 フォルダ。実行環境も各フォルダで完結する
 ├── scripts/                 # リポジトリ横断のユーティリティ
 │   └── license-simple-check.py   # 依存ライブラリのライセンス検査
+├── .github/                 # CONTRIBUTING.md と Issue / PR テンプレート
 ├── .claude/                 # セッション開始時に dotfiles の規約・スキルを取り込む
 ├── CLAUDE.md                # エージェント向けのリポジトリ固有情報
 └── README.md                # このファイル
@@ -75,16 +76,7 @@ daily-coding/
 
 ## 📝 Contributing
 
-個人開発リポジトリですが、以下の流れで運用しています。
-
-1. Issue を起票する（背景 / 対応内容 / 備考）
-2. `feat/<Issue番号>-<機能名>` 形式でブランチを切る
-3. Pull Request を作成し、本文に `Closes #<番号>` を含める
-
-コミットメッセージは Conventional Commits 形式です。
-テンプレートは [dotfiles](https://github.com/mikancode/dotfiles) がグローバル設定（`commit.template`）として配布しています。
-
-フォルダ名は `YYYYMMDD-kebab-case` です（`lab-` などのプレフィックスは付けません）。
+開発に参加する場合は [`CONTRIBUTING.md`](./.github/CONTRIBUTING.md) を参照してください。
 
 ## 📄 License
 
