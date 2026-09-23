@@ -18,20 +18,14 @@
 
 ## 検証
 
-```bash
-./scripts/check-naming.sh   # フォルダ名の命名規約。CI（PR トリガー）と同じもの
-```
-
-テストは存在しない。各プロダクトの検証は `npm run lint` / `npm run build` など、
+テストも CI も存在しない。各プロダクトの検証は `npm run lint` / `npm run build` など、
 そのフォルダの `package.json` にあるものを使う。
 
 ## フォルダを追加するとき
 
 名前は `YYYYMMDD-kebab-case`（日付は着手日、区切りはハイフンのみ）。
-`lab-` `app-` などのプレフィックスは付けない。**違反すると CI が落ちる。**
-
-`check-naming.sh` はドットで始まるディレクトリを除外するため、
-ツール用のディレクトリ（`.claude` など）を足しても検査には引っかからない。
+`lab-` `app-` などのプレフィックスは付けない。
+機械的な検査は無いので、フォルダを作るときにこの規約を守ること。
 
 規約の原本は `dotfiles/docs/naming-conventions.md`。
 
