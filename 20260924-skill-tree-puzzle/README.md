@@ -31,16 +31,20 @@ npx -p typescript tsc -p 20260924-skill-tree-puzzle/jsconfig.json --noEmit
 
 ```text
 20260924-skill-tree-puzzle/
-├── index.html      # エントリポイント（現在はタイトルだけ）
+├── index.html      # エントリポイント
+├── style.css
 ├── jsconfig.json   # 型検査の設定。依存定義ファイルではない
 ├── src/
+│   ├── main.js     # 状態を持ち、判定と描画を繋ぐ
 │   ├── types.d.ts  # 型の定義
 │   ├── core/
 │   │   ├── build.js     # ノードを取得・解除できるかの判定
 │   │   └── simulate.js  # ビルドとお題から勝敗を決める
-│   └── data/
-│       ├── tree.js        # スキルツリー（30ノード）
-│       └── challenges.js  # お題
+│   ├── data/
+│   │   ├── tree.js        # スキルツリー（30ノード）
+│   │   └── challenges.js  # お題
+│   └── ui/
+│       └── tree-view.js   # ツリーの描画とタップの通知
 └── tests/          # node --test で実行するテスト
 ```
 
@@ -63,4 +67,4 @@ npx -p typescript tsc -p 20260924-skill-tree-puzzle/jsconfig.json --noEmit
 
 ## 状態
 
-🚧 進行中（コアロジックまで完成。総当たり検証と UI はこれから）
+🚧 進行中（コアロジックとツリーの操作まで完成。挑戦・総当たり検証はこれから）

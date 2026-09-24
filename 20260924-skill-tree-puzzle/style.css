@@ -1,0 +1,118 @@
+:root {
+  --color-bg: #1b1d24;
+  --color-text: #eceef4;
+  --color-muted: #7c8193;
+  --color-accent: #f2b544;
+  --color-node: #2c303b;
+  --color-edge: #3d4250;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: system-ui, sans-serif;
+  /* ダブルタップでの拡大を止め、タップの反応の遅れを無くす */
+  touch-action: manipulation;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 8px;
+}
+
+.status {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.points {
+  margin: 0;
+  font-weight: bold;
+  color: var(--color-accent);
+}
+
+/*
+ * 縦持ちの1画面にツリーとボタンを収めるため、高さを画面の一部に抑える。
+ * タップ領域が小さくなりすぎないよう、下限は tree-view.js が min-height で与える
+ */
+.tree {
+  display: block;
+  width: 100%;
+  max-height: 60svh;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.tree-edge {
+  stroke: var(--color-edge);
+}
+
+.tree-edge.is-owned {
+  stroke: var(--color-accent);
+}
+
+.tree-node {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tree-node-hit {
+  fill: transparent;
+}
+
+.tree-node-body {
+  fill: var(--color-node);
+  stroke: var(--color-edge);
+  stroke-width: 2;
+}
+
+.tree-node-label {
+  fill: var(--color-muted);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.tree-node.is-acquirable .tree-node-body {
+  stroke: var(--color-accent);
+  stroke-width: 3;
+}
+
+.tree-node.is-acquirable .tree-node-label {
+  fill: var(--color-text);
+}
+
+.tree-node.is-owned .tree-node-body {
+  fill: var(--color-accent);
+  stroke: var(--color-accent);
+}
+
+.tree-node.is-owned .tree-node-label {
+  fill: var(--color-bg);
+  font-weight: bold;
+}
+
+.message {
+  min-height: 1.5em;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
