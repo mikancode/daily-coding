@@ -18,7 +18,7 @@ export const CHALLENGES = [
     attack: 24,
     counter: 10,
     resistances: {},
-    turnLimit: 8,
+    turnLimit: 10,
     points: 11,
   },
 ];
