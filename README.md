@@ -11,7 +11,7 @@
 | [🏢 Corp URL Finder](./20251230-corp-url-finder/) | gBizINFO API から企業の公式 URL を特定する調査ノート | Colab / requests / pandas | ✅ Done |
 | [🧩 One-Stroke Grid Puzzle](./20251226-one-stroke-puzzle/) | ハミルトンパスを題材にした一筆書きパズル | Next.js / TypeScript / Zustand | 💤 Paused |
 | [🎄 Digital Xmas Tree](./20251224-xmas-tree/) | 数学的なサンプリングで組み上げた 3D ツリー | Python / Plotly / NumPy | ✅ Done |
-| [🎵 utatane.fm](./20260901-utatane-fm/) | 毎回違う流れになる、生成チルBGMプレイヤー | Tone.js / Web Audio API | 🚧 WIP |
+| [🎵 utatane.fm](./20260901-utatane-fm/) | 毎回違う流れになる、チルBGM生成プレイヤー | Tone.js / Web Audio API | 🚧 WIP |
 | [🌳 スキルツリー・パズル](./20260924-skill-tree-puzzle/) | 固定のスキルツリーにポイントを配ってビルドを組み、ボスを倒すパズル | JavaScript（ES Modules） | 🚧 WIP |
 
 > **Status の凡例**
