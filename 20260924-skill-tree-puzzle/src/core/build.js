@@ -9,7 +9,7 @@
  * @param {SkillTree} tree
  * @returns {Map<NodeId, NodeId[]>}
  */
-function createAdjacency(tree) {
+export function createAdjacency(tree) {
   /** @type {Map<NodeId, NodeId[]>} */
   const adjacency = new Map(tree.nodes.map((node) => [node.id, []]));
   for (const [a, b] of tree.edges) {
