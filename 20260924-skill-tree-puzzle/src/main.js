@@ -1,8 +1,11 @@
 // @ts-check
 
 import { canAcquire, canRelease } from './core/build.js';
+import { simulate } from './core/simulate.js';
 import { CHALLENGES } from './data/challenges.js';
 import { TREE } from './data/tree.js';
+import { createLogView } from './ui/log-view.js';
+import { createPanel } from './ui/panel.js';
 import { createTreeView } from './ui/tree-view.js';
 
 /**
@@ -27,7 +30,6 @@ function requireElement(selector, type) {
   return element;
 }
 
-const pointsElement = requireElement('#remaining-points', HTMLElement);
 const messageElement = requireElement('#message', HTMLElement);
 
 /** @type {Set<NodeId>} */
@@ -64,6 +66,34 @@ function toggleNode(nodeId) {
   return null;
 }
 
+const logView = createLogView({
+  root: requireElement('#log', HTMLElement),
+  summary: requireElement('#log-summary', HTMLElement),
+  entries: requireElement('#log-entries', HTMLOListElement),
+});
+
+const panel = createPanel(
+  {
+    challenge: requireElement('#challenge', HTMLElement),
+    points: requireElement('#remaining-points', HTMLElement),
+    challengeButton: requireElement('#challenge-button', HTMLButtonElement),
+    resetButton: requireElement('#reset-button', HTMLButtonElement),
+  },
+  {
+    onChallenge() {
+      const build = TREE.nodes.filter((node) => owned.has(node.id));
+      logView.render(simulate(build, challenge), challenge);
+    },
+    onReset() {
+      owned.clear();
+      owned.add(TREE.originId);
+      messageElement.textContent = '';
+      logView.clear();
+      render();
+    },
+  },
+);
+
 const treeView = createTreeView(requireElement('#tree', SVGSVGElement), TREE, (nodeId) => {
   messageElement.textContent = toggleNode(nodeId) ?? '';
   render();
@@ -76,7 +106,7 @@ function render() {
   );
   const releasable = new Set([...owned].filter((id) => canRelease(TREE, owned, id)));
   treeView.render(owned, acquirable, releasable);
-  pointsElement.textContent = `残り ${points} / ${challenge.points} pt`;
+  panel.render(challenge, points);
 }
 
 render();

@@ -12,6 +12,9 @@
   --color-special: #7a4fa8;
   /* 破線は「まだ取っていないが取れる」を表す。ノードの枠と辺で同じ間隔にして意味を揃える */
   --dash-acquirable: 6 4;
+  --color-danger: #e5676b;
+  /* 指で押しやすい大きさの下限。ツリーのタップ領域は tree-view.js の MIN_TAP_PX が同じ値を持つ */
+  --tap-min: 44px;
   color-scheme: dark;
 }
 
@@ -37,11 +40,17 @@ body {
   padding: 8px;
 }
 
-.status {
+.status-heading {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
+}
+
+.challenge {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 0.8125rem;
 }
 
 .title {
@@ -153,4 +162,54 @@ body {
   color: var(--color-muted);
   font-size: 0.875rem;
   text-align: center;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+}
+
+.button {
+  min-height: var(--tap-min);
+  border: 1px solid var(--color-edge);
+  border-radius: 8px;
+  background: var(--color-node);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: bold;
+}
+
+.button.is-primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* ログへ自動スクロールしたとき、見出しが画面の上端に貼り付かないようにする */
+.log {
+  scroll-margin-top: 8px;
+}
+
+.log-summary {
+  margin: 0 0 8px;
+  font-weight: bold;
+  color: var(--color-danger);
+}
+
+.log-summary.is-win {
+  color: var(--color-accent);
+}
+
+.log-entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.log-entry.is-counter,
+.log-entry.is-bossAttack {
+  color: var(--color-muted);
 }
