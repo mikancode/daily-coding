@@ -6,8 +6,6 @@
  * @typedef {import('../types.js').SkillTree} SkillTree
  */
 
-// 数値は仮置き。バランスは総当たり検証（#54）で調整する
-
 /** @param {number} amount @returns {Effect} */
 const attack = (amount) => ({ type: 'stat', stat: 'attack', amount });
 /** @param {number} amount @returns {Effect} */
@@ -20,7 +18,8 @@ const element = (element) => ({ type: 'element', element });
 /**
  * 縦持ちの1画面に収まるよう、5列 × 7行のグリッドに置く（x: 0〜4 が左→右、y: 0〜6 が上→下）。
  * 起点は下端の中央。起点の近くでは攻撃系を左、HP・防御系を右に寄せ、挙動変更・条件シナジー・属性は遠い端に置く。
- * 正解ルートが「離れた2箇所を繋ぐ」形になるようにするため
+ * 正解ルートが「離れた2箇所を繋ぐ」形になるようにするため。
+ * ただし起点の真上は攻撃、その左は HP にする。起点から右上へ向かう2通りの道順が同じステータスにならないようにするため
  * @type {SkillTree}
  */
 export const TREE = {
@@ -32,8 +31,8 @@ export const TREE = {
     { id: 'hp-1', name: 'HP+20', pos: { x: 3, y: 6 }, effects: [hp(20)] },
 
     { id: 'atk-2', name: '攻撃+3', pos: { x: 0, y: 5 }, effects: [attack(3)] },
-    { id: 'atk-3', name: '攻撃+3', pos: { x: 1, y: 5 }, effects: [attack(3)] },
-    { id: 'hp-2', name: 'HP+20', pos: { x: 2, y: 5 }, effects: [hp(20)] },
+    { id: 'hp-2', name: 'HP+20', pos: { x: 1, y: 5 }, effects: [hp(20)] },
+    { id: 'atk-3', name: '攻撃+3', pos: { x: 2, y: 5 }, effects: [attack(3)] },
     { id: 'def-1', name: '防御+2', pos: { x: 3, y: 5 }, effects: [defense(2)] },
     { id: 'hp-3', name: 'HP+20', pos: { x: 4, y: 5 }, effects: [hp(20)] },
 
@@ -77,17 +76,17 @@ export const TREE = {
   edges: [
     ['origin', 'atk-1'],
     ['origin', 'hp-1'],
-    ['origin', 'hp-2'],
+    ['origin', 'atk-3'],
 
-    ['atk-1', 'atk-3'],
-    ['atk-3', 'atk-2'],
-    ['atk-3', 'atk-5'],
+    ['atk-1', 'hp-2'],
+    ['hp-2', 'atk-2'],
+    ['hp-2', 'atk-5'],
     ['atk-2', 'atk-4'],
     ['hp-1', 'def-1'],
     ['def-1', 'hp-3'],
     ['def-1', 'hp-4'],
     ['hp-3', 'def-3'],
-    ['hp-2', 'def-2'],
+    ['atk-3', 'def-2'],
     ['def-2', 'atk-5'],
     ['def-2', 'hp-4'],
 
