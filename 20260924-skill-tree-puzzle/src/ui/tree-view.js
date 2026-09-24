@@ -167,6 +167,10 @@ export function createTreeView(svg, tree, onTap) {
       }
       for (const { element, from, to } of edgeElements) {
         element.classList.toggle('is-owned', owned.has(from) && owned.has(to));
+        element.classList.toggle(
+          'is-acquirable',
+          (owned.has(from) && acquirable.has(to)) || (owned.has(to) && acquirable.has(from)),
+        );
       }
     },
   };

@@ -10,6 +10,8 @@
   --color-defense: #3f63a8;
   --color-hp: #3d8a57;
   --color-special: #7a4fa8;
+  /* 破線は「まだ取っていないが取れる」を表す。ノードの枠と辺で同じ間隔にして意味を揃える */
+  --dash-acquirable: 6 4;
   color-scheme: dark;
 }
 
@@ -73,6 +75,11 @@ body {
   stroke: var(--color-accent);
 }
 
+.tree-edge.is-acquirable {
+  stroke: var(--color-accent);
+  stroke-dasharray: var(--dash-acquirable);
+}
+
 .tree-node {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -129,6 +136,7 @@ body {
 
 .tree-node.is-acquirable .tree-node-body {
   stroke: var(--color-accent);
+  stroke-dasharray: var(--dash-acquirable);
 }
 
 .tree-node.is-acquirable .tree-node-label {
@@ -137,7 +145,6 @@ body {
 
 .tree-node.is-releasable .tree-node-body {
   stroke: var(--color-accent);
-  stroke-dasharray: 6 4;
 }
 
 .message {
