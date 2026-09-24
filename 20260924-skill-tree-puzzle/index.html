@@ -4,8 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>スキルツリー・パズル</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./src/main.js"></script>
 </head>
 <body>
-  <h1>スキルツリー・パズル</h1>
+  <main class="app">
+    <header class="status">
+      <h1 class="title">スキルツリー・パズル</h1>
+      <p id="remaining-points" class="points"></p>
+    </header>
+    <svg id="tree" class="tree" role="img" aria-label="スキルツリー"></svg>
+    <p id="message" class="message" aria-live="polite"></p>
+  </main>
 </body>
 </html>
