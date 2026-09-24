@@ -103,6 +103,17 @@ describe('ターンの流れ', () => {
   });
 });
 
+describe('条件シナジー', () => {
+  test('HP が閾値ちょうどでも、小数の誤差で発動し損ねない', () => {
+    const edge = node('edge', [{ type: 'conditional', hpRatioAtMost: 0.57, damageMultiplier: 3 }]);
+    // 1 ターン目の被弾で HP が 57 になる。100 × 0.57 は浮動小数点で 56.999… になる
+    const outcome = simulate([ORIGIN, edge], challenge({ hp: 1000, attack: 43, turnLimit: 2 }));
+    const secondHit = outcome.log.find((entry) => entry.type === 'playerHit' && entry.turn === 2);
+
+    assert.equal(secondHit?.damage, 30);
+  });
+});
+
 describe('属性と軽減率', () => {
   test('軽減率の分だけダメージが減る', () => {
     const outcome = simulate([ORIGIN], challenge({ resistances: { physical: 0.5 } }));

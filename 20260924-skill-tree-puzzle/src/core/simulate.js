@@ -20,7 +20,8 @@ const FULL_RATIO = 1;
 /** 条件を満たさない、または conditional を取っていなければ倍率は掛からない */
 const NEUTRAL_MULTIPLIER = 1;
 /**
- * 小数の誤差で floor が1つ下がるのを防ぐ。例：100 × (1 − 0.9) は 9.999… になり、そのまま floor すると 9 になる
+ * 小数の誤差で、ダメージの floor が1つ下がったり、条件の境界ちょうどで発動しなかったりするのを防ぐ。
+ * 例：100 × (1 − 0.9) は 9.999… になり floor すると 9 に、100 × 0.57 は 56.999… になり HP 57 で発動しない
  */
 const FLOAT_TOLERANCE = 1e-9;
 
@@ -103,7 +104,7 @@ function chooseElement(elements, resistances) {
 function conditionalMultiplier(profile, playerHp) {
   let multiplier = NEUTRAL_MULTIPLIER;
   for (const conditional of profile.conditionals) {
-    if (playerHp <= profile.maxHp * conditional.hpRatioAtMost) {
+    if (playerHp <= profile.maxHp * conditional.hpRatioAtMost + FLOAT_TOLERANCE) {
       multiplier *= conditional.damageMultiplier;
     }
   }
