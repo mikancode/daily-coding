@@ -25,6 +25,9 @@ node --test '20260924-skill-tree-puzzle/tests/*.test.js'
 
 # 型検査（エラー0件であること）
 npx -p typescript tsc -p 20260924-skill-tree-puzzle/jsconfig.json --noEmit
+
+# お題ごとに全ビルドを総当たりし、最少クリア pt と解を出力する
+node 20260924-skill-tree-puzzle/scripts/verify.js
 ```
 
 ## 📂 Project Structure
@@ -37,10 +40,13 @@ npx -p typescript tsc -p 20260924-skill-tree-puzzle/jsconfig.json --noEmit
 │   ├── types.d.ts  # 型の定義
 │   ├── core/
 │   │   ├── build.js     # ノードを取得・解除できるかの判定
+│   │   ├── enumerate.js # 配布 pt で組めるビルドをすべて列挙する
 │   │   └── simulate.js  # ビルドとお題から勝敗を決める
 │   └── data/
 │       ├── tree.js        # スキルツリー（30ノード）
 │       └── challenges.js  # お題
+├── scripts/
+│   └── verify.js   # お題ごとの総当たり検証
 └── tests/          # node --test で実行するテスト
 ```
 
@@ -63,4 +69,4 @@ npx -p typescript tsc -p 20260924-skill-tree-puzzle/jsconfig.json --noEmit
 
 ## 状態
 
-🚧 進行中（コアロジックまで完成。総当たり検証と UI はこれから）
+🚧 進行中（総当たり検証の仕組みまで完成。数値調整と UI はこれから）
