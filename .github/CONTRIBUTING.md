@@ -39,6 +39,23 @@ YYYYMMDD-kebab-case
 | `README.md` | ○ | 何を作ったか、何を学んだか、状態（進行中／完了／独立移行済み） |
 | `CLAUDE.md` | 任意 | その実験固有の前提。ルートのコンテキストは圧迫しない（サブディレクトリの CLAUDE.md は、そこのファイルを読んだ時に初めて読み込まれるため） |
 
+### 依存を追加するとき（Python）
+
+Python のプロダクトに `requirements.txt` を置いた、または更新したときは、
+そのフォルダで `scripts/license-simple-check.py` を実行し、ライセンスを確認する。
+
+```bash
+cd <対象フォルダ>
+pip install pip-licenses
+python3 ../scripts/license-simple-check.py
+```
+
+- 依存と `pip-licenses` を先にインストールした環境で実行する
+  （`pip-licenses` の出力に頼るため、未インストールの依存は検査されない。既知の制約は #67）
+- GPL / AGPL / LGPL / MPL を検出すると失敗する（exit code 1）
+- 実行したフォルダに `THIRD-PARTY-NOTICES.md` が生成される
+- npm の依存は対象外。検査されたと誤解しないこと
+
 ### Pages で公開する場合
 
 GitHub Pages はリポジトリ単位で ON/OFF が決まり、フォルダ単位の公開審査は無い。
