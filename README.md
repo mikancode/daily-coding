@@ -11,9 +11,11 @@
 | [🏢 Corp URL Finder](./20251230-corp-url-finder/) | gBizINFO API から企業の公式 URL を特定する調査ノート | Colab / requests / pandas | ✅ Done |
 | [🧩 One-Stroke Grid Puzzle](./20251226-one-stroke-puzzle/) | ハミルトンパスを題材にした一筆書きパズル | Next.js / TypeScript / Zustand | 💤 Paused |
 | [🎄 Digital Xmas Tree](./20251224-xmas-tree/) | 数学的なサンプリングで組み上げた 3D ツリー | Python / Plotly / NumPy | ✅ Done |
+| [🎵 utatane.fm](./20260901-utatane-fm/) | 毎回違う流れになる、チルBGM生成プレイヤー | Tone.js | 🚧 WIP |
+| [🌳 スキルツリー・パズル](./20260924-skill-tree-puzzle/) | 固定のスキルツリーにポイントを配ってビルドを組み、ボスを倒すパズル | JavaScript（ES Modules） | 🚧 WIP |
 
 > **Status の凡例**
-> 🟢 Live = 公開稼働中 ／ ✅ Done = 完成・凍結 ／ 💤 Paused = 開発中断 ／ 🚧 WIP = 開発中
+> 🟢 Live = 公開稼働中 ／ ✅ Done = 完成・凍結 ／ 💤 Paused = 開発中断 ／ 🚧 WIP = 開発中 ／ 🔀 Migrated = 独立リポジトリへ移行済み
 
 ---
 
@@ -60,7 +62,7 @@ Notebook を実行すると、そのまま公開できる `index.html` が生成
 daily-coding/
 ├── YYYYMMDD-project-name/   # 1 プロダクト = 1 フォルダ。実行環境も各フォルダで完結する
 ├── scripts/                 # リポジトリ横断のユーティリティ
-│   └── license-simple-check.py   # 依存ライブラリのライセンス検査
+│   └── license-simple-check.py   # 依存ライブラリのライセンス検査（使い方は CONTRIBUTING.md）
 ├── .github/                 # CONTRIBUTING.md と Issue / PR テンプレート
 ├── .claude/                 # セッション開始時に dotfiles の規約・スキルを取り込む
 ├── CLAUDE.md                # エージェント向けのリポジトリ固有情報
