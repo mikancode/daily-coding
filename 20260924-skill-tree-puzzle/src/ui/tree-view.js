@@ -4,6 +4,14 @@
  * @typedef {import('../types.js').NodeId} NodeId
  * @typedef {import('../types.js').SkillTree} SkillTree
  * @typedef {import('../types.js').GridPosition} GridPosition
+ * @typedef {import('../types.js').SkillNode} SkillNode
+ * @typedef {import('../types.js').StatId} StatId
+ */
+
+/**
+ * 塗りの色の系統。ステータスを足すだけのノードは足すステータスで分け、
+ * 挙動を変えるノード（起点・連撃・背水・属性）はまとめて special にする
+ * @typedef {StatId | 'special'} NodeCategory
  */
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -14,6 +22,8 @@ const CELL_SIZE = 64;
 const NODE_WIDTH = 56;
 const NODE_HEIGHT = 40;
 const NODE_CORNER_RADIUS = 8;
+/** special は枠を状態の表示に使うため、形（角丸の大きいピル形）で見分ける */
+const SPECIAL_NODE_CORNER_RADIUS = NODE_HEIGHT / 2;
 const LABEL_FONT_SIZE = 13;
 const EDGE_WIDTH = 4;
 /**
@@ -41,6 +51,28 @@ function createSvgElement(tagName, attributes) {
  */
 function cellCenter(pos) {
   return { x: pos.x * CELL_SIZE + CELL_SIZE / 2, y: pos.y * CELL_SIZE + CELL_SIZE / 2 };
+}
+
+/**
+ * @param {SkillTree} tree
+ * @param {SkillNode} node
+ * @returns {NodeCategory}
+ */
+function nodeCategory(tree, node) {
+  if (node.id === tree.originId) {
+    return 'special';
+  }
+  let category = /** @type {NodeCategory | null} */ (null);
+  for (const effect of node.effects) {
+    if (effect.type !== 'stat') {
+      return 'special';
+    }
+    category ??= effect.stat;
+  }
+  if (category === null) {
+    throw new Error(`効果の無いノードです: ${node.id}`);
+  }
+  return category;
 }
 
 /**
@@ -77,7 +109,12 @@ export function createTreeView(svg, tree, onTap) {
   const nodeElements = new Map();
   for (const node of tree.nodes) {
     const center = cellCenter(node.pos);
-    const group = createSvgElement('g', { class: 'tree-node', 'data-node-id': node.id });
+    const category = nodeCategory(tree, node);
+    const group = createSvgElement('g', {
+      class: 'tree-node',
+      'data-node-id': node.id,
+      'data-category': category,
+    });
     group.append(
       createSvgElement('rect', {
         class: 'tree-node-hit',
@@ -92,7 +129,7 @@ export function createTreeView(svg, tree, onTap) {
         y: center.y - NODE_HEIGHT / 2,
         width: NODE_WIDTH,
         height: NODE_HEIGHT,
-        rx: NODE_CORNER_RADIUS,
+        rx: category === 'special' ? SPECIAL_NODE_CORNER_RADIUS : NODE_CORNER_RADIUS,
       }),
     );
     const label = createSvgElement('text', {
@@ -120,11 +157,13 @@ export function createTreeView(svg, tree, onTap) {
     /**
      * @param {ReadonlySet<NodeId>} owned
      * @param {ReadonlySet<NodeId>} acquirable 今タップすれば取れるノード
+     * @param {ReadonlySet<NodeId>} releasable 今タップすれば外せるノード
      */
-    render(owned, acquirable) {
+    render(owned, acquirable, releasable) {
       for (const [nodeId, element] of nodeElements) {
         element.classList.toggle('is-owned', owned.has(nodeId));
         element.classList.toggle('is-acquirable', acquirable.has(nodeId));
+        element.classList.toggle('is-releasable', releasable.has(nodeId));
       }
       for (const { element, from, to } of edgeElements) {
         element.classList.toggle('is-owned', owned.has(from) && owned.has(to));

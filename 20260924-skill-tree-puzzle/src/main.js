@@ -74,7 +74,8 @@ function render() {
   const acquirable = new Set(
     points > 0 ? TREE.nodes.map((node) => node.id).filter((id) => canAcquire(TREE, owned, id)) : [],
   );
-  treeView.render(owned, acquirable);
+  const releasable = new Set([...owned].filter((id) => canRelease(TREE, owned, id)));
+  treeView.render(owned, acquirable, releasable);
   pointsElement.textContent = `残り ${points} / ${challenge.points} pt`;
 }
 

@@ -5,6 +5,11 @@
   --color-accent: #f2b544;
   --color-node: #2c303b;
   --color-edge: #3d4250;
+  /* ノードの塗りは系統の色。取得できる・外せるは枠線で表すので、塗りとは独立させる */
+  --color-attack: #a8434a;
+  --color-defense: #3f63a8;
+  --color-hp: #3d8a57;
+  --color-special: #7a4fa8;
   color-scheme: dark;
 }
 
@@ -78,35 +83,61 @@ body {
 }
 
 .tree-node-body {
-  fill: var(--color-node);
-  stroke: var(--color-edge);
-  stroke-width: 2;
+  fill: var(--node-fill, var(--color-node));
+  stroke: none;
+  stroke-width: 3;
+}
+
+.tree-node[data-category='attack'] {
+  --node-fill: var(--color-attack);
+}
+
+.tree-node[data-category='defense'] {
+  --node-fill: var(--color-defense);
+}
+
+.tree-node[data-category='hp'] {
+  --node-fill: var(--color-hp);
+}
+
+.tree-node[data-category='special'] {
+  --node-fill: var(--color-special);
+}
+
+/*
+ * 未取得は塗りだけを薄くする。枠線は状態を表すので薄めない。
+ * 透明度ではなく背景色と混ぜるのは、下を通る辺がラベルの背後に透けないようにするため
+ */
+.tree-node:not(.is-owned) .tree-node-body {
+  fill: color-mix(in srgb, var(--node-fill, var(--color-node)) 35%, var(--color-bg));
+}
+
+.tree-node:not(.is-owned) .tree-node-label {
+  fill: var(--color-muted);
 }
 
 .tree-node-label {
-  fill: var(--color-muted);
+  fill: var(--color-text);
   text-anchor: middle;
   dominant-baseline: central;
   pointer-events: none;
 }
 
+.tree-node.is-owned .tree-node-label {
+  font-weight: bold;
+}
+
 .tree-node.is-acquirable .tree-node-body {
   stroke: var(--color-accent);
-  stroke-width: 3;
 }
 
 .tree-node.is-acquirable .tree-node-label {
   fill: var(--color-text);
 }
 
-.tree-node.is-owned .tree-node-body {
-  fill: var(--color-accent);
+.tree-node.is-releasable .tree-node-body {
   stroke: var(--color-accent);
-}
-
-.tree-node.is-owned .tree-node-label {
-  fill: var(--color-bg);
-  font-weight: bold;
+  stroke-dasharray: 6 4;
 }
 
 .message {
