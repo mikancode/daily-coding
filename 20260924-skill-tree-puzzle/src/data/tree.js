@@ -6,8 +6,6 @@
  * @typedef {import('../types.js').SkillTree} SkillTree
  */
 
-// 数値は仮置き。バランスは総当たり検証（#54）で調整する
-
 /** @param {number} amount @returns {Effect} */
 const attack = (amount) => ({ type: 'stat', stat: 'attack', amount });
 /** @param {number} amount @returns {Effect} */
