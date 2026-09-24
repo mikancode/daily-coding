@@ -16,9 +16,13 @@
 
 ## 💻 検証
 
-Node.js 22 で実行します。
+Node.js v22.23.3 で動作を確認しています。
+`package.json` が無いので、v22.6 では `.js` を ES Modules として読めず、テストが失敗します。
 
 ```bash
+# テスト。ディレクトリ指定は効かないので glob で渡す
+node --test '20260924-skill-tree-puzzle/tests/*.test.js'
+
 # 型検査（エラー0件であること）
 npx -p typescript tsc -p 20260924-skill-tree-puzzle/jsconfig.json --noEmit
 ```
@@ -29,8 +33,13 @@ npx -p typescript tsc -p 20260924-skill-tree-puzzle/jsconfig.json --noEmit
 20260924-skill-tree-puzzle/
 ├── index.html      # エントリポイント（現在はタイトルだけ）
 ├── jsconfig.json   # 型検査の設定。依存定義ファイルではない
-└── src/
-    └── types.d.ts  # 型の定義
+├── src/
+│   ├── types.d.ts  # 型の定義
+│   ├── core/
+│   │   └── build.js  # ノードを取得・解除できるかの判定
+│   └── data/
+│       └── tree.js   # スキルツリー（30ノード）
+└── tests/          # node --test で実行するテスト
 ```
 
 ## 設計上の制約
