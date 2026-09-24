@@ -10,11 +10,22 @@
 <body>
   <main class="app">
     <header class="status">
-      <h1 class="title">スキルツリー・パズル</h1>
-      <p id="remaining-points" class="points"></p>
+      <div class="status-heading">
+        <h1 class="title">スキルツリー・パズル</h1>
+        <p id="remaining-points" class="points"></p>
+      </div>
+      <p id="challenge" class="challenge"></p>
     </header>
     <svg id="tree" class="tree" role="img" aria-label="スキルツリー"></svg>
     <p id="message" class="message" aria-live="polite"></p>
+    <div class="actions">
+      <button id="reset-button" class="button" type="button">全リセット</button>
+      <button id="challenge-button" class="button is-primary" type="button">挑戦</button>
+    </div>
+    <section id="log" class="log" aria-label="戦闘ログ" hidden>
+      <p id="log-summary" class="log-summary"></p>
+      <ol id="log-entries" class="log-entries"></ol>
+    </section>
   </main>
 </body>
 </html>

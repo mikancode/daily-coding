@@ -48,7 +48,10 @@ node 20260924-skill-tree-puzzle/scripts/verify.js
 │   │   ├── tree.js        # スキルツリー（30ノード）
 │   │   └── challenges.js  # お題
 │   └── ui/
-│       └── tree-view.js   # ツリーの描画とタップの通知
+│       ├── tree-view.js      # ツリーの描画とタップの通知
+│       ├── panel.js          # お題・残り pt・挑戦と全リセットのボタン
+│       ├── log-view.js       # 戦闘ログと結果の表示
+│       └── element-names.js  # 属性の表示名
 ├── scripts/
 │   └── verify.js   # お題ごとの総当たり検証
 └── tests/          # node --test で実行するテスト
@@ -73,4 +76,4 @@ node 20260924-skill-tree-puzzle/scripts/verify.js
 
 ## 状態
 
-🚧 進行中（総当たり検証の仕組みとツリーの操作まで完成。数値調整と挑戦はこれから）
+🚧 進行中（1周遊べるところまで完成。数値調整・保存はこれから）

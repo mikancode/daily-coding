@@ -16,8 +16,12 @@
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-/** viewBox 上の1マスの大きさ。画面上の大きさは SVG の表示サイズに合わせて伸縮する */
-const CELL_SIZE = 64;
+/**
+ * viewBox 上の1マスの大きさ。画面上の大きさは SVG の表示サイズに合わせて伸縮する。
+ * 横長にするのは、左右に隣接するノードの隙間を空け、間を通る辺（破線）を見えるようにするため
+ */
+const CELL_WIDTH = 80;
+const CELL_HEIGHT = 64;
 /** ラベル「攻撃+3」が収まるよう、見た目は円ではなく横長の角丸矩形にする */
 const NODE_WIDTH = 56;
 const NODE_HEIGHT = 40;
@@ -50,7 +54,7 @@ function createSvgElement(tagName, attributes) {
  * @returns {{ x: number, y: number }}
  */
 function cellCenter(pos) {
-  return { x: pos.x * CELL_SIZE + CELL_SIZE / 2, y: pos.y * CELL_SIZE + CELL_SIZE / 2 };
+  return { x: pos.x * CELL_WIDTH + CELL_WIDTH / 2, y: pos.y * CELL_HEIGHT + CELL_HEIGHT / 2 };
 }
 
 /**
@@ -84,7 +88,7 @@ function nodeCategory(tree, node) {
 export function createTreeView(svg, tree, onTap) {
   const columns = Math.max(...tree.nodes.map((node) => node.pos.x)) + 1;
   const rows = Math.max(...tree.nodes.map((node) => node.pos.y)) + 1;
-  svg.setAttribute('viewBox', `0 0 ${columns * CELL_SIZE} ${rows * CELL_SIZE}`);
+  svg.setAttribute('viewBox', `0 0 ${columns * CELL_WIDTH} ${rows * CELL_HEIGHT}`);
   svg.style.minHeight = `${rows * MIN_TAP_PX}px`;
 
   const positions = new Map(tree.nodes.map((node) => [node.id, node.pos]));
@@ -118,10 +122,10 @@ export function createTreeView(svg, tree, onTap) {
     group.append(
       createSvgElement('rect', {
         class: 'tree-node-hit',
-        x: node.pos.x * CELL_SIZE,
-        y: node.pos.y * CELL_SIZE,
-        width: CELL_SIZE,
-        height: CELL_SIZE,
+        x: node.pos.x * CELL_WIDTH,
+        y: node.pos.y * CELL_HEIGHT,
+        width: CELL_WIDTH,
+        height: CELL_HEIGHT,
       }),
       createSvgElement('rect', {
         class: 'tree-node-body',
