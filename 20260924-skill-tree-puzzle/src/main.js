@@ -2,9 +2,10 @@
 
 import { canAcquire, canRelease } from './core/build.js';
 import { restoreBuild, serializeBuild } from './core/saved-build.js';
-import { simulate } from './core/simulate.js';
+import { createProfile, simulate } from './core/simulate.js';
 import { CHALLENGES } from './data/challenges.js';
 import { TREE } from './data/tree.js';
+import { createBuildStatsView } from './ui/build-stats.js';
 import { createLogView } from './ui/log-view.js';
 import { createPanel } from './ui/panel.js';
 import { createTreeView } from './ui/tree-view.js';
@@ -87,6 +88,11 @@ function remainingPoints() {
   return challenge.points - (owned.size - 1);
 }
 
+/** 取得済みノードを、ツリーに書いた順で返す */
+function currentBuild() {
+  return TREE.nodes.filter((node) => owned.has(node.id));
+}
+
 /**
  * タップしても見た目が変わらないときに、無反応に見えないよう理由を出す
  * @param {NodeId} nodeId
@@ -128,8 +134,7 @@ const panel = createPanel(
   },
   {
     onChallenge() {
-      const build = TREE.nodes.filter((node) => owned.has(node.id));
-      logView.render(simulate(build, challenge), challenge);
+      logView.render(simulate(currentBuild(), challenge), challenge);
     },
     onReset() {
       owned.clear();
@@ -140,6 +145,8 @@ const panel = createPanel(
     },
   },
 );
+
+const buildStatsView = createBuildStatsView(requireElement('#build-stats', HTMLElement));
 
 const treeView = createTreeView(requireElement('#tree', SVGSVGElement), TREE, (nodeId) => {
   const reason = toggleNode(nodeId);
@@ -159,6 +166,7 @@ function render() {
   const releasable = new Set([...owned].filter((id) => canRelease(TREE, owned, id)));
   treeView.render(owned, acquirable, releasable);
   panel.render(challenge, points);
+  buildStatsView.render(createProfile(currentBuild()));
 }
 
 messageElement.textContent = loadBuild() ?? '';

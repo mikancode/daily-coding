@@ -3,10 +3,10 @@
 /**
  * @typedef {import('../types.js').Build} Build
  * @typedef {import('../types.js').Challenge} Challenge
- * @typedef {import('../types.js').ConditionalEffect} ConditionalEffect
  * @typedef {import('../types.js').ElementId} ElementId
  * @typedef {import('../types.js').LogEntry} LogEntry
  * @typedef {import('../types.js').LoseReason} LoseReason
+ * @typedef {import('../types.js').PlayerProfile} PlayerProfile
  * @typedef {import('../types.js').SimulationResult} SimulationResult
  */
 
@@ -26,21 +26,11 @@ const NEUTRAL_MULTIPLIER = 1;
 const FLOAT_TOLERANCE = 1e-9;
 
 /**
- * @typedef {object} PlayerProfile
- * @property {number} maxHp
- * @property {number} attack
- * @property {number} defense
- * @property {number} hits
- * @property {number} ratio
- * @property {ConditionalEffect[]} conditionals
- * @property {Set<ElementId>} elements
- */
-
-/**
+ * 勝敗の判定と画面のステータス表示の両方から使う。計算を二重に書くと、表示と判定がずれるため
  * @param {Build} build
  * @returns {PlayerProfile}
  */
-function createProfile(build) {
+export function createProfile(build) {
   /** @type {PlayerProfile} */
   const profile = {
     maxHp: 0,
