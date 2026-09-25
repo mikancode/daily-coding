@@ -15,12 +15,17 @@ WHITELIST = ["MIT", "BSD", "APACHE-2.0"]
 # -------------------------
 # Load dependencies
 # -------------------------
+# 行頭のパッケージ名だけを取り出す。バージョン指定子・extras・環境マーカー・行末コメントを
+# 名前に残すと、pip-licenses の出力と突き合わせたときにインストール済みでも未検査と誤報する
+PACKAGE_NAME_PATTERN = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
+
 def load_requirements(path):
-    return [
-        line.split("==")[0].strip()
-        for line in Path(path).read_text().splitlines()
-        if line and not line.startswith("#")    #コメントアウトされたものは無視
-    ]
+    names = []
+    for line in Path(path).read_text().splitlines():
+        match = PACKAGE_NAME_PATTERN.match(line)
+        if match:    # 空行・コメント行は一致しない
+            names.append(match.group(1))
+    return names
 
 packages = load_requirements(REQUIREMENTS_FILE)
 if not packages:
