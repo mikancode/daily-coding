@@ -64,6 +64,27 @@ GitHub Pages はリポジトリ単位で ON/OFF が決まり、フォルダ単�
 判断すること。有効化状況とビルド方式は `gh api repos/<owner>/<repo>/pages` で
 確認できる。
 
+### Vercel で公開する場合
+
+Vercel のプロジェクトはフォルダごとに作り、Root Directory にそのフォルダを指定する。
+どのプロジェクトもリポジトリ全体の push で起動するため、Ignored Build Step（Settings → Git）で、
+自分のフォルダに変更が無いときはビルドを飛ばす。
+
+```sh
+git rev-parse -q --verify "${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}^{commit}" >/dev/null && git diff --quiet "${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}" "$VERCEL_GIT_COMMIT_SHA" -- .
+```
+
+- コマンドは Root Directory の中で実行される。対象パスはフォルダ名ではなく `.` にする
+- 比較元は `HEAD^` ではなく、前回のデプロイのコミット（`VERCEL_GIT_PREVIOUS_SHA`）にする。
+  1回の push に複数のコミットが乗ると、`HEAD^` との比較では変更を取りこぼす
+- 比較元が clone に無いときは、判定を諦めてビルドする（先頭の `git rev-parse`）。
+  force push で外れたコミットや、長くデプロイしていないプロジェクトの古いコミットは、
+  Vercel の浅い clone に含まれない。そのまま `git diff` すると exit 128 でデプロイが失敗し、
+  成功しないので比較元も更新されず、以後の push もすべて失敗する。
+  `git cat-file -e "<SHA>^{commit}"` は、無いときに 1 ではなく 128 を返すのでこの確認には使えない
+- スキップされたデプロイも、PR のチェック一覧では success と表示される。
+  実際にデプロイされたかは `gh api repos/<owner>/<repo>/deployments` にそのコミットの記録があるかで確かめる
+
 ## 独立リポジトリへの昇格
 
 モノレポ内に留めるか、独立させるかの判定。
