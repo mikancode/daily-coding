@@ -1,6 +1,7 @@
 // @ts-check
 
 import { canAcquire, canRelease } from './core/build.js';
+import { restoreBuild, serializeBuild } from './core/saved-build.js';
 import { simulate } from './core/simulate.js';
 import { CHALLENGES } from './data/challenges.js';
 import { TREE } from './data/tree.js';
@@ -32,8 +33,54 @@ function requireElement(selector, type) {
 
 const messageElement = requireElement('#message', HTMLElement);
 
+/**
+ * Pages のオリジンは daily-coding の全プロダクトで共有するので、プロダクト名を前置する。
+ * お題を増やしたときに混ざらないよう、お題ごとに分ける
+ */
+const STORAGE_KEY = `skill-tree-puzzle:build:${challenge.id}`;
+const STORAGE_UNAVAILABLE_MESSAGE = 'ビルドを保存できない環境です';
+const INVALID_SAVED_BUILD_MESSAGE = '保存したビルドが今のツリーでは組めないため、最初からにしました';
+
 /** @type {Set<NodeId>} */
 const owned = new Set([TREE.originId]);
+
+/**
+ * プライベートブラウズや容量超過では localStorage が例外を投げる。保存できなくても遊べるようにする
+ * @returns {boolean} 保存できたら true
+ */
+function saveBuild() {
+  try {
+    localStorage.setItem(STORAGE_KEY, serializeBuild(TREE, owned));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * @returns {string | null} 知らせることがあればその文言
+ */
+function loadBuild() {
+  /** @type {string | null} */
+  let raw;
+  try {
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return STORAGE_UNAVAILABLE_MESSAGE;
+  }
+  const restored = restoreBuild(TREE, challenge.points, raw);
+  switch (restored.status) {
+    case 'none':
+      return null;
+    case 'restored':
+      owned.clear();
+      restored.owned.forEach((id) => owned.add(id));
+      return null;
+    case 'invalid':
+      // 起点だけの状態で上書きし、次に開いたときに同じ知らせを出さない
+      return saveBuild() ? INVALID_SAVED_BUILD_MESSAGE : STORAGE_UNAVAILABLE_MESSAGE;
+  }
+}
 
 /** 1ノード1pt。起点は最初から持っているので数えない */
 function remainingPoints() {
@@ -87,7 +134,7 @@ const panel = createPanel(
     onReset() {
       owned.clear();
       owned.add(TREE.originId);
-      messageElement.textContent = '';
+      messageElement.textContent = saveBuild() ? '' : STORAGE_UNAVAILABLE_MESSAGE;
       logView.clear();
       render();
     },
@@ -95,7 +142,12 @@ const panel = createPanel(
 );
 
 const treeView = createTreeView(requireElement('#tree', SVGSVGElement), TREE, (nodeId) => {
-  messageElement.textContent = toggleNode(nodeId) ?? '';
+  const reason = toggleNode(nodeId);
+  if (reason !== null) {
+    messageElement.textContent = reason;
+  } else {
+    messageElement.textContent = saveBuild() ? '' : STORAGE_UNAVAILABLE_MESSAGE;
+  }
   render();
 });
 
@@ -109,4 +161,5 @@ function render() {
   panel.render(challenge, points);
 }
 
+messageElement.textContent = loadBuild() ?? '';
 render();
