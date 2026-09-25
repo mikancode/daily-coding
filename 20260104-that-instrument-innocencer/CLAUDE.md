@@ -20,13 +20,8 @@ npm run preview
 
 Vercel。Root Directory にこのフォルダを指定している。
 
-**Ignored Build Step のカレントディレクトリは、既にこのフォルダの中になる。**
-Root Directory 設定が効いた状態でコマンドが走るため、モノレポのつもりで
-`20260104-that-instrument-innocencer` のようなパスを渡すと一致せず、
-無関係な変更でも毎回ビルドが走る。**対象パスは `.` にする。**
-
-（`daily-coding` 244c1b4 / #35 で確認。対象外フォルダの変更 → Canceled、
-このフォルダ配下の変更 → 通常ビルド、を実測している）
+Ignored Build Step のコマンドと注意点は、リポジトリ共通の
+[`.github/CONTRIBUTING.md`](../.github/CONTRIBUTING.md)「Vercel で公開する場合」にある。
 
 ## 設計ドキュメント
 
