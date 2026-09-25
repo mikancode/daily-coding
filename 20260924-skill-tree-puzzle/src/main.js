@@ -11,11 +11,9 @@ import { createPanel } from './ui/panel.js';
 import { createTreeView } from './ui/tree-view.js';
 
 /**
+ * @typedef {import('./types.js').Challenge} Challenge
  * @typedef {import('./types.js').NodeId} NodeId
  */
-
-/** お題の選択は後続の Issue で作る。それまでは最初の1体で遊ぶ */
-const challenge = CHALLENGES[0];
 
 /**
  * 「要素が見つからない」を例外にする。null のまま進むと、何も表示されないだけで原因に気づけないため
@@ -34,24 +32,63 @@ function requireElement(selector, type) {
 
 const messageElement = requireElement('#message', HTMLElement);
 
-/**
- * Pages のオリジンは daily-coding の全プロダクトで共有するので、プロダクト名を前置する。
- * お題を増やしたときに混ざらないよう、お題ごとに分ける
- */
-const STORAGE_KEY = `skill-tree-puzzle:build:${challenge.id}`;
+/** Pages のオリジンは daily-coding の全プロダクトで共有するので、保存キーにはプロダクト名を前置する */
+const SELECTED_CHALLENGE_KEY = 'skill-tree-puzzle:challenge';
 const STORAGE_UNAVAILABLE_MESSAGE = 'ビルドを保存できない環境です';
 const INVALID_SAVED_BUILD_MESSAGE = '保存したビルドが今のツリーでは組めないため、最初からにしました';
 
-/** @type {Set<NodeId>} */
-const owned = new Set([TREE.originId]);
+/**
+ * ビルドはお題ごとに組み直すので、保存もお題ごとに分ける
+ * @param {Challenge} target
+ */
+function buildStorageKey(target) {
+  return `skill-tree-puzzle:build:${target.id}`;
+}
+
+/**
+ * 保存が無い、読めない、または今は無いお題の ID なら、最初のお題から始める
+ * @returns {Challenge}
+ */
+function loadSelectedChallenge() {
+  /** @type {string | null} */
+  let savedId;
+  try {
+    savedId = localStorage.getItem(SELECTED_CHALLENGE_KEY);
+  } catch {
+    return CHALLENGES[0];
+  }
+  return CHALLENGES.find((candidate) => candidate.id === savedId) ?? CHALLENGES[0];
+}
 
 /**
  * プライベートブラウズや容量超過では localStorage が例外を投げる。保存できなくても遊べるようにする
  * @returns {boolean} 保存できたら true
  */
+function saveSelectedChallenge() {
+  try {
+    localStorage.setItem(SELECTED_CHALLENGE_KEY, challenge.id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+let challenge = loadSelectedChallenge();
+
+/** @type {Set<NodeId>} */
+const owned = new Set([TREE.originId]);
+
+function resetBuild() {
+  owned.clear();
+  owned.add(TREE.originId);
+}
+
+/**
+ * @returns {boolean} 保存できたら true
+ */
 function saveBuild() {
   try {
-    localStorage.setItem(STORAGE_KEY, serializeBuild(TREE, owned));
+    localStorage.setItem(buildStorageKey(challenge), serializeBuild(TREE, owned));
     return true;
   } catch {
     return false;
@@ -59,13 +96,15 @@ function saveBuild() {
 }
 
 /**
+ * 保存が無い・組めないときは起点だけから始める。お題を切り替えたときに、前のお題のビルドを持ち越さないため
  * @returns {string | null} 知らせることがあればその文言
  */
 function loadBuild() {
+  resetBuild();
   /** @type {string | null} */
   let raw;
   try {
-    raw = localStorage.getItem(STORAGE_KEY);
+    raw = localStorage.getItem(buildStorageKey(challenge));
   } catch {
     return STORAGE_UNAVAILABLE_MESSAGE;
   }
@@ -74,7 +113,6 @@ function loadBuild() {
     case 'none':
       return null;
     case 'restored':
-      owned.clear();
       restored.owned.forEach((id) => owned.add(id));
       return null;
     case 'invalid':
@@ -127,18 +165,32 @@ const logView = createLogView({
 
 const panel = createPanel(
   {
+    challengeSelect: requireElement('#challenge-select', HTMLSelectElement),
     challenge: requireElement('#challenge', HTMLElement),
     points: requireElement('#remaining-points', HTMLElement),
     challengeButton: requireElement('#challenge-button', HTMLButtonElement),
     resetButton: requireElement('#reset-button', HTMLButtonElement),
   },
+  CHALLENGES,
   {
+    onSelectChallenge(challengeId) {
+      const selected = CHALLENGES.find((candidate) => candidate.id === challengeId);
+      // 選択肢は CHALLENGES から作っているので、見つからなければ呼び出し側のバグ
+      if (selected === undefined) {
+        throw new Error(`存在しないお題です: ${challengeId}`);
+      }
+      challenge = selected;
+      const selectionSaved = saveSelectedChallenge();
+      const notice = loadBuild();
+      messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
+      logView.clear();
+      render();
+    },
     onChallenge() {
       logView.render(simulate(currentBuild(), challenge), challenge);
     },
     onReset() {
-      owned.clear();
-      owned.add(TREE.originId);
+      resetBuild();
       messageElement.textContent = saveBuild() ? '' : STORAGE_UNAVAILABLE_MESSAGE;
       logView.clear();
       render();
