@@ -52,14 +52,19 @@ test('お題が1つ以上あり、ID は重複しない', () => {
 
 test('お題の数値は妥当な範囲にある', () => {
   for (const challenge of CHALLENGES) {
-    for (const key of ['hp', 'turnLimit', 'points']) {
-      assert.ok(Number.isInteger(challenge[key]) && challenge[key] > 0, `${challenge.id}.${key}`);
-    }
-    for (const key of ['attack', 'counter']) {
-      assert.ok(Number.isInteger(challenge[key]) && challenge[key] >= 0, `${challenge.id}.${key}`);
-    }
-    for (const [element, reduction] of Object.entries(challenge.resistances)) {
-      assert.ok(reduction >= 0 && reduction <= 1, `${challenge.id}.resistances.${element}`);
-    }
+    assert.ok(Number.isInteger(challenge.points) && challenge.points > 0, `${challenge.id}.points`);
+    assert.ok(challenge.enemies.length > 0, `${challenge.id}.enemies`);
+    challenge.enemies.forEach((enemy, index) => {
+      const label = `${challenge.id}.enemies[${index}]`;
+      for (const key of ['hp', 'turnLimit']) {
+        assert.ok(Number.isInteger(enemy[key]) && enemy[key] > 0, `${label}.${key}`);
+      }
+      for (const key of ['attack', 'counter']) {
+        assert.ok(Number.isInteger(enemy[key]) && enemy[key] >= 0, `${label}.${key}`);
+      }
+      for (const [element, reduction] of Object.entries(enemy.resistances)) {
+        assert.ok(reduction >= 0 && reduction <= 1, `${label}.resistances.${element}`);
+      }
+    });
   }
 });

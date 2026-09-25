@@ -2,7 +2,7 @@
 
 import { canAcquire, canRelease } from './core/build.js';
 import { restoreBuild, serializeBuild } from './core/saved-build.js';
-import { createProfile, simulate } from './core/simulate.js';
+import { createProfile, simulateChallenge } from './core/simulate.js';
 import { CHALLENGES } from './data/challenges.js';
 import { TREE } from './data/tree.js';
 import { createBuildStatsView } from './ui/build-stats.js';
@@ -160,6 +160,8 @@ function toggleNode(nodeId) {
 const logView = createLogView({
   root: requireElement('#log', HTMLElement),
   summary: requireElement('#log-summary', HTMLElement),
+  tabs: requireElement('#log-tabs', HTMLElement),
+  enemySummary: requireElement('#log-enemy-summary', HTMLElement),
   entries: requireElement('#log-entries', HTMLOListElement),
 });
 
@@ -187,7 +189,7 @@ const panel = createPanel(
       render();
     },
     onChallenge() {
-      logView.render(simulate(currentBuild(), challenge), challenge);
+      logView.render(simulateChallenge(currentBuild(), challenge), challenge);
     },
     onReset() {
       resetBuild();

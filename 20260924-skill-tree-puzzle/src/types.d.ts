@@ -57,8 +57,8 @@ export interface SkillTree {
 /** 取得済みノード。起点を含む */
 export type Build = readonly SkillNode[];
 
-export interface Challenge {
-  readonly id: string;
+/** お題の敵1体ぶんの戦闘パラメータ。敵ごとの戦闘は独立で、自分の HP は毎回満タンから始まる */
+export interface Enemy {
   readonly name: string;
   readonly hp: number;
   readonly attack: number;
@@ -68,6 +68,13 @@ export interface Challenge {
   readonly resistances: Readonly<Partial<Record<ElementId, number>>>;
   /** このターン数を終えてもボスが残っていれば負け */
   readonly turnLimit: number;
+}
+
+/** 1つのビルドで、すべての敵に勝てばクリア */
+export interface Challenge {
+  readonly id: string;
+  readonly name: string;
+  readonly enemies: readonly Enemy[];
   /** 配布ポイント。起点は含まない */
   readonly points: number;
 }
@@ -101,6 +108,7 @@ export interface SimulationSummary {
   readonly turns: number;
   readonly bossHp: number;
   readonly playerHp: number;
+  readonly playerMaxHp: number;
   /** 勝ったときは null */
   readonly loseReason: LoseReason | null;
 }
