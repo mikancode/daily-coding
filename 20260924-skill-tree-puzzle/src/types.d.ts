@@ -99,3 +99,9 @@ export interface SimulationResult {
   readonly log: readonly LogEntry[];
   readonly summary: SimulationSummary;
 }
+
+/** 「保存が無い（none）」と「保存はあるが今のツリーでは組めない（invalid）」を区別する */
+export type RestoredBuild =
+  | { readonly status: 'none' }
+  | { readonly status: 'restored'; readonly owned: Set<NodeId> }
+  | { readonly status: 'invalid' };
