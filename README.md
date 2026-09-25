@@ -12,7 +12,7 @@
 | [🧩 One-Stroke Grid Puzzle](./20251226-one-stroke-puzzle/) | ハミルトンパスを題材にした一筆書きパズル | Next.js / TypeScript / Zustand | 💤 Paused |
 | [🎄 Digital Xmas Tree](./20251224-xmas-tree/) | 数学的なサンプリングで組み上げた 3D ツリー | Python / Plotly / NumPy | ✅ Done |
 | [🎵 utatane.fm](./20260901-utatane-fm/) | 毎回違う流れになる、チルBGM生成プレイヤー | Tone.js | 🚧 WIP |
-| [🌳 スキルツリー・パズル](./20260924-skill-tree-puzzle/) | 固定のスキルツリーにポイントを配ってビルドを組み、ボスを倒すパズル | JavaScript（ES Modules） | 🚧 WIP |
+| [🌳 スキルツリー・パズル](./20260924-skill-tree-puzzle/) | 固定のスキルツリーにポイントを配ってビルドを組み、ボスを倒すパズル | JavaScript（ES Modules） | 🟢 Live |
 
 > **Status の凡例**
 > 🟢 Live = 公開稼働中 ／ ✅ Done = 完成・凍結 ／ 💤 Paused = 開発中断 ／ 🚧 WIP = 開発中 ／ 🔀 Migrated = 独立リポジトリへ移行済み

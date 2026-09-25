@@ -7,7 +7,7 @@
 判定はターン制で、乱数を使いません。
 同じビルドなら必ず同じ結果になるので、負けた理由を考えて組み直す詰将棋のような遊び方になります。
 
-- **遊ぶ**: <https://mikancode.github.io/daily-coding/20260924-skill-tree-puzzle/>（UI の完成後に遊べるようになる予定）
+- **遊ぶ**: <https://mikancode.github.io/daily-coding/20260924-skill-tree-puzzle/>
 
 ## 🛠 Tech Stack
 
@@ -43,6 +43,7 @@ node 20260924-skill-tree-puzzle/scripts/verify.js
 │   ├── core/
 │   │   ├── build.js     # ノードを取得・解除できるかの判定
 │   │   ├── enumerate.js # 配布 pt で組めるビルドをすべて列挙する
+│   │   ├── saved-build.js # 保存したビルドの書き出しと、今のツリーで組めるかの確認
 │   │   └── simulate.js  # ビルドとお題から勝敗を決める
 │   ├── data/
 │   │   ├── tree.js        # スキルツリー（30ノード）
@@ -56,6 +57,16 @@ node 20260924-skill-tree-puzzle/scripts/verify.js
 │   └── verify.js   # お題ごとの総当たり検証
 └── tests/          # node --test で実行するテスト
 ```
+
+## 🕹 遊び方
+
+1. お題のボスの HP・攻撃・反撃・ターン上限を見る
+2. ノードをタップして取得する。取得済みのノードをもう一度タップすると外せる
+3. 「挑戦」を押し、戦闘ログで勝敗を確かめる
+4. 負けたら、ログから理由を読んで組み直す
+
+組んだビルドは、ノードを取得・解除するたびにブラウザへ保存されます。
+タブを閉じても、次に開いたときに続きから組めます。
 
 ## 🎮 ルール
 
@@ -76,4 +87,4 @@ node 20260924-skill-tree-puzzle/scripts/verify.js
 
 ## 状態
 
-🚧 進行中（お題1体の数値調整まで完成。保存はこれから）
+🟢 公開中（お題1体で1周遊べる）
