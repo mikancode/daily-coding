@@ -1,4 +1,5 @@
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -39,6 +40,17 @@ result = subprocess.run(
 licenses = json.loads(result.stdout)
 
 # -------------------------
+# Missing package detection
+# -------------------------
+def normalize_package_name(name: str) -> str:
+    # PEP 503 の正規化。requirements.txt の表記（My_Pkg）と pip-licenses の表記（my-pkg）を同一視する
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+# pip-licenses は未インストールのパッケージを出力から黙って落とすため、要求側と突き合わせる
+checked = {normalize_package_name(pkg["Name"]) for pkg in licenses}
+missing = [p for p in packages if normalize_package_name(p) not in checked]
+
+# -------------------------
 # License normalization
 # -------------------------
 def normalize_license_name(text: str) -> str:
@@ -71,6 +83,10 @@ for pkg in licenses:
 # -------------------------
 # 判定結果出力
 # -------------------------
+if missing:
+    print(f"🚫 LICENSE CHECK INCOMPLETE (未検査): {sorted(set(missing))}")
+    print("未インストールのためライセンスを検査していません")
+
 if black_hits:
     print(f"❌ LICENSE CHECK FAILED (BLACK): {sorted(set(black_hits))}")
     sys.exit(1)
@@ -81,6 +97,10 @@ if warn_hits:
 
 if white_hits:
     print(f"✅ LICENSE CHECK PASSED (WHITE): {sorted(set(white_hits))}")
+
+# 検査できていない依存がある状態で、不完全な NOTICE を作らない
+if missing:
+    sys.exit(1)
 
 # -------------------------
 # Generate THIRD-PARTY-NOTICES.md
