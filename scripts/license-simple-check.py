@@ -1,4 +1,5 @@
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -14,12 +15,17 @@ WHITELIST = ["MIT", "BSD", "APACHE-2.0"]
 # -------------------------
 # Load dependencies
 # -------------------------
+# 行頭のパッケージ名だけを取り出す。バージョン指定子・extras・環境マーカー・行末コメントを
+# 名前に残すと、pip-licenses の出力と突き合わせたときにインストール済みでも未検査と誤報する
+PACKAGE_NAME_PATTERN = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
+
 def load_requirements(path):
-    return [
-        line.split("==")[0].strip()
-        for line in Path(path).read_text().splitlines()
-        if line and not line.startswith("#")    #コメントアウトされたものは無視
-    ]
+    names = []
+    for line in Path(path).read_text().splitlines():
+        match = PACKAGE_NAME_PATTERN.match(line)
+        if match:    # 空行・コメント行は一致しない
+            names.append(match.group(1))
+    return names
 
 packages = load_requirements(REQUIREMENTS_FILE)
 if not packages:
@@ -37,6 +43,17 @@ result = subprocess.run(
     text=True
 )
 licenses = json.loads(result.stdout)
+
+# -------------------------
+# Missing package detection
+# -------------------------
+def normalize_package_name(name: str) -> str:
+    # PEP 503 の正規化。requirements.txt の表記（My_Pkg）と pip-licenses の表記（my-pkg）を同一視する
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+# pip-licenses は未インストールのパッケージを出力から黙って落とすため、要求側と突き合わせる
+checked = {normalize_package_name(pkg["Name"]) for pkg in licenses}
+missing = [p for p in packages if normalize_package_name(p) not in checked]
 
 # -------------------------
 # License normalization
@@ -71,6 +88,10 @@ for pkg in licenses:
 # -------------------------
 # 判定結果出力
 # -------------------------
+if missing:
+    print(f"🚫 LICENSE CHECK INCOMPLETE (未検査): {sorted(set(missing))}")
+    print("未インストールのためライセンスを検査していません")
+
 if black_hits:
     print(f"❌ LICENSE CHECK FAILED (BLACK): {sorted(set(black_hits))}")
     sys.exit(1)
@@ -81,6 +102,10 @@ if warn_hits:
 
 if white_hits:
     print(f"✅ LICENSE CHECK PASSED (WHITE): {sorted(set(white_hits))}")
+
+# 検査できていない依存がある状態で、不完全な NOTICE を作らない
+if missing:
+    sys.exit(1)
 
 # -------------------------
 # Generate THIRD-PARTY-NOTICES.md
