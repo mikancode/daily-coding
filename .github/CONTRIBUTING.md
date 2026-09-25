@@ -50,10 +50,10 @@ pip install pip-licenses
 python3 ../scripts/license-simple-check.py
 ```
 
-- 依存と `pip-licenses` を先にインストールした環境で実行する
-  （`pip-licenses` の出力に頼るため、未インストールの依存は検査されない。既知の制約は #67）
+- 依存と `pip-licenses` を先にインストールした環境で実行する。
+  未インストールの依存は検査できないため、「未検査」として列挙して失敗する（exit code 1）
 - GPL / AGPL / LGPL / MPL を検出すると失敗する（exit code 1）
-- 実行したフォルダに `THIRD-PARTY-NOTICES.md` が生成される
+- 失敗しなかったときだけ、実行したフォルダに `THIRD-PARTY-NOTICES.md` が生成される
 - npm の依存は対象外。検査されたと誤解しないこと
 
 ### Pages で公開する場合
