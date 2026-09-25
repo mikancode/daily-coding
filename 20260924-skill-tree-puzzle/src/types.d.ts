@@ -72,6 +72,17 @@ export interface Challenge {
   readonly points: number;
 }
 
+/** ビルドの効果を集計したもの。1発あたりのダメージは attack × ratio */
+export interface PlayerProfile {
+  maxHp: number;
+  attack: number;
+  defense: number;
+  hits: number;
+  ratio: number;
+  conditionals: ConditionalEffect[];
+  elements: Set<ElementId>;
+}
+
 export type LogEntry =
   | {
       readonly type: 'playerHit';
