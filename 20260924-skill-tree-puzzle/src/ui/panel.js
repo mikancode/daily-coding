@@ -25,16 +25,28 @@ function formatResistances(challenge) {
 }
 
 /**
- * お題の情報・残り pt・挑戦と全リセットのボタン。押したときの処理は呼び出し側が持つ
+ * お題の選択と情報・残り pt・挑戦と全リセットのボタン。選んだ・押したときの処理は呼び出し側が持つ
  * @param {{
+ *   challengeSelect: HTMLSelectElement,
  *   challenge: HTMLElement,
  *   points: HTMLElement,
  *   challengeButton: HTMLButtonElement,
  *   resetButton: HTMLButtonElement,
  * }} elements
- * @param {{ onChallenge: () => void, onReset: () => void }} handlers
+ * @param {readonly Challenge[]} challenges
+ * @param {{
+ *   onSelectChallenge: (challengeId: string) => void,
+ *   onChallenge: () => void,
+ *   onReset: () => void,
+ * }} handlers
  */
-export function createPanel(elements, handlers) {
+export function createPanel(elements, challenges, handlers) {
+  elements.challengeSelect.replaceChildren(
+    ...challenges.map((challenge) => new Option(challenge.name, challenge.id)),
+  );
+  elements.challengeSelect.addEventListener('change', () => {
+    handlers.onSelectChallenge(elements.challengeSelect.value);
+  });
   elements.challengeButton.addEventListener('click', handlers.onChallenge);
   elements.resetButton.addEventListener('click', handlers.onReset);
 
@@ -44,6 +56,7 @@ export function createPanel(elements, handlers) {
      * @param {number} remainingPoints
      */
     render(challenge, remainingPoints) {
+      elements.challengeSelect.value = challenge.id;
       elements.challenge.textContent =
         `${challenge.name}　HP ${challenge.hp} / 攻撃 ${challenge.attack} / 反撃 ${challenge.counter}` +
         ` / ${challenge.turnLimit}ターン以内${formatResistances(challenge)}`;

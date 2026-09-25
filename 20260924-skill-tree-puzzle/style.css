@@ -47,6 +47,19 @@ body {
   gap: 8px;
 }
 
+.challenge-select {
+  width: 100%;
+  min-height: var(--tap-min);
+  margin-top: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--color-edge);
+  border-radius: 8px;
+  background: var(--color-node);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: bold;
+}
+
 .challenge {
   margin: 4px 0 0;
   color: var(--color-muted);
