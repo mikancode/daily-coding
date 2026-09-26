@@ -5,16 +5,17 @@ import { ELEMENT_NAMES } from './element-names.js';
 /**
  * @typedef {import('../types.js').Challenge} Challenge
  * @typedef {import('../types.js').ElementId} ElementId
+ * @typedef {import('../types.js').Enemy} Enemy
  */
 
 const PERCENT = 100;
 
 /**
- * @param {Challenge} challenge
+ * @param {Enemy} enemy
  * @returns {string}
  */
-function formatResistances(challenge) {
-  const entries = /** @type {[ElementId, number][]} */ (Object.entries(challenge.resistances));
+function formatResistances(enemy) {
+  const entries = /** @type {[ElementId, number][]} */ (Object.entries(enemy.resistances));
   if (entries.length === 0) {
     return '';
   }
@@ -22,6 +23,17 @@ function formatResistances(challenge) {
     ([element, reduction]) => `${ELEMENT_NAMES[element]} ${Math.round(reduction * PERCENT)}%`,
   );
   return ` / 軽減：${parts.join('・')}`;
+}
+
+/**
+ * @param {Enemy} enemy
+ * @returns {string}
+ */
+function formatEnemy(enemy) {
+  return (
+    `${enemy.name}　HP ${enemy.hp} / 攻撃 ${enemy.attack} / 反撃 ${enemy.counter}` +
+    ` / ${enemy.turnLimit}ターン以内${formatResistances(enemy)}`
+  );
 }
 
 /**
@@ -57,9 +69,8 @@ export function createPanel(elements, challenges, handlers) {
      */
     render(challenge, remainingPoints) {
       elements.challengeSelect.value = challenge.id;
-      elements.challenge.textContent =
-        `${challenge.name}　HP ${challenge.hp} / 攻撃 ${challenge.attack} / 反撃 ${challenge.counter}` +
-        ` / ${challenge.turnLimit}ターン以内${formatResistances(challenge)}`;
+      // 敵ごとに1行。改行は CSS の white-space: pre-line で表示する
+      elements.challenge.textContent = challenge.enemies.map(formatEnemy).join('\n');
       elements.points.textContent = `残り ${remainingPoints} / ${challenge.points} pt`;
     },
   };

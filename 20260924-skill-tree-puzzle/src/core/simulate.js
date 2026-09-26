@@ -3,6 +3,7 @@
 /**
  * @typedef {import('../types.js').Build} Build
  * @typedef {import('../types.js').Challenge} Challenge
+ * @typedef {import('../types.js').Enemy} Enemy
  * @typedef {import('../types.js').ElementId} ElementId
  * @typedef {import('../types.js').LogEntry} LogEntry
  * @typedef {import('../types.js').LoseReason} LoseReason
@@ -67,9 +68,9 @@ export function createProfile(build) {
 }
 
 /**
- * 使える属性のうち、お題の軽減率が最も低いものを選ぶ。属性ノードを取って弱くなることはない
+ * 使える属性のうち、敵の軽減率が最も低いものを選ぶ。属性ノードを取って弱くなることはない
  * @param {Set<ElementId>} elements
- * @param {Challenge['resistances']} resistances
+ * @param {Enemy['resistances']} resistances
  * @returns {{ element: ElementId, reduction: number }}
  */
 function chooseElement(elements, resistances) {
@@ -111,17 +112,17 @@ function damageTaken(value, defense) {
 }
 
 /**
- * ビルドとお題から勝敗を決める。乱数を使わないので、同じ入力なら必ず同じ結果になる
+ * ビルドと敵1体から勝敗を決める。乱数を使わないので、同じ入力なら必ず同じ結果になる
  * @param {Build} build 取得済みノード。起点を含む（基礎ステータスは起点の効果で持つ）
- * @param {Challenge} challenge
+ * @param {Enemy} enemy
  * @returns {SimulationResult}
  */
-export function simulate(build, challenge) {
+export function simulate(build, enemy) {
   const profile = createProfile(build);
-  const { element, reduction } = chooseElement(profile.elements, challenge.resistances);
+  const { element, reduction } = chooseElement(profile.elements, enemy.resistances);
   /** @type {LogEntry[]} */
   const log = [];
-  let bossHp = challenge.hp;
+  let bossHp = enemy.hp;
   let playerHp = profile.maxHp;
 
   /**
@@ -132,10 +133,10 @@ export function simulate(build, challenge) {
   const finish = (turn, loseReason) => ({
     result: loseReason === null ? 'win' : 'lose',
     log,
-    summary: { turns: turn, bossHp, playerHp, loseReason },
+    summary: { turns: turn, bossHp, playerHp, playerMaxHp: profile.maxHp, loseReason },
   });
 
-  for (let turn = 1; turn <= challenge.turnLimit; turn++) {
+  for (let turn = 1; turn <= enemy.turnLimit; turn++) {
     for (let hit = 0; hit < profile.hits; hit++) {
       const raw =
         profile.attack * profile.ratio * (1 - reduction) * conditionalMultiplier(profile, playerHp);
@@ -146,8 +147,8 @@ export function simulate(build, challenge) {
         return finish(turn, null);
       }
 
-      if (challenge.counter > 0) {
-        const counterDamage = damageTaken(challenge.counter, profile.defense);
+      if (enemy.counter > 0) {
+        const counterDamage = damageTaken(enemy.counter, profile.defense);
         playerHp = Math.max(0, playerHp - counterDamage);
         log.push({ type: 'counter', turn, damage: counterDamage, playerHp });
         if (playerHp === 0) {
@@ -156,7 +157,7 @@ export function simulate(build, challenge) {
       }
     }
 
-    const attackDamage = damageTaken(challenge.attack, profile.defense);
+    const attackDamage = damageTaken(enemy.attack, profile.defense);
     playerHp = Math.max(0, playerHp - attackDamage);
     log.push({ type: 'bossAttack', turn, damage: attackDamage, playerHp });
     if (playerHp === 0) {
@@ -164,6 +165,26 @@ export function simulate(build, challenge) {
     }
   }
 
-  log.push({ type: 'turnLimit', turn: challenge.turnLimit });
-  return finish(challenge.turnLimit, 'turnLimit');
+  log.push({ type: 'turnLimit', turn: enemy.turnLimit });
+  return finish(enemy.turnLimit, 'turnLimit');
+}
+
+/**
+ * お題の敵それぞれと戦った結果を、敵の順に全員分返す。結果の画面で敵ごとの勝敗を並べるため
+ * @param {Build} build
+ * @param {Challenge} challenge
+ * @returns {SimulationResult[]}
+ */
+export function simulateChallenge(build, challenge) {
+  return challenge.enemies.map((enemy) => simulate(build, enemy));
+}
+
+/**
+ * すべての敵に勝てばクリア。総当たりで何度も呼ぶので、1体に負けた時点で残りの敵は判定しない
+ * @param {Build} build
+ * @param {Challenge} challenge
+ * @returns {boolean}
+ */
+export function clearsChallenge(build, challenge) {
+  return challenge.enemies.every((enemy) => simulate(build, enemy).result === 'win');
 }

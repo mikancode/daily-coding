@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { simulate } from '../src/core/simulate.js';
+import { clearsChallenge, simulate, simulateChallenge } from '../src/core/simulate.js';
 
 // 数値は実データ（#54 で調整する）に依存させず、テスト内で固定する
 
@@ -18,16 +18,17 @@ const LAST_STAND = node('last-stand', [
 
 /** @param {object} overrides */
 const challenge = (overrides) => ({
-  id: 'test',
-  name: 'テスト用のお題',
+  name: 'テスト用の敵',
   hp: 60,
   attack: 10,
   counter: 0,
   resistances: {},
   turnLimit: 10,
-  points: 10,
   ...overrides,
 });
+
+/** @param {object[]} enemies */
+const group = (enemies) => ({ id: 'test', name: 'テスト用のお題', enemies, points: 10 });
 
 describe('既知ケース', () => {
   test('マルチヒットはカウンターで負ける', () => {
@@ -54,7 +55,7 @@ describe('既知ケース', () => {
     // 2 ターン目の被弾で HP が半分になり、3・4 ターン目は 3 倍の 30 ダメージで押し切る
     const synergy = simulate([ORIGIN, LAST_STAND], boss);
     assert.equal(synergy.result, 'win');
-    assert.deepEqual(synergy.summary, { turns: 4, bossHp: 0, playerHp: 25, loseReason: null });
+    assert.deepEqual(synergy.summary, { turns: 4, bossHp: 0, playerHp: 25, playerMaxHp: 100, loseReason: null });
   });
 
   test('ターン上限を過ぎると、HP が残っていても負ける', () => {
@@ -62,7 +63,7 @@ describe('既知ケース', () => {
     const outcome = simulate([ORIGIN], boss);
 
     assert.equal(outcome.result, 'lose');
-    assert.deepEqual(outcome.summary, { turns: 3, bossHp: 970, playerHp: 100, loseReason: 'turnLimit' });
+    assert.deepEqual(outcome.summary, { turns: 3, bossHp: 970, playerHp: 100, playerMaxHp: 100, loseReason: 'turnLimit' });
     assert.deepEqual(outcome.log.at(-1), { type: 'turnLimit', turn: 3 });
   });
 });
@@ -76,7 +77,7 @@ describe('ターンの流れ', () => {
       { type: 'bossAttack', turn: 1, damage: 10, playerHp: 90 },
       { type: 'playerHit', turn: 2, element: 'physical', damage: 10, bossHp: 0 },
     ]);
-    assert.deepEqual(outcome.summary, { turns: 2, bossHp: 0, playerHp: 90, loseReason: null });
+    assert.deepEqual(outcome.summary, { turns: 2, bossHp: 0, playerHp: 90, playerMaxHp: 100, loseReason: null });
   });
 
   test('反撃は1発ごとに受ける', () => {
@@ -142,5 +143,33 @@ describe('属性と軽減率', () => {
     const outcome = simulate([ORIGIN, strong], challenge({ resistances: { physical: 0.9 } }));
 
     assert.equal(outcome.log[0].damage, 10);
+  });
+});
+
+describe('組のお題', () => {
+  // 起点だけのビルドは 10 ダメージ × 1 発・HP 100
+  const beatable = challenge({ hp: 20, attack: 10 });
+  const unbeatable = challenge({ hp: 1000, attack: 0, turnLimit: 1 });
+
+  test('全員に勝てば勝ち', () => {
+    assert.equal(clearsChallenge([ORIGIN], group([beatable, beatable])), true);
+  });
+
+  test('1体でも負ければ負け', () => {
+    assert.equal(clearsChallenge([ORIGIN], group([beatable, unbeatable])), false);
+    assert.equal(clearsChallenge([ORIGIN], group([unbeatable, beatable])), false);
+  });
+
+  test('敵ごとの結果を、お題の順に全員分返す', () => {
+    const results = simulateChallenge([ORIGIN], group([unbeatable, beatable]));
+    assert.deepEqual(
+      results.map((result) => result.result),
+      ['lose', 'win'],
+    );
+  });
+
+  test('敵ごとの戦闘は、自分の HP が満タンから始まる', () => {
+    const [first, second] = simulateChallenge([ORIGIN], group([beatable, beatable]));
+    assert.deepEqual(first.summary, second.summary);
   });
 });

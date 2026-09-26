@@ -4,7 +4,7 @@
 import { TREE } from '../src/data/tree.js';
 import { CHALLENGES } from '../src/data/challenges.js';
 import { enumerateBuilds } from '../src/core/enumerate.js';
-import { simulate } from '../src/core/simulate.js';
+import { clearsChallenge } from '../src/core/simulate.js';
 
 const nodesById = new Map(TREE.nodes.map((node) => [node.id, node]));
 
@@ -21,7 +21,7 @@ function verify(challenge) {
   for (const ids of enumerateBuilds(TREE, challenge.points)) {
     enumerated++;
     const build = ids.map((id) => nodesById.get(id));
-    if (simulate(build, challenge).result !== 'win') {
+    if (!clearsChallenge(build, challenge)) {
       continue;
     }
     cleared++;
