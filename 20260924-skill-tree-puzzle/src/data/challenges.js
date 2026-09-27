@@ -19,7 +19,8 @@ export const CHALLENGES = [
         name: '棘の番人',
         hp: 300,
         attack: 24,
-        counter: 10,
+        defense: 0,
+        abilities: [{ type: 'counter', damage: 10 }],
         resistances: {},
         turnLimit: 10,
       },
@@ -42,12 +43,34 @@ export const CHALLENGES = [
         name: '鋼殻の甲虫',
         hp: 140,
         attack: 26,
-        counter: 0,
+        defense: 0,
+        abilities: [],
         resistances: { physical: 0.6, fire: 0.6, ice: 0.6 },
         turnLimit: 10,
       },
     ],
     /** 想定解の 8 pt に、寄り道を1つ許す */
     points: 9,
+  },
+  {
+    id: 'swamp-lich',
+    name: '屍の沼竜',
+    enemies: [
+      /**
+       * ターン開始（再生）・ターン終了（毒）・致死時（食いしばり）の能力を確かめるための敵。
+       * 数値は仮で、倒しやすくしてある。想定解はまだ決めておらず、難度はあとで調整する
+       */
+      {
+        name: '屍の沼竜',
+        hp: 120,
+        attack: 16,
+        defense: 0,
+        abilities: [{ type: 'regen', amount: 8 }, { type: 'poison', damage: 5 }, { type: 'endure' }],
+        resistances: {},
+        turnLimit: 10,
+      },
+    ],
+    /** 最少クリアの 7 pt に、寄り道を1つ許す */
+    points: 8,
   },
 ];

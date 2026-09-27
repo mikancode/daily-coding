@@ -59,9 +59,10 @@ test('お題の数値は妥当な範囲にある', () => {
       for (const key of ['hp', 'turnLimit']) {
         assert.ok(Number.isInteger(enemy[key]) && enemy[key] > 0, `${label}.${key}`);
       }
-      for (const key of ['attack', 'counter']) {
+      for (const key of ['attack', 'defense']) {
         assert.ok(Number.isInteger(enemy[key]) && enemy[key] >= 0, `${label}.${key}`);
       }
+      assert.ok(Array.isArray(enemy.abilities), `${label}.abilities`);
       for (const [element, reduction] of Object.entries(enemy.resistances)) {
         assert.ok(reduction >= 0 && reduction <= 1, `${label}.resistances.${element}`);
       }

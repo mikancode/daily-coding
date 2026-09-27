@@ -1,5 +1,7 @@
 // @ts-check
 
+import { createEnemyProfile } from '../core/simulate.js';
+import { formatAbility, formatAttack } from './ability-names.js';
 import { ELEMENT_NAMES } from './element-names.js';
 
 /**
@@ -30,8 +32,12 @@ function formatResistances(enemy) {
  * @returns {string}
  */
 function formatEnemy(enemy) {
+  // 能力のステータス加算・連撃を含めた値を出す。判定と同じ集計を通し、表示と判定がずれないようにする
+  const profile = createEnemyProfile(enemy);
+  const abilities = enemy.abilities.map(formatAbility).filter((text) => text !== null);
   return (
-    `${enemy.name}　HP ${enemy.hp} / 攻撃 ${enemy.attack} / 反撃 ${enemy.counter}` +
+    `${enemy.name}　HP ${profile.maxHp} / ${formatAttack(profile)} / 防御 ${profile.defense}` +
+    (abilities.length === 0 ? '' : ` / ${abilities.join('・')}`) +
     ` / ${enemy.turnLimit}ターン以内${formatResistances(enemy)}`
   );
 }

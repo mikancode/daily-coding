@@ -6,7 +6,6 @@ import { CHALLENGES } from '../src/data/challenges.js';
 import { enumerateBuilds } from '../src/core/enumerate.js';
 import { clearsChallenge } from '../src/core/simulate.js';
 
-const nodesById = new Map(TREE.nodes.map((node) => [node.id, node]));
 
 /** @param {import('../src/types.js').Challenge} challenge */
 function verify(challenge) {
@@ -20,7 +19,9 @@ function verify(challenge) {
   let minimumSolutions = [];
   for (const ids of enumerateBuilds(TREE, challenge.points)) {
     enumerated++;
-    const build = ids.map((id) => nodesById.get(id));
+    // 列挙は取得順に返す。ローテーションは定義順で回るので、ツリーの定義順に並べ直す
+    const owned = new Set(ids);
+    const build = TREE.nodes.filter((node) => owned.has(node.id));
     if (!clearsChallenge(build, challenge)) {
       continue;
     }

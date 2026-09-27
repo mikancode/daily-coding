@@ -255,7 +255,6 @@ body {
   line-height: 1.6;
 }
 
-.log-entry.is-counter,
-.log-entry.is-bossAttack {
+.log-entry.is-taken {
   color: var(--color-muted);
 }

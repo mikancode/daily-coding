@@ -4,10 +4,10 @@ import { ELEMENT_NAMES } from './element-names.js';
 
 /**
  * @typedef {import('../types.js').Challenge} Challenge
- * @typedef {import('../types.js').Enemy} Enemy
  * @typedef {import('../types.js').LogEntry} LogEntry
  * @typedef {import('../types.js').LoseReason} LoseReason
  * @typedef {import('../types.js').SimulationResult} SimulationResult
+ * @typedef {import('../types.js').SimulationSummary} SimulationSummary
  */
 
 /** @type {Readonly<Record<LoseReason, string>>} */
@@ -19,32 +19,56 @@ const LOSE_REASONS = {
 /**
  * HP は「現在/最大」で出し、どれだけ削れたか・残ったかを割合でも掴めるようにする
  * @param {LogEntry} entry
- * @param {Enemy} enemy
- * @param {number} playerMaxHp
+ * @param {SimulationSummary} summary
  * @returns {string}
  */
-function formatEntry(entry, enemy, playerMaxHp) {
+function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
+  const bossHp = (/** @type {number} */ hp) => `ボス残り ${hp}/${bossMaxHp}`;
+  const playerHp = (/** @type {number} */ hp) => `残り HP ${hp}/${playerMaxHp}`;
+  const byPlayer = entry.type !== 'turnLimit' && entry.actor === 'player';
   switch (entry.type) {
-    case 'playerHit':
-      return `${entry.turn}T ${ELEMENT_NAMES[entry.element]}で ${entry.damage} ダメージ（ボス残り ${entry.bossHp}/${enemy.hp}）`;
+    case 'hit':
+      return byPlayer
+        ? `${entry.turn}T ${ELEMENT_NAMES[entry.element]}で ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
+        : `${entry.turn}T ボスの${ELEMENT_NAMES[entry.element]}攻撃で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`;
     case 'counter':
-      return `${entry.turn}T 反撃で ${entry.damage} ダメージ受けた（残り HP ${entry.playerHp}/${playerMaxHp}）`;
-    case 'bossAttack':
-      return `${entry.turn}T ボスの攻撃で ${entry.damage} ダメージ受けた（残り HP ${entry.playerHp}/${playerMaxHp}）`;
+      return byPlayer
+        ? `${entry.turn}T 反撃でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
+        : `${entry.turn}T 反撃で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`;
+    case 'poison':
+      return byPlayer
+        ? `${entry.turn}T 毒でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
+        : `${entry.turn}T ボスの毒で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`;
+    case 'regen':
+      return byPlayer
+        ? `${entry.turn}T 再生で ${entry.amount} 回復（${playerHp(entry.hp)}）`
+        : `${entry.turn}T ボスが再生で ${entry.amount} 回復（${bossHp(entry.hp)}）`;
+    case 'endure':
+      return byPlayer
+        ? `${entry.turn}T 食いしばりで踏みとどまった（${playerHp(entry.hp)}）`
+        : `${entry.turn}T ボスが食いしばりで踏みとどまった（${bossHp(entry.hp)}）`;
     case 'turnLimit':
       return `${entry.turn}ターンが過ぎた`;
   }
 }
 
 /**
+ * 自分がダメージを受けた行は、与えた行と見分けられるよう目立たせない
+ * @param {LogEntry} entry
+ * @returns {boolean}
+ */
+function isDamageTaken(entry) {
+  return (entry.type === 'hit' || entry.type === 'counter' || entry.type === 'poison') && entry.actor === 'boss';
+}
+
+/**
  * @param {SimulationResult} result
- * @param {Enemy} enemy
  * @returns {string}
  */
-function formatSummary(result, enemy) {
-  const { turns, bossHp, loseReason } = result.summary;
+function formatSummary(result) {
+  const { turns, bossHp, bossMaxHp, loseReason } = result.summary;
   const outcome = loseReason === null ? '勝利！' : `敗北（${LOSE_REASONS[loseReason]}）`;
-  return `${outcome}　ボスの残り HP ${bossHp} / ${enemy.hp}・${turns}ターン経過`;
+  return `${outcome}　ボスの残り HP ${bossHp} / ${bossMaxHp}・${turns}ターン経過`;
 }
 
 /**
@@ -70,16 +94,13 @@ function formatOverallSummary(results) {
  * }} elements
  */
 export function createLogView(elements) {
-  /**
-   * @param {SimulationResult} result
-   * @param {Enemy} enemy
-   */
-  function renderEntries(result, enemy) {
+  /** @param {SimulationResult} result */
+  function renderEntries(result) {
     elements.entries.replaceChildren(
       ...result.log.map((entry) => {
         const item = document.createElement('li');
-        item.textContent = formatEntry(entry, enemy, result.summary.playerMaxHp);
-        item.className = `log-entry is-${entry.type}`;
+        item.textContent = formatEntry(entry, result.summary);
+        item.className = `log-entry is-${entry.type}${isDamageTaken(entry) ? ' is-taken' : ''}`;
         return item;
       }),
     );
@@ -87,17 +108,15 @@ export function createLogView(elements) {
 
   /**
    * @param {readonly SimulationResult[]} results
-   * @param {Challenge} challenge
    * @param {number} index
    * @param {readonly HTMLButtonElement[]} tabs
    */
-  function selectEnemy(results, challenge, index, tabs) {
+  function selectEnemy(results, index, tabs) {
     const result = results[index];
-    const enemy = challenge.enemies[index];
     tabs.forEach((tab, tabIndex) => tab.setAttribute('aria-selected', String(tabIndex === index)));
-    elements.enemySummary.textContent = formatSummary(result, enemy);
+    elements.enemySummary.textContent = formatSummary(result);
     elements.enemySummary.classList.toggle('is-win', result.result === 'win');
-    renderEntries(result, enemy);
+    renderEntries(result);
   }
 
   return {
@@ -119,17 +138,17 @@ export function createLogView(elements) {
           tab.setAttribute('role', 'tab');
           tab.className = `log-tab${results[index].result === 'win' ? ' is-win' : ''}`;
           tab.textContent = `${enemy.name} ${results[index].result === 'win' ? '勝利' : '敗北'}`;
-          tab.addEventListener('click', () => selectEnemy(results, challenge, index, tabs));
+          tab.addEventListener('click', () => selectEnemy(results, index, tabs));
           return tab;
         });
         elements.tabs.replaceChildren(...tabs);
         // 組み直す手がかりになるよう、負けた敵があれば最初に負けた敵から見せる
         const firstLost = results.findIndex((result) => result.result === 'lose');
-        selectEnemy(results, challenge, firstLost === -1 ? 0 : firstLost, tabs);
+        selectEnemy(results, firstLost === -1 ? 0 : firstLost, tabs);
       } else {
-        elements.summary.textContent = formatSummary(results[0], challenge.enemies[0]);
+        elements.summary.textContent = formatSummary(results[0]);
         elements.tabs.replaceChildren();
-        renderEntries(results[0], challenge.enemies[0]);
+        renderEntries(results[0]);
       }
       elements.root.hidden = false;
       elements.root.scrollIntoView({ behavior: 'smooth', block: 'start' });
