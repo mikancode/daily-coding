@@ -1,23 +1,10 @@
 // @ts-check
 
-import { formatConditional, formatRotation } from './ability-names.js';
+import { formatAttack, formatConditional, formatRotation } from './ability-names.js';
 
 /**
  * @typedef {import('../types.js').CombatantProfile} CombatantProfile
  */
-
-const SINGLE_HIT = 1;
-
-/**
- * 1発の威力は丸めずに出す。判定の floor は軽減と条件の倍率を掛けたあとに行うので、
- * ここで丸めるとログのダメージと合わなくなる
- * @param {CombatantProfile} profile
- * @returns {string}
- */
-function formatAttack(profile) {
-  const perHit = profile.attack * profile.ratio;
-  return profile.hits === SINGLE_HIT ? `攻撃 ${perHit}` : `攻撃 ${perHit} × ${profile.hits}回`;
-}
 
 /**
  * @param {CombatantProfile} profile

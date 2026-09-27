@@ -157,6 +157,8 @@ export interface SimulationSummary {
   readonly bossHp: number;
   readonly playerHp: number;
   readonly playerMaxHp: number;
+  /** 能力の HP 加算を含めた最大 HP。Enemy.hp とは限らない */
+  readonly bossMaxHp: number;
   /** 勝ったときは null */
   readonly loseReason: LoseReason | null;
 }

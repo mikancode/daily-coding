@@ -284,6 +284,7 @@ export function simulate(build, enemy) {
         bossHp: boss.hp,
         playerHp: player.hp,
         playerMaxHp: player.profile.maxHp,
+        bossMaxHp: boss.profile.maxHp,
         loseReason,
       },
     };

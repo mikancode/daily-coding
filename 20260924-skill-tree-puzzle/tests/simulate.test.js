@@ -56,7 +56,7 @@ describe('既知ケース', () => {
     // 2 ターン目の被弾で HP が半分になり、3・4 ターン目は 3 倍の 30 ダメージで押し切る
     const synergy = simulate([ORIGIN, LAST_STAND], boss);
     assert.equal(synergy.result, 'win');
-    assert.deepEqual(synergy.summary, { turns: 4, bossHp: 0, playerHp: 25, playerMaxHp: 100, loseReason: null });
+    assert.deepEqual(synergy.summary, { turns: 4, bossHp: 0, playerHp: 25, playerMaxHp: 100, bossMaxHp: 80, loseReason: null });
   });
 
   test('ターン上限を過ぎると、HP が残っていても負ける', () => {
@@ -64,7 +64,7 @@ describe('既知ケース', () => {
     const outcome = simulate([ORIGIN], boss);
 
     assert.equal(outcome.result, 'lose');
-    assert.deepEqual(outcome.summary, { turns: 3, bossHp: 970, playerHp: 100, playerMaxHp: 100, loseReason: 'turnLimit' });
+    assert.deepEqual(outcome.summary, { turns: 3, bossHp: 970, playerHp: 100, playerMaxHp: 100, bossMaxHp: 1000, loseReason: 'turnLimit' });
     assert.deepEqual(outcome.log.at(-1), { type: 'turnLimit', turn: 3 });
   });
 });
@@ -78,7 +78,7 @@ describe('ターンの流れ', () => {
       { type: 'hit', actor: 'boss', turn: 1, element: 'physical', damage: 10, targetHp: 90 },
       { type: 'hit', actor: 'player', turn: 2, element: 'physical', damage: 10, targetHp: 0 },
     ]);
-    assert.deepEqual(outcome.summary, { turns: 2, bossHp: 0, playerHp: 90, playerMaxHp: 100, loseReason: null });
+    assert.deepEqual(outcome.summary, { turns: 2, bossHp: 0, playerHp: 90, playerMaxHp: 100, bossMaxHp: 20, loseReason: null });
   });
 
   test('反撃は1発ごとに受ける', () => {

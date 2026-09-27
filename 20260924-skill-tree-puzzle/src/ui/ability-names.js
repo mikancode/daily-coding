@@ -3,12 +3,25 @@
 import { ELEMENT_NAMES } from './element-names.js';
 
 /**
+ * @typedef {import('../types.js').CombatantProfile} CombatantProfile
  * @typedef {import('../types.js').ConditionalEffect} ConditionalEffect
  * @typedef {import('../types.js').ElementId} ElementId
  * @typedef {import('../types.js').Effect} Effect
  */
 
 const PERCENT = 100;
+const SINGLE_HIT = 1;
+
+/**
+ * 1発の威力は丸めずに出す。判定の floor は軽減と条件の倍率を掛けたあとに行うので、
+ * ここで丸めるとログのダメージと合わなくなる
+ * @param {CombatantProfile} profile
+ * @returns {string}
+ */
+export function formatAttack(profile) {
+  const perHit = profile.attack * profile.ratio;
+  return profile.hits === SINGLE_HIT ? `攻撃 ${perHit}` : `攻撃 ${perHit} × ${profile.hits}回`;
+}
 
 /**
  * @param {ConditionalEffect} conditional
@@ -31,7 +44,7 @@ export function formatRotation(rotation) {
 }
 
 /**
- * 敵の能力の一覧に出す。ステータスの加算と連撃は、敵では基礎ステータスとして書くので出さない
+ * 敵の能力の一覧に出す。ステータスの加算と連撃は、HP・攻撃・防御の表示に含めるので出さない
  * @param {Effect} effect
  * @returns {string | null}
  */
