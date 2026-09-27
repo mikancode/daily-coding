@@ -55,6 +55,8 @@ node 20260924-skill-tree-puzzle/scripts/verify.js
 │       ├── build-stats.js    # 組んだビルドのステータスの表示
 │       ├── ability-names.js  # 能力・ローテーションの表示
 │       └── element-names.js  # 属性の表示名
+├── docs/
+│   └── design.md   # 設計の前提と判断の理由（開発者向け）
 ├── scripts/
 │   └── verify.js   # お題ごとの総当たり検証
 └── tests/          # node --test で実行するテスト
@@ -88,12 +90,9 @@ node 20260924-skill-tree-puzzle/scripts/verify.js
 - お題のボスが複数いるときは、同じビルドでボス1体ずつと戦い、すべてに勝てばクリア。
   戦うたびに自分の HP は満タンに戻る
 
-## 設計上の制約
+## 設計
 
-- GitHub Pages ではサブパスで配信されるため、import・CSS・リンクはすべて相対パスで書く
-- Pages は Jekyll を通すため、`_` で始まるファイル名・フォルダ名は使わない
-- データは `.json` ではなく、定数を export する `.js` にする。
-  JSON の import attributes は古い iOS Safari で動かず、fetch だと非同期の初期化が要るため
+設計の前提・戦闘モデル・能力を足す手順・判断の理由は [docs/design.md](docs/design.md) にまとめている。
 
 ## 状態
 
