@@ -24,16 +24,42 @@ const LOSE_REASONS = {
  * @returns {string}
  */
 function formatEntry(entry, enemy, playerMaxHp) {
+  const bossHp = (/** @type {number} */ hp) => `ボス残り ${hp}/${enemy.hp}`;
+  const playerHp = (/** @type {number} */ hp) => `残り HP ${hp}/${playerMaxHp}`;
+  const byPlayer = entry.type !== 'turnLimit' && entry.actor === 'player';
   switch (entry.type) {
-    case 'playerHit':
-      return `${entry.turn}T ${ELEMENT_NAMES[entry.element]}で ${entry.damage} ダメージ（ボス残り ${entry.bossHp}/${enemy.hp}）`;
+    case 'hit':
+      return byPlayer
+        ? `${entry.turn}T ${ELEMENT_NAMES[entry.element]}で ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
+        : `${entry.turn}T ボスの${ELEMENT_NAMES[entry.element]}攻撃で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`;
     case 'counter':
-      return `${entry.turn}T 反撃で ${entry.damage} ダメージ受けた（残り HP ${entry.playerHp}/${playerMaxHp}）`;
-    case 'bossAttack':
-      return `${entry.turn}T ボスの攻撃で ${entry.damage} ダメージ受けた（残り HP ${entry.playerHp}/${playerMaxHp}）`;
+      return byPlayer
+        ? `${entry.turn}T 反撃でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
+        : `${entry.turn}T 反撃で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`;
+    case 'poison':
+      return byPlayer
+        ? `${entry.turn}T 毒でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
+        : `${entry.turn}T ボスの毒で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`;
+    case 'regen':
+      return byPlayer
+        ? `${entry.turn}T 再生で ${entry.amount} 回復（${playerHp(entry.hp)}）`
+        : `${entry.turn}T ボスが再生で ${entry.amount} 回復（${bossHp(entry.hp)}）`;
+    case 'endure':
+      return byPlayer
+        ? `${entry.turn}T 食いしばりで踏みとどまった（${playerHp(entry.hp)}）`
+        : `${entry.turn}T ボスが食いしばりで踏みとどまった（${bossHp(entry.hp)}）`;
     case 'turnLimit':
       return `${entry.turn}ターンが過ぎた`;
   }
+}
+
+/**
+ * 自分がダメージを受けた行は、与えた行と見分けられるよう目立たせない
+ * @param {LogEntry} entry
+ * @returns {boolean}
+ */
+function isDamageTaken(entry) {
+  return (entry.type === 'hit' || entry.type === 'counter' || entry.type === 'poison') && entry.actor === 'boss';
 }
 
 /**
@@ -79,7 +105,7 @@ export function createLogView(elements) {
       ...result.log.map((entry) => {
         const item = document.createElement('li');
         item.textContent = formatEntry(entry, enemy, result.summary.playerMaxHp);
-        item.className = `log-entry is-${entry.type}`;
+        item.className = `log-entry is-${entry.type}${isDamageTaken(entry) ? ' is-taken' : ''}`;
         return item;
       }),
     );

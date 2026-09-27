@@ -1,5 +1,6 @@
 // @ts-check
 
+import { formatAbility } from './ability-names.js';
 import { ELEMENT_NAMES } from './element-names.js';
 
 /**
@@ -30,8 +31,10 @@ function formatResistances(enemy) {
  * @returns {string}
  */
 function formatEnemy(enemy) {
+  const abilities = enemy.abilities.map(formatAbility).filter((text) => text !== null);
   return (
-    `${enemy.name}　HP ${enemy.hp} / 攻撃 ${enemy.attack} / 反撃 ${enemy.counter}` +
+    `${enemy.name}　HP ${enemy.hp} / 攻撃 ${enemy.attack} / 防御 ${enemy.defense}` +
+    (abilities.length === 0 ? '' : ` / ${abilities.join('・')}`) +
     ` / ${enemy.turnLimit}ターン以内${formatResistances(enemy)}`
   );
 }

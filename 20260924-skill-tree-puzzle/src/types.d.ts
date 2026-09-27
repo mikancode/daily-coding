@@ -27,12 +27,45 @@ export interface ConditionalEffect {
   readonly damageMultiplier: number;
 }
 
+/** 周期スキル。ローテーションで回ってきたターンは、連撃の全段がこの属性になる */
 export interface ElementEffect {
   readonly type: 'element';
   readonly element: ElementId;
 }
 
-export type Effect = StatEffect | MultiHitEffect | ConditionalEffect | ElementEffect;
+/** 被弾時。相手の攻撃を1発受けるごとに、damage − 相手の防御 を返す */
+export interface CounterEffect {
+  readonly type: 'counter';
+  readonly damage: number;
+}
+
+/** ターン開始時。自分の HP を amount 回復する。最大 HP は超えない */
+export interface RegenEffect {
+  readonly type: 'regen';
+  readonly amount: number;
+}
+
+/** ターン終了時。相手に、防御を無視して damage を与える */
+export interface PoisonEffect {
+  readonly type: 'poison';
+  readonly damage: number;
+}
+
+/** 致死時。戦闘中に1回だけ、HP が0になるダメージを受けても HP 1 で踏みとどまる */
+export interface EndureEffect {
+  readonly type: 'endure';
+}
+
+/** 能力。ツリーのノードと敵の両方が同じ定義で持つ */
+export type Effect =
+  | StatEffect
+  | MultiHitEffect
+  | ConditionalEffect
+  | ElementEffect
+  | CounterEffect
+  | RegenEffect
+  | PoisonEffect
+  | EndureEffect;
 
 /** 表示位置。単位はグリッドのマス目で、画面上の大きさへの換算は描画側で行う */
 export interface GridPosition {
@@ -54,7 +87,7 @@ export interface SkillTree {
   readonly edges: readonly (readonly [NodeId, NodeId])[];
 }
 
-/** 取得済みノード。起点を含む */
+/** 取得済みノード。起点を含む。ローテーションの順になるので、ツリーの定義順に並べる */
 export type Build = readonly SkillNode[];
 
 /** お題の敵1体ぶんの戦闘パラメータ。敵ごとの戦闘は独立で、自分の HP は毎回満タンから始まる */
@@ -62,8 +95,9 @@ export interface Enemy {
   readonly name: string;
   readonly hp: number;
   readonly attack: number;
-  /** 被弾1回ごとに返してくる反撃のダメージ。0 なら反撃しない */
-  readonly counter: number;
+  readonly defense: number;
+  /** 周期スキルは、この並び順でローテーションに入る */
+  readonly abilities: readonly Effect[];
   /** 属性ごとの軽減率（0〜1）。1 なら無効、0.5 なら半減。書いていない属性は軽減しない */
   readonly resistances: Readonly<Partial<Record<ElementId, number>>>;
   /** このターン数を終えてもボスが残っていれば負け */
@@ -79,27 +113,41 @@ export interface Challenge {
   readonly points: number;
 }
 
-/** ビルドの効果を集計したもの。1発あたりのダメージは attack × ratio */
-export interface PlayerProfile {
+/** 戦う側の能力を集計したもの。敵と味方で同じ形。1発あたりのダメージは attack × ratio */
+export interface CombatantProfile {
   maxHp: number;
   attack: number;
   defense: number;
   hits: number;
   ratio: number;
   conditionals: ConditionalEffect[];
-  elements: Set<ElementId>;
+  /** 周期スキルの属性を、ローテーションの順に並べたもの。空なら毎ターン物理 */
+  rotation: ElementId[];
+  /** 反撃のダメージの合計。0 なら反撃しない */
+  counter: number;
+  regen: number;
+  poison: number;
+  endure: boolean;
+  /** 味方は属性の軽減を持たないので空 */
+  resistances: Readonly<Partial<Record<ElementId, number>>>;
 }
 
+export type Actor = 'player' | 'boss';
+
+/** actor は行動した側。HP は行動を受けた側（regen・endure は自分）の残り */
 export type LogEntry =
   | {
-      readonly type: 'playerHit';
+      readonly type: 'hit';
+      readonly actor: Actor;
       readonly turn: number;
       readonly element: ElementId;
       readonly damage: number;
-      readonly bossHp: number;
+      readonly targetHp: number;
     }
-  | { readonly type: 'counter'; readonly turn: number; readonly damage: number; readonly playerHp: number }
-  | { readonly type: 'bossAttack'; readonly turn: number; readonly damage: number; readonly playerHp: number }
+  | { readonly type: 'counter'; readonly actor: Actor; readonly turn: number; readonly damage: number; readonly targetHp: number }
+  | { readonly type: 'poison'; readonly actor: Actor; readonly turn: number; readonly damage: number; readonly targetHp: number }
+  | { readonly type: 'regen'; readonly actor: Actor; readonly turn: number; readonly amount: number; readonly hp: number }
+  | { readonly type: 'endure'; readonly actor: Actor; readonly turn: number; readonly hp: number }
   | { readonly type: 'turnLimit'; readonly turn: number };
 
 export type LoseReason = 'defeated' | 'turnLimit';
