@@ -8,6 +8,8 @@
 const HP_STEP = 10;
 const ATTACK_STEP = 1;
 const DEFENSE_STEP = 1;
+/** 連撃の回数はターンごとにログを積むので、大きすぎる値で画面が固まらないよう上限を置く */
+const MAX_MULTI_HITS = 100;
 
 /** @param {string} name @param {string} label @param {'hp' | 'attack' | 'defense'} stat @param {number} step @returns {AbilityDefinition} */
 const statAbility = (name, label, stat, step) => ({
@@ -41,7 +43,10 @@ export const ABILITIES = [
     label: '連撃',
     group: 'ability',
     defaults: [2, 0.5],
-    check: ([hits]) => (Number.isInteger(hits) && hits >= 1 ? null : '連撃の回数は1以上の整数にしてください'),
+    check: ([hits]) =>
+      Number.isInteger(hits) && hits >= 1 && hits <= MAX_MULTI_HITS
+        ? null
+        : `連撃の回数は1以上${MAX_MULTI_HITS}以下の整数にしてください`,
     build: (hits, ratio) => ({ type: 'multiHit', hits, ratio }),
   },
   {

@@ -118,6 +118,17 @@ describe('不正な書式', () => {
     assert.equal(errorsOf('Multi1.5:0.5')[0].word, 'Multi1.5:0.5');
   });
 
+  test('連撃の回数が大きすぎるとエラーにする', () => {
+    assert.equal(parseAbilities('Multi100:0.01').ok, true);
+    assert.equal(errorsOf('Multi101:0.01')[0].word, 'Multi101:0.01');
+    assert.equal(errorsOf('Multi99999999:1')[0].word, 'Multi99999999:1');
+  });
+
+  test('負の数はエラーにする', () => {
+    assert.equal(errorsOf('HP-100')[0].word, 'HP-100');
+    assert.equal(errorsOf('Poison-5')[0].word, 'Poison-5');
+  });
+
   test('空の語と、空の入力はエラーにする', () => {
     assert.equal(errorsOf('HP10,,ATK1').length, 1);
     assert.equal(errorsOf('').length, 1);

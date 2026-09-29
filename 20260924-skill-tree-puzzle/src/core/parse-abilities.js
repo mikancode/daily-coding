@@ -10,7 +10,7 @@ import { findAbility } from './ability-table.js';
 const WORD_SEPARATOR = ',';
 const ARGUMENT_SEPARATOR = ':';
 const WORD_PATTERN = /^([A-Za-z]+)(.*)$/;
-const NUMBER_PATTERN = /^-?\d+(\.\d+)?$/;
+const NUMBER_PATTERN = /^\d+(\.\d+)?$/;
 
 /**
  * 1語を Effect にする。書式が不正なら理由を返す
