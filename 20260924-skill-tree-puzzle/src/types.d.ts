@@ -90,7 +90,7 @@ export interface SkillTree {
 /** 取得済みノード。起点を含む。ローテーションの順になるので、ツリーの定義順に並べる */
 export type Build = readonly SkillNode[];
 
-/** お題の敵1体ぶんの戦闘パラメータ。敵ごとの戦闘は独立で、自分の HP は毎回満タンから始まる */
+/** お題の敵1体ぶんの戦闘パラメータ。戦闘ごとに自分の HP は満タンから始まり、持ち越すのは報酬だけ */
 export interface Enemy {
   readonly name: string;
   readonly hp: number;
@@ -102,12 +102,21 @@ export interface Enemy {
   readonly resistances: Readonly<Partial<Record<ElementId, number>>>;
   /** このターン数を終えてもボスが残っていれば負け */
   readonly turnLimit: number;
+  /** 連戦で倒したときに、味方の能力として足す。敵自身の能力とは別の数値で、省略は報酬なし */
+  readonly reward?: readonly Effect[];
 }
 
-/** 1つのビルドで、すべての敵に勝てばクリア */
+/**
+ * independent：1つのビルドで、すべての敵に独立に勝てばクリア。
+ * sequence：敵を1体ずつ好きな順に倒し、倒すたびに報酬を得る。ある順番で全員に勝てればクリア
+ */
+export type ChallengeMode = 'independent' | 'sequence';
+
 export interface Challenge {
   readonly id: string;
   readonly name: string;
+  /** 省略は independent */
+  readonly mode?: ChallengeMode;
   readonly enemies: readonly Enemy[];
   /** 配布ポイント。起点は含まない */
   readonly points: number;
@@ -167,6 +176,16 @@ export interface SimulationResult {
   readonly result: 'win' | 'lose';
   readonly log: readonly LogEntry[];
   readonly summary: SimulationSummary;
+}
+
+/** 連戦の進行。画面のメモリだけで持ち、保存しない */
+export interface SequenceProgress {
+  /** 倒した敵の challenge.enemies での位置。倒した順 */
+  readonly defeated: readonly number[];
+  /** 倒した順に足した報酬 */
+  readonly rewards: readonly Effect[];
+  /** 1戦でも戦ったら true。勝敗によらず、やり直すまでビルドを変えられない */
+  readonly started: boolean;
 }
 
 /** 「保存が無い（none）」と「保存はあるが今のツリーでは組めない（invalid）」を区別する */

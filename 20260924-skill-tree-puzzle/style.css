@@ -199,10 +199,34 @@ body {
   font-weight: bold;
 }
 
+.sequence {
+  display: grid;
+  gap: 8px;
+}
+.sequence[hidden] {
+  display: none;
+}
+.sequence-status {
+  margin: 0;
+  font-size: 0.875rem;
+  white-space: pre-line;
+}
+.sequence-enemies {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
 .button.is-primary {
   border-color: var(--color-accent);
   background: var(--color-accent);
   color: var(--color-bg);
+}
+
+.button:disabled,
+.button.is-primary:disabled {
+  border-color: var(--color-edge);
+  background: var(--color-node);
+  color: var(--color-muted);
 }
 
 /* ログへ自動スクロールしたとき、見出しが画面の上端に貼り付かないようにする */

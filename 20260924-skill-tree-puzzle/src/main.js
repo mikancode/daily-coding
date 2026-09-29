@@ -2,7 +2,7 @@
 
 import { canAcquire, canRelease } from './core/build.js';
 import { restoreBuild, serializeBuild } from './core/saved-build.js';
-import { createProfile, simulateChallenge } from './core/simulate.js';
+import { createProfile, simulate, simulateChallenge } from './core/simulate.js';
 import { CHALLENGES } from './data/challenges.js';
 import { TREE } from './data/tree.js';
 import { createBuildStatsView } from './ui/build-stats.js';
@@ -13,6 +13,7 @@ import { createTreeView } from './ui/tree-view.js';
 /**
  * @typedef {import('./types.js').Challenge} Challenge
  * @typedef {import('./types.js').NodeId} NodeId
+ * @typedef {import('./types.js').SequenceProgress} SequenceProgress
  */
 
 /**
@@ -35,6 +36,7 @@ const messageElement = requireElement('#message', HTMLElement);
 /** Pages のオリジンは daily-coding の全プロダクトで共有するので、保存キーにはプロダクト名を前置する */
 const SELECTED_CHALLENGE_KEY = 'skill-tree-puzzle:challenge';
 const STORAGE_UNAVAILABLE_MESSAGE = 'ビルドを保存できない環境です';
+const BUILD_LOCKED_MESSAGE = '連戦中はビルドを変えられません。変えるなら「1体目からやり直す」を押してください';
 const INVALID_SAVED_BUILD_MESSAGE = '保存したビルドが今のツリーでは組めないため、最初からにしました';
 
 /**
@@ -121,6 +123,21 @@ function loadBuild() {
   }
 }
 
+/**
+ * 連戦の進行は保存しない（保存するのはビルドだけ）。連戦のお題でなければ null
+ * @type {SequenceProgress | null}
+ */
+let progress = null;
+
+function resetProgress() {
+  progress = challenge.mode === 'sequence' ? { defeated: [], rewards: [], started: false } : null;
+}
+
+/** 連戦中にビルドを組み直せると、各戦闘を単体のお題として解けてしまうため、1戦でも戦ったら変えられない */
+function isBuildLocked() {
+  return progress !== null && progress.started;
+}
+
 /** 1ノード1pt。起点は最初から持っているので数えない */
 function remainingPoints() {
   return challenge.points - (owned.size - 1);
@@ -137,6 +154,9 @@ function currentBuild() {
  * @returns {string | null} 取得・解除できたら null
  */
 function toggleNode(nodeId) {
+  if (isBuildLocked()) {
+    return BUILD_LOCKED_MESSAGE;
+  }
   if (owned.has(nodeId)) {
     if (nodeId === TREE.originId) {
       return '起点は外せません';
@@ -172,6 +192,10 @@ const panel = createPanel(
     points: requireElement('#remaining-points', HTMLElement),
     challengeButton: requireElement('#challenge-button', HTMLButtonElement),
     resetButton: requireElement('#reset-button', HTMLButtonElement),
+    sequence: requireElement('#sequence', HTMLElement),
+    sequenceStatus: requireElement('#sequence-status', HTMLElement),
+    sequenceEnemies: requireElement('#sequence-enemies', HTMLElement),
+    sequenceRestartButton: requireElement('#sequence-restart-button', HTMLButtonElement),
   },
   CHALLENGES,
   {
@@ -182,6 +206,7 @@ const panel = createPanel(
         throw new Error(`存在しないお題です: ${challengeId}`);
       }
       challenge = selected;
+      resetProgress();
       const selectionSaved = saveSelectedChallenge();
       const notice = loadBuild();
       messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
@@ -191,7 +216,41 @@ const panel = createPanel(
     onChallenge() {
       logView.render(simulateChallenge(currentBuild(), challenge), challenge);
     },
+    onFightEnemy(enemyIndex) {
+      // 連戦のお題のときだけ、戦う相手を選ぶボタンが出る
+      if (progress === null) {
+        throw new Error('連戦のお題ではありません');
+      }
+      const enemy = challenge.enemies[enemyIndex];
+      const result = simulate(currentBuild(), enemy, progress.rewards);
+      const won = result.result === 'win';
+      const defeated = won ? [...progress.defeated, enemyIndex] : progress.defeated;
+      progress = {
+        defeated,
+        rewards: won ? [...progress.rewards, ...(enemy.reward ?? [])] : progress.rewards,
+        started: true,
+      };
+      if (!won) {
+        messageElement.textContent = `${enemy.name}に負けました。次の相手を選び直すか、1体目からやり直してください`;
+      } else if (defeated.length === challenge.enemies.length) {
+        messageElement.textContent = '連戦クリア！';
+      } else {
+        messageElement.textContent = `${enemy.name}を倒して報酬を得ました。次の相手を選んでください`;
+      }
+      logView.render([result], { ...challenge, enemies: [enemy] });
+      render();
+    },
+    onRestartSequence() {
+      resetProgress();
+      messageElement.textContent = '';
+      logView.clear();
+      render();
+    },
     onReset() {
+      if (isBuildLocked()) {
+        messageElement.textContent = BUILD_LOCKED_MESSAGE;
+        return;
+      }
       resetBuild();
       messageElement.textContent = saveBuild() ? '' : STORAGE_UNAVAILABLE_MESSAGE;
       logView.clear();
@@ -219,9 +278,10 @@ function render() {
   );
   const releasable = new Set([...owned].filter((id) => canRelease(TREE, owned, id)));
   treeView.render(owned, acquirable, releasable);
-  panel.render(challenge, points);
-  buildStatsView.render(createProfile(currentBuild()));
+  panel.render(challenge, points, progress);
+  buildStatsView.render(createProfile(currentBuild(), progress?.rewards));
 }
 
+resetProgress();
 messageElement.textContent = loadBuild() ?? '';
 render();
