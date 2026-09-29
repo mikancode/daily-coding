@@ -21,6 +21,18 @@ test('ノードの表示位置は重ならない', () => {
   assert.equal(new Set(positions).size, positions.length);
 });
 
+test('ノードの表示名と効果は、能力の表から作られる', () => {
+  const byId = new Map(TREE.nodes.map((node) => [node.id, node]));
+  assert.equal(byId.get('origin')?.name, '起点');
+  assert.deepEqual(byId.get('origin')?.effects, [
+    { type: 'stat', stat: 'hp', amount: 100 },
+    { type: 'stat', stat: 'attack', amount: 10 },
+  ]);
+  assert.equal(byId.get('atk-1')?.name, '攻撃+3');
+  assert.equal(byId.get('multi-hit')?.name, '連撃');
+  assert.deepEqual(byId.get('multi-hit')?.effects, [{ type: 'multiHit', hits: 2, ratio: 0.5 }]);
+});
+
 test('起点は実在するノード', () => {
   assert.ok(nodeIds.includes(TREE.originId));
 });
