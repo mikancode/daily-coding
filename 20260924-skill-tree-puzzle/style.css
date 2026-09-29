@@ -229,6 +229,45 @@ body {
   color: var(--color-muted);
 }
 
+.debug {
+  display: grid;
+  gap: 8px;
+}
+.debug > * {
+  min-width: 0;
+}
+.debug-summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.debug-text {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--color-edge);
+  border-radius: 8px;
+  background: var(--color-node);
+  color: var(--color-text);
+  /* 16px 未満だと iOS Safari が入力時に画面を拡大する */
+  font: 1rem ui-monospace, monospace;
+}
+.debug-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 8px;
+}
+.debug-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 0.875rem;
+  white-space: pre-line;
+}
+.debug-error:empty {
+  display: none;
+}
+
 /* ログへ自動スクロールしたとき、見出しが画面の上端に貼り付かないようにする */
 .log {
   scroll-margin-top: 8px;

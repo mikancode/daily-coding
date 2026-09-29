@@ -193,3 +193,28 @@ export type RestoredBuild =
   | { readonly status: 'none' }
   | { readonly status: 'restored'; readonly owned: Set<NodeId> }
   | { readonly status: 'invalid' };
+
+/** デバッグ入力のボタンを並べるときの区分 */
+export type AbilityGroup = 'stat' | 'ability' | 'element';
+
+/** デバッグ入力で指定できる能力1つぶん。表の1行 */
+export interface AbilityDefinition {
+  /** 入力に書く語。英語名で、大文字小文字は区別しない */
+  readonly name: string;
+  readonly label: string;
+  readonly group: AbilityGroup;
+  /** 引数の並びと規定値。引数を取らない能力は空 */
+  readonly defaults: readonly number[];
+  /** 規定値で埋めたあとの引数を検査し、不正なら理由を返す */
+  readonly check?: (args: readonly number[]) => string | null;
+  readonly build: (...args: number[]) => Effect;
+}
+
+export interface AbilityError {
+  readonly word: string;
+  readonly reason: string;
+}
+
+export type ParsedAbilities =
+  | { readonly ok: true; readonly effects: readonly Effect[] }
+  | { readonly ok: false; readonly errors: readonly AbilityError[] };

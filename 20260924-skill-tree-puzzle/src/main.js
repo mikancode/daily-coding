@@ -6,6 +6,7 @@ import { createProfile, simulate, simulateChallenge } from './core/simulate.js';
 import { CHALLENGES } from './data/challenges.js';
 import { TREE } from './data/tree.js';
 import { createBuildStatsView } from './ui/build-stats.js';
+import { createDebugInput } from './ui/debug-input.js';
 import { createLogView } from './ui/log-view.js';
 import { createPanel } from './ui/panel.js';
 import { createTreeView } from './ui/tree-view.js';
@@ -251,6 +252,26 @@ const panel = createPanel(
       messageElement.textContent = saveBuild() ? '' : STORAGE_UNAVAILABLE_MESSAGE;
       logView.clear();
       render();
+    },
+  },
+);
+
+createDebugInput(
+  {
+    text: requireElement('#debug-text', HTMLTextAreaElement),
+    buttons: requireElement('#debug-buttons', HTMLElement),
+    error: requireElement('#debug-error', HTMLElement),
+    resetButton: requireElement('#debug-reset-button', HTMLButtonElement),
+    fightButton: requireElement('#debug-fight-button', HTMLButtonElement),
+  },
+  {
+    onFight(effects) {
+      // ツリーを介さず、指定した能力を1つの疑似ノードとして渡す。並び順がローテーションの順になる
+      const build = [{ id: 'debug', name: 'debug', pos: { x: 0, y: 0 }, effects }];
+      logView.render(simulateChallenge(build, challenge), challenge);
+    },
+    onInvalid() {
+      logView.clear();
     },
   },
 );
