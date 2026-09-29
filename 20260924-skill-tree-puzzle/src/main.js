@@ -3,8 +3,7 @@
 import { canAcquire, canRelease } from './core/build.js';
 import { restoreBuild, serializeBuild } from './core/saved-build.js';
 import { createProfile, simulate, simulateChallenge } from './core/simulate.js';
-import { CHALLENGES } from './data/challenges.js';
-import { TREE } from './data/tree.js';
+import { CHARACTERS } from './data/characters.js';
 import { createBuildStatsView } from './ui/build-stats.js';
 import { createDebugInput } from './ui/debug-input.js';
 import { createLogView } from './ui/log-view.js';
@@ -13,6 +12,7 @@ import { createTreeView } from './ui/tree-view.js';
 
 /**
  * @typedef {import('./types.js').Challenge} Challenge
+ * @typedef {import('./types.js').Character} Character
  * @typedef {import('./types.js').NodeId} NodeId
  * @typedef {import('./types.js').SequenceProgress} SequenceProgress
  */
@@ -34,18 +34,64 @@ function requireElement(selector, type) {
 
 const messageElement = requireElement('#message', HTMLElement);
 
-/** Pages のオリジンは daily-coding の全プロダクトで共有するので、保存キーにはプロダクト名を前置する */
-const SELECTED_CHALLENGE_KEY = 'skill-tree-puzzle:challenge';
+/**
+ * Pages のオリジンは daily-coding の全プロダクトで共有するので、保存キーにはプロダクト名を前置する。
+ * キャラごとのデータは `skill-tree-puzzle:<キャラID>:` の下に置き、選んだキャラだけはキャラの外に置く
+ */
+const STORAGE_KEY_PREFIX = 'skill-tree-puzzle';
+const SELECTED_CHARACTER_KEY = `${STORAGE_KEY_PREFIX}:character`;
 const STORAGE_UNAVAILABLE_MESSAGE = 'ビルドを保存できない環境です';
 const BUILD_LOCKED_MESSAGE = '連戦中はビルドを変えられません。変えるなら「1体目からやり直す」を押してください';
 const INVALID_SAVED_BUILD_MESSAGE = '保存したビルドが今のツリーでは組めないため、最初からにしました';
 
+/** お題の選択はキャラごとに覚える */
+function selectedChallengeKey() {
+  return `${STORAGE_KEY_PREFIX}:${character.id}:challenge`;
+}
+
 /**
- * ビルドはお題ごとに組み直すので、保存もお題ごとに分ける
+ * ビルドはお題ごとに組み直すので、保存もキャラとお題ごとに分ける
  * @param {Challenge} target
  */
 function buildStorageKey(target) {
-  return `skill-tree-puzzle:build:${target.id}`;
+  return `${STORAGE_KEY_PREFIX}:${character.id}:build:${target.id}`;
+}
+
+/**
+ * localStorage から読む。保存が無ければ null。プライベートブラウズなどで読めなければ undefined
+ * @param {string} key
+ * @returns {string | null | undefined}
+ */
+function readStorage(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * プライベートブラウズや容量超過では localStorage が例外を投げる。保存できなくても遊べるようにする
+ * @param {string} key
+ * @param {string} value
+ * @returns {boolean} 保存できたら true
+ */
+function writeStorage(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 保存が無い、読めない、または今は無いキャラの ID なら、最初のキャラから始める
+ * @returns {Character}
+ */
+function loadSelectedCharacter() {
+  const savedId = readStorage(SELECTED_CHARACTER_KEY);
+  return CHARACTERS.find((candidate) => candidate.id === savedId) ?? CHARACTERS[0];
 }
 
 /**
@@ -53,49 +99,26 @@ function buildStorageKey(target) {
  * @returns {Challenge}
  */
 function loadSelectedChallenge() {
-  /** @type {string | null} */
-  let savedId;
-  try {
-    savedId = localStorage.getItem(SELECTED_CHALLENGE_KEY);
-  } catch {
-    return CHALLENGES[0];
-  }
-  return CHALLENGES.find((candidate) => candidate.id === savedId) ?? CHALLENGES[0];
+  const savedId = readStorage(selectedChallengeKey());
+  return character.challenges.find((candidate) => candidate.id === savedId) ?? character.challenges[0];
 }
 
-/**
- * プライベートブラウズや容量超過では localStorage が例外を投げる。保存できなくても遊べるようにする
- * @returns {boolean} 保存できたら true
- */
-function saveSelectedChallenge() {
-  try {
-    localStorage.setItem(SELECTED_CHALLENGE_KEY, challenge.id);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
+let character = loadSelectedCharacter();
 let challenge = loadSelectedChallenge();
 
 /** @type {Set<NodeId>} */
-const owned = new Set([TREE.originId]);
+const owned = new Set([character.tree.originId]);
 
 function resetBuild() {
   owned.clear();
-  owned.add(TREE.originId);
+  owned.add(character.tree.originId);
 }
 
 /**
  * @returns {boolean} 保存できたら true
  */
 function saveBuild() {
-  try {
-    localStorage.setItem(buildStorageKey(challenge), serializeBuild(TREE, owned));
-    return true;
-  } catch {
-    return false;
-  }
+  return writeStorage(buildStorageKey(challenge), serializeBuild(character.tree, owned));
 }
 
 /**
@@ -104,14 +127,11 @@ function saveBuild() {
  */
 function loadBuild() {
   resetBuild();
-  /** @type {string | null} */
-  let raw;
-  try {
-    raw = localStorage.getItem(buildStorageKey(challenge));
-  } catch {
+  const raw = readStorage(buildStorageKey(challenge));
+  if (raw === undefined) {
     return STORAGE_UNAVAILABLE_MESSAGE;
   }
-  const restored = restoreBuild(TREE, challenge.points, raw);
+  const restored = restoreBuild(character.tree, challenge.points, raw);
   switch (restored.status) {
     case 'none':
       return null;
@@ -146,7 +166,7 @@ function remainingPoints() {
 
 /** 取得済みノードを、ツリーに書いた順で返す */
 function currentBuild() {
-  return TREE.nodes.filter((node) => owned.has(node.id));
+  return character.tree.nodes.filter((node) => owned.has(node.id));
 }
 
 /**
@@ -159,16 +179,16 @@ function toggleNode(nodeId) {
     return BUILD_LOCKED_MESSAGE;
   }
   if (owned.has(nodeId)) {
-    if (nodeId === TREE.originId) {
+    if (nodeId === character.tree.originId) {
       return '起点は外せません';
     }
-    if (!canRelease(TREE, owned, nodeId)) {
+    if (!canRelease(character.tree, owned, nodeId)) {
       return '外すと起点から繋がらなくなるノードがあります';
     }
     owned.delete(nodeId);
     return null;
   }
-  if (!canAcquire(TREE, owned, nodeId)) {
+  if (!canAcquire(character.tree, owned, nodeId)) {
     return '取得済みのノードに隣接していません';
   }
   if (remainingPoints() <= 0) {
@@ -188,6 +208,7 @@ const logView = createLogView({
 
 const panel = createPanel(
   {
+    characterSelect: requireElement('#character-select', HTMLSelectElement),
     challengeSelect: requireElement('#challenge-select', HTMLSelectElement),
     challenge: requireElement('#challenge', HTMLElement),
     points: requireElement('#remaining-points', HTMLElement),
@@ -198,17 +219,35 @@ const panel = createPanel(
     sequenceEnemies: requireElement('#sequence-enemies', HTMLElement),
     sequenceRestartButton: requireElement('#sequence-restart-button', HTMLButtonElement),
   },
-  CHALLENGES,
+  CHARACTERS,
+  character.challenges,
   {
+    onSelectCharacter(characterId) {
+      const selected = CHARACTERS.find((candidate) => candidate.id === characterId);
+      // 選択肢は CHARACTERS から作っているので、見つからなければ呼び出し側のバグ
+      if (selected === undefined) {
+        throw new Error(`存在しないキャラです: ${characterId}`);
+      }
+      character = selected;
+      challenge = loadSelectedChallenge();
+      resetProgress();
+      const selectionSaved = writeStorage(SELECTED_CHARACTER_KEY, character.id);
+      const notice = loadBuild();
+      messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
+      treeView.setTree(character.tree);
+      panel.setChallenges(character.challenges);
+      logView.clear();
+      render();
+    },
     onSelectChallenge(challengeId) {
-      const selected = CHALLENGES.find((candidate) => candidate.id === challengeId);
-      // 選択肢は CHALLENGES から作っているので、見つからなければ呼び出し側のバグ
+      const selected = character.challenges.find((candidate) => candidate.id === challengeId);
+      // 選択肢は character.challenges から作っているので、見つからなければ呼び出し側のバグ
       if (selected === undefined) {
         throw new Error(`存在しないお題です: ${challengeId}`);
       }
       challenge = selected;
       resetProgress();
-      const selectionSaved = saveSelectedChallenge();
+      const selectionSaved = writeStorage(selectedChallengeKey(), challenge.id);
       const notice = loadBuild();
       messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
       logView.clear();
@@ -278,7 +317,7 @@ createDebugInput(
 
 const buildStatsView = createBuildStatsView(requireElement('#build-stats', HTMLElement));
 
-const treeView = createTreeView(requireElement('#tree', SVGSVGElement), TREE, (nodeId) => {
+const treeView = createTreeView(requireElement('#tree', SVGSVGElement), character.tree, (nodeId) => {
   const reason = toggleNode(nodeId);
   if (reason !== null) {
     messageElement.textContent = reason;
@@ -291,12 +330,14 @@ const treeView = createTreeView(requireElement('#tree', SVGSVGElement), TREE, (n
 function render() {
   const points = remainingPoints();
   const acquirable = new Set(
-    points > 0 ? TREE.nodes.map((node) => node.id).filter((id) => canAcquire(TREE, owned, id)) : [],
+    points > 0
+      ? character.tree.nodes.map((node) => node.id).filter((id) => canAcquire(character.tree, owned, id))
+      : [],
   );
-  const releasable = new Set([...owned].filter((id) => canRelease(TREE, owned, id)));
+  const releasable = new Set([...owned].filter((id) => canRelease(character.tree, owned, id)));
   treeView.render(owned, acquirable, releasable);
   // 押しても何も起きない・拒否される状態では、ボタンを押せなくする
-  panel.render(challenge, points, progress, isBuildLocked() || owned.size <= 1);
+  panel.render(character, challenge, points, progress, isBuildLocked() || owned.size <= 1);
   buildStatsView.render(createProfile(currentBuild(), progress?.rewards));
 }
 

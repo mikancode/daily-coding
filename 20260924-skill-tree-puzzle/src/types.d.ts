@@ -122,6 +122,15 @@ export interface Challenge {
   readonly points: number;
 }
 
+/** キャラごとにツリーとお題を持つ。お題はキャラ専用で、敵を共有するときは敵の定義を import する */
+export interface Character {
+  /** 保存キーの区切りに使うので、`:` を含めない */
+  readonly id: string;
+  readonly name: string;
+  readonly tree: SkillTree;
+  readonly challenges: readonly Challenge[];
+}
+
 /** 戦う側の能力を集計したもの。敵と味方で同じ形。1発あたりのダメージは attack × ratio */
 export interface CombatantProfile {
   maxHp: number;

@@ -1,18 +1,18 @@
-// お題ごとに、配布 pt で組めるビルドを総当たりして解の分布を出力する
+// キャラのお題ごとに、配布 pt で組めるビルドを総当たりして解の分布を出力する
 // 使い方: node 20260924-skill-tree-puzzle/scripts/verify.js
 
-import { TREE } from '../src/data/tree.js';
-import { CHALLENGES } from '../src/data/challenges.js';
+import { CHARACTERS } from '../src/data/characters.js';
 import { enumerateBuilds } from '../src/core/enumerate.js';
 import { clearsChallenge, winningOrders } from '../src/core/simulate.js';
 
 /**
  * 連戦のお題で確かめる4項目。仮データの間は判定を出力するだけで、終了コードには反映しない
+ * @param {import('../src/types.js').SkillTree} tree
  * @param {import('../src/types.js').Challenge} challenge
  * @param {readonly (readonly string[])[]} minimumSolutions
  * @param {import('../src/types.js').Build[]} builds 列挙した全ビルド
  */
-function verifySequence(challenge, minimumSolutions, builds) {
+function verifySequence(tree, challenge, minimumSolutions, builds) {
   const independent = { ...challenge, mode: /** @type {const} */ ('independent') };
   console.log('連戦の検証:');
 
@@ -31,10 +31,10 @@ function verifySequence(challenge, minimumSolutions, builds) {
   console.log(`- どの順番でも勝てるビルド: ${allOrders} 件（少数が望ましい）`);
 
   console.log('- 最少 pt の解ごとの勝てる順番:');
-  const owned = (/** @type {readonly string[]} */ ids) => new Set([TREE.originId, ...ids]);
+  const owned = (/** @type {readonly string[]} */ ids) => new Set([tree.originId, ...ids]);
   for (const solution of minimumSolutions) {
     const ownedIds = owned(solution);
-    const build = TREE.nodes.filter((node) => ownedIds.has(node.id));
+    const build = tree.nodes.filter((node) => ownedIds.has(node.id));
     const orders = winningOrders(build, challenge).map((order) =>
       order.map((index) => challenge.enemies[index].name).join('→'),
     );
@@ -47,8 +47,11 @@ function factorial(n) {
   return n <= 1 ? 1 : n * factorial(n - 1);
 }
 
-/** @param {import('../src/types.js').Challenge} challenge */
-function verify(challenge) {
+/**
+ * @param {import('../src/types.js').SkillTree} tree
+ * @param {import('../src/types.js').Challenge} challenge
+ */
+function verify(tree, challenge) {
   console.log(`## ${challenge.name}（${challenge.id}）配布 ${challenge.points} pt`);
 
   const startedAt = performance.now();
@@ -59,11 +62,11 @@ function verify(challenge) {
   let minimumPoints = Infinity;
   /** @type {string[][]} 最少 pt の解。起点を除いたノード ID */
   let minimumSolutions = [];
-  for (const ids of enumerateBuilds(TREE, challenge.points)) {
+  for (const ids of enumerateBuilds(tree, challenge.points)) {
     enumerated++;
     // 列挙は取得順に返す。ローテーションは定義順で回るので、ツリーの定義順に並べ直す
     const owned = new Set(ids);
-    const build = TREE.nodes.filter((node) => owned.has(node.id));
+    const build = tree.nodes.filter((node) => owned.has(node.id));
     if (challenge.mode === 'sequence') {
       builds.push(build);
     }
@@ -92,7 +95,7 @@ function verify(challenge) {
   if (cleared === 0) {
     console.log('クリアできるビルド: 0 件（このお題は解けない）');
     if (challenge.mode === 'sequence') {
-      verifySequence(challenge, [], builds);
+      verifySequence(tree, challenge, [], builds);
     }
     return;
   }
@@ -103,11 +106,15 @@ function verify(challenge) {
     console.log(`- ${solution.length === 0 ? '（起点のみ）' : solution.join(', ')}`);
   }
   if (challenge.mode === 'sequence') {
-    verifySequence(challenge, minimumSolutions, builds);
+    verifySequence(tree, challenge, minimumSolutions, builds);
   }
 }
 
-for (const challenge of CHALLENGES) {
-  verify(challenge);
+for (const character of CHARACTERS) {
+  console.log(`# ${character.name}（${character.id}）`);
   console.log();
+  for (const challenge of character.challenges) {
+    verify(character.tree, challenge);
+    console.log();
+  }
 }

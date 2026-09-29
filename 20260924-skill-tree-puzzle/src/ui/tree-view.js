@@ -80,74 +80,85 @@ function nodeCategory(tree, node) {
 }
 
 /**
- * ツリーを描画し、ノードのタップを通知する。取得・解除できるかの判定は呼び出し側が持つ
+ * ツリーを描画し、ノードのタップを通知する。取得・解除できるかの判定は呼び出し側が持つ。
+ * キャラを切り替えたら setTree で描き直す
  * @param {SVGSVGElement} svg
  * @param {SkillTree} tree
  * @param {(nodeId: NodeId) => void} onTap
  */
 export function createTreeView(svg, tree, onTap) {
-  const columns = Math.max(...tree.nodes.map((node) => node.pos.x)) + 1;
-  const rows = Math.max(...tree.nodes.map((node) => node.pos.y)) + 1;
-  svg.setAttribute('viewBox', `0 0 ${columns * CELL_WIDTH} ${rows * CELL_HEIGHT}`);
-  svg.style.minHeight = `${rows * MIN_TAP_PX}px`;
-
-  const positions = new Map(tree.nodes.map((node) => [node.id, node.pos]));
   /** @type {{ element: SVGElement, from: NodeId, to: NodeId }[]} */
-  const edgeElements = [];
-  for (const [from, to] of tree.edges) {
-    const start = cellCenter(/** @type {GridPosition} */ (positions.get(from)));
-    const end = cellCenter(/** @type {GridPosition} */ (positions.get(to)));
-    const line = createSvgElement('line', {
-      class: 'tree-edge',
-      x1: start.x,
-      y1: start.y,
-      x2: end.x,
-      y2: end.y,
-      'stroke-width': EDGE_WIDTH,
-    });
-    svg.append(line);
-    edgeElements.push({ element: line, from, to });
-  }
-
+  let edgeElements = [];
   /** @type {Map<NodeId, SVGElement>} */
-  const nodeElements = new Map();
-  for (const node of tree.nodes) {
-    const center = cellCenter(node.pos);
-    const category = nodeCategory(tree, node);
-    const group = createSvgElement('g', {
-      class: 'tree-node',
-      'data-node-id': node.id,
-      'data-category': category,
-    });
-    group.append(
-      createSvgElement('rect', {
-        class: 'tree-node-hit',
-        x: node.pos.x * CELL_WIDTH,
-        y: node.pos.y * CELL_HEIGHT,
-        width: CELL_WIDTH,
-        height: CELL_HEIGHT,
-      }),
-      createSvgElement('rect', {
-        class: 'tree-node-body',
-        x: center.x - NODE_WIDTH / 2,
-        y: center.y - NODE_HEIGHT / 2,
-        width: NODE_WIDTH,
-        height: NODE_HEIGHT,
-        rx: category === 'special' ? SPECIAL_NODE_CORNER_RADIUS : NODE_CORNER_RADIUS,
-      }),
-    );
-    const label = createSvgElement('text', {
-      class: 'tree-node-label',
-      x: center.x,
-      y: center.y,
-      'font-size': LABEL_FONT_SIZE,
-    });
-    label.textContent = node.name;
-    group.append(label);
-    svg.append(group);
-    nodeElements.set(node.id, group);
+  let nodeElements = new Map();
+
+  /** @param {SkillTree} target */
+  function draw(target) {
+    svg.replaceChildren();
+    const columns = Math.max(...target.nodes.map((node) => node.pos.x)) + 1;
+    const rows = Math.max(...target.nodes.map((node) => node.pos.y)) + 1;
+    svg.setAttribute('viewBox', `0 0 ${columns * CELL_WIDTH} ${rows * CELL_HEIGHT}`);
+    svg.style.minHeight = `${rows * MIN_TAP_PX}px`;
+
+    const positions = new Map(target.nodes.map((node) => [node.id, node.pos]));
+    edgeElements = [];
+    for (const [from, to] of target.edges) {
+      const start = cellCenter(/** @type {GridPosition} */ (positions.get(from)));
+      const end = cellCenter(/** @type {GridPosition} */ (positions.get(to)));
+      const line = createSvgElement('line', {
+        class: 'tree-edge',
+        x1: start.x,
+        y1: start.y,
+        x2: end.x,
+        y2: end.y,
+        'stroke-width': EDGE_WIDTH,
+      });
+      svg.append(line);
+      edgeElements.push({ element: line, from, to });
+    }
+
+    nodeElements = new Map();
+    for (const node of target.nodes) {
+      const center = cellCenter(node.pos);
+      const category = nodeCategory(target, node);
+      const group = createSvgElement('g', {
+        class: 'tree-node',
+        'data-node-id': node.id,
+        'data-category': category,
+      });
+      group.append(
+        createSvgElement('rect', {
+          class: 'tree-node-hit',
+          x: node.pos.x * CELL_WIDTH,
+          y: node.pos.y * CELL_HEIGHT,
+          width: CELL_WIDTH,
+          height: CELL_HEIGHT,
+        }),
+        createSvgElement('rect', {
+          class: 'tree-node-body',
+          x: center.x - NODE_WIDTH / 2,
+          y: center.y - NODE_HEIGHT / 2,
+          width: NODE_WIDTH,
+          height: NODE_HEIGHT,
+          rx: category === 'special' ? SPECIAL_NODE_CORNER_RADIUS : NODE_CORNER_RADIUS,
+        }),
+      );
+      const label = createSvgElement('text', {
+        class: 'tree-node-label',
+        x: center.x,
+        y: center.y,
+        'font-size': LABEL_FONT_SIZE,
+      });
+      label.textContent = node.name;
+      group.append(label);
+      svg.append(group);
+      nodeElements.set(node.id, group);
+    }
   }
 
+  draw(tree);
+
+  // ノードに付けず svg に1つだけ付けるので、描き直しても増えない
   svg.addEventListener('click', (event) => {
     const target = /** @type {Element} */ (event.target);
     const group = target.closest('[data-node-id]');
@@ -158,6 +169,7 @@ export function createTreeView(svg, tree, onTap) {
   });
 
   return {
+    setTree: draw,
     /**
      * @param {ReadonlySet<NodeId>} owned
      * @param {ReadonlySet<NodeId>} acquirable 今タップすれば取れるノード
