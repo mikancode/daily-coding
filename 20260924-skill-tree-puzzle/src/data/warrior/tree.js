@@ -1,11 +1,11 @@
 // @ts-check
 
-import { resolveAbility } from '../core/ability-table.js';
+import { resolveAbility } from '../../core/ability-table.js';
 
 /**
- * @typedef {import('../types.js').GridPosition} GridPosition
- * @typedef {import('../types.js').SkillNode} SkillNode
- * @typedef {import('../types.js').SkillTree} SkillTree
+ * @typedef {import('../../types.js').GridPosition} GridPosition
+ * @typedef {import('../../types.js').SkillNode} SkillNode
+ * @typedef {import('../../types.js').SkillTree} SkillTree
  */
 
 const ORIGIN_ID = 'origin';

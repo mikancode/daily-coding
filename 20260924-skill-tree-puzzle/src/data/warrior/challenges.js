@@ -1,8 +1,8 @@
 // @ts-check
 
 /**
- * @typedef {import('../types.js').Challenge} Challenge
- * @typedef {import('../types.js').Enemy} Enemy
+ * @typedef {import('../../types.js').Challenge} Challenge
+ * @typedef {import('../../types.js').Enemy} Enemy
  */
 
 /**
