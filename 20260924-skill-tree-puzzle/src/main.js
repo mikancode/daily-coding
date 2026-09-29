@@ -247,10 +247,6 @@ const panel = createPanel(
       render();
     },
     onReset() {
-      if (isBuildLocked()) {
-        messageElement.textContent = BUILD_LOCKED_MESSAGE;
-        return;
-      }
       resetBuild();
       messageElement.textContent = saveBuild() ? '' : STORAGE_UNAVAILABLE_MESSAGE;
       logView.clear();
@@ -278,7 +274,8 @@ function render() {
   );
   const releasable = new Set([...owned].filter((id) => canRelease(TREE, owned, id)));
   treeView.render(owned, acquirable, releasable);
-  panel.render(challenge, points, progress);
+  // 押しても何も起きない・拒否される状態では、ボタンを押せなくする
+  panel.render(challenge, points, progress, isBuildLocked() || owned.size <= 1);
   buildStatsView.render(createProfile(currentBuild(), progress?.rewards));
 }
 

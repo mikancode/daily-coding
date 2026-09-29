@@ -103,9 +103,11 @@ export function createPanel(elements, challenges, handlers) {
      * @param {Challenge} challenge
      * @param {number} remainingPoints
      * @param {SequenceProgress | null} progress 連戦のお題のときだけ渡す
+     * @param {boolean} resetDisabled 全リセットを押せなくするか
      */
-    render(challenge, remainingPoints, progress) {
+    render(challenge, remainingPoints, progress, resetDisabled) {
       elements.challengeSelect.value = challenge.id;
+      elements.resetButton.disabled = resetDisabled;
       // 敵ごとに1行。改行は CSS の white-space: pre-line で表示する
       elements.challenge.textContent = challenge.enemies.map(formatEnemy).join('\n');
       elements.points.textContent = `残り ${remainingPoints} / ${challenge.points} pt`;
