@@ -69,3 +69,14 @@ test('お題の数値は妥当な範囲にある', () => {
     });
   }
 });
+
+test('連戦のお題は、敵を3体持ち、全員が報酬を持つ', () => {
+  const sequences = CHALLENGES.filter((challenge) => challenge.mode === 'sequence');
+  assert.ok(sequences.length > 0);
+  for (const challenge of sequences) {
+    assert.equal(challenge.enemies.length, 3, `${challenge.id}.enemies`);
+    challenge.enemies.forEach((enemy, index) => {
+      assert.ok(enemy.reward !== undefined && enemy.reward.length > 0, `${challenge.id}.enemies[${index}].reward`);
+    });
+  }
+});

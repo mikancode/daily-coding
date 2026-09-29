@@ -67,3 +67,22 @@ export function formatAbility(effect) {
       return null;
   }
 }
+
+/** @type {Readonly<Record<'hp' | 'attack' | 'defense', string>>} */
+const STAT_NAMES = { hp: 'HP', attack: '攻撃', defense: '防御' };
+
+/**
+ * 連戦の報酬の一覧に出す。敵の能力の一覧と違い、ステータスの加算と連撃も報酬の中身なので省かない
+ * @param {Effect} effect
+ * @returns {string}
+ */
+export function formatReward(effect) {
+  switch (effect.type) {
+    case 'stat':
+      return `${STAT_NAMES[effect.stat]} +${effect.amount}`;
+    case 'multiHit':
+      return `${effect.hits}連撃（1発 ${effect.ratio}倍）`;
+    default:
+      return formatAbility(effect) ?? '';
+  }
+}

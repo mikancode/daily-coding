@@ -1,6 +1,13 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clearsChallenge, simulate, simulateChallenge } from '../src/core/simulate.js';
+import {
+  clearsChallenge,
+  createProfile,
+  simulate,
+  simulateChallenge,
+  simulateSequence,
+  winningOrders,
+} from '../src/core/simulate.js';
 
 // 数値は実データ（#54 で調整する）に依存させず、テスト内で固定する
 
@@ -334,5 +341,67 @@ describe('組のお題', () => {
   test('敵ごとの戦闘は、自分の HP が満タンから始まる', () => {
     const [first, second] = simulateChallenge([ORIGIN], group([beatable, beatable]));
     assert.deepEqual(first.summary, second.summary);
+  });
+});
+
+describe('連戦のお題', () => {
+  const HP_REWARD = { type: 'stat', stat: 'hp', amount: 100 };
+  const ATTACK_REWARD = { type: 'stat', stat: 'attack', amount: 10 };
+
+  /** @param {object[]} enemies */
+  const sequence = (enemies) => ({ ...group(enemies), mode: 'sequence' });
+
+  // 起点だけなら 10 ダメージ × 1 発・HP 100。
+  // 強敵は 報酬なしだと 5 発目の被弾で倒れるが、HP 報酬を持っていれば 10 ターン目に倒し切れる
+  const weak = challenge({ name: '弱敵', hp: 20, attack: 10, reward: [HP_REWARD] });
+  const strong = challenge({ name: '強敵', hp: 100, attack: 20, turnLimit: 20, reward: [ATTACK_REWARD] });
+
+  test('報酬はビルドの能力に足される', () => {
+    const profile = createProfile([ORIGIN], [HP_REWARD, ATTACK_REWARD]);
+    assert.equal(profile.maxHp, 200);
+    assert.equal(profile.attack, 20);
+  });
+
+  test('報酬を渡さなければ、これまでと同じ結果になる', () => {
+    assert.deepEqual(simulate([ORIGIN], weak, []), simulate([ORIGIN], weak));
+    assert.deepEqual(createProfile([ORIGIN], []), createProfile([ORIGIN]));
+  });
+
+  test('倒した敵の報酬を持って、次の敵と戦う', () => {
+    assert.equal(simulate([ORIGIN], strong).result, 'lose');
+
+    const results = simulateSequence([ORIGIN], sequence([weak, strong]), [0, 1]);
+    assert.deepEqual(
+      results.map((result) => result.result),
+      ['win', 'win'],
+    );
+    assert.equal(results[1].summary.playerMaxHp, 200);
+  });
+
+  test('負けた戦闘で打ち切る', () => {
+    const results = simulateSequence([ORIGIN], sequence([weak, strong]), [1, 0]);
+    assert.deepEqual(
+      results.map((result) => result.result),
+      ['lose'],
+    );
+  });
+
+  test('連戦中も、戦闘ごとに自分の HP は満タンから始まる', () => {
+    const results = simulateSequence([ORIGIN], sequence([weak, weak]), [0, 1]);
+    // 1戦目で HP 100 のうち 10 削られても持ち越さず、2戦目は HP 報酬を足した 200 から 1 発受けた分だけ減る
+    assert.equal(results[1].summary.playerHp, 190);
+  });
+
+  test('勝てる順番だけを返す', () => {
+    assert.deepEqual(winningOrders([ORIGIN], sequence([weak, strong])), [[0, 1]]);
+  });
+
+  test('どの順番でも勝てなければ空', () => {
+    assert.deepEqual(winningOrders([ORIGIN], sequence([strong, strong])), []);
+  });
+
+  test('ある順番で全員に勝てればクリア。独立に戦えば負ける組でも通る', () => {
+    assert.equal(clearsChallenge([ORIGIN], sequence([weak, strong])), true);
+    assert.equal(clearsChallenge([ORIGIN], group([weak, strong])), false);
   });
 });
