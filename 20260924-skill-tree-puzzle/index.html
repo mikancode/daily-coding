@@ -29,6 +29,16 @@
       <button id="reset-button" class="button" type="button">全リセット</button>
       <button id="challenge-button" class="button is-primary" type="button">挑戦</button>
     </div>
+    <details class="debug">
+      <summary class="debug-summary">デバッグ入力</summary>
+      <textarea id="debug-text" class="debug-text" rows="3" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="能力の指定"></textarea>
+      <div id="debug-buttons" class="debug-buttons"></div>
+      <p id="debug-error" class="debug-error" aria-live="polite"></p>
+      <div class="actions">
+        <button id="debug-reset-button" class="button" type="button">初期化</button>
+        <button id="debug-fight-button" class="button is-primary" type="button">この構成で戦う</button>
+      </div>
+    </details>
     <section id="log" class="log" aria-label="戦闘ログ" hidden>
       <p id="log-summary" class="log-summary"></p>
       <div id="log-tabs" class="log-tabs" role="tablist" aria-label="敵" hidden></div>
