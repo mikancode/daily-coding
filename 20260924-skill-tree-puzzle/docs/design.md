@@ -100,10 +100,13 @@ HP を減らす処理は、攻撃・反撃・毒のどれも `takeDamage` を通
 3. `core/simulate.js` で、能力が割り込む場所に処理を足す。HP を減らすなら `takeDamage` を通す
 4. ログに出すなら、`LogEntry` に種類を足し、`ui/log-view.js` で文章にする
 5. `ui/ability-names.js` の `formatAbility` に、敵の能力一覧での表示を足す
-6. `tests/simulate.test.js` にテストを足す
+6. `core/ability-table.js` の `ABILITIES` に1行足す（入力の語・日本語名・引数の規定値・`Effect` を返す関数）。
+   デバッグ入力のボタンと、パーサーの規定値がこの行から作られる。引数に範囲の制約があれば `check` に書く
+7. `tests/simulate.test.js` にテストを足す
 
 手順 5 の足し忘れは、`formatAbility` の戻り値が足りなくなるので `tsc` で分かる。
 手順 2 の `applyEffect` は戻り値を持たず、足し忘れても型検査では分からないので、テストで確かめる。
+手順 6 の足し忘れは、どこにも表れず、デバッグ入力で指定できないだけになる。
 
 ## 5. ローテーション
 
