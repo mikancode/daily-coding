@@ -124,7 +124,25 @@ function formatLabel(ability, args) {
 }
 
 /**
- * 英語名と引数から、効果と表示名を作る。省いた引数は規定値で埋める。
+ * 省いた引数を規定値で埋めて検査する。デバッグ入力とツリーの定義で、同じ規則を使うため
+ * @param {AbilityDefinition} ability
+ * @param {readonly number[]} args
+ * @returns {{ args: number[] } | { reason: string }}
+ */
+export function fillArguments(ability, args) {
+  if (ability.defaults.length === 0 && args.length > 0) {
+    return { reason: `${ability.name} は引数を取りません` };
+  }
+  if (args.length > ability.defaults.length) {
+    return { reason: `${ability.name} の引数は最大 ${ability.defaults.length} 個です` };
+  }
+  const filled = ability.defaults.map((value, index) => args[index] ?? value);
+  const problem = ability.check?.(filled) ?? null;
+  return problem === null ? { args: filled } : { reason: problem };
+}
+
+/**
+ * 英語名と引数から、効果と表示名を作る。
  * ツリーの定義から呼ぶので、不正な指定は読み込み時に気付けるよう例外にする
  * @param {string} name
  * @param {readonly number[]} [args]
@@ -135,13 +153,9 @@ export function resolveAbility(name, args = []) {
   if (ability === undefined) {
     throw new Error(`知らない能力です: ${name}`);
   }
-  if (args.length > ability.defaults.length) {
-    throw new Error(`${ability.name} の引数は最大 ${ability.defaults.length} 個です`);
+  const filled = fillArguments(ability, args);
+  if ('reason' in filled) {
+    throw new Error(filled.reason);
   }
-  const filled = ability.defaults.map((value, index) => args[index] ?? value);
-  const problem = ability.check?.(filled) ?? null;
-  if (problem !== null) {
-    throw new Error(problem);
-  }
-  return { effect: ability.build(...filled), label: formatLabel(ability, filled) };
+  return { effect: ability.build(...filled.args), label: formatLabel(ability, filled.args) };
 }
