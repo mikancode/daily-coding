@@ -103,7 +103,7 @@ function loadSelectedChallenge() {
   return character.challenges.find((candidate) => candidate.id === savedId) ?? character.challenges[0];
 }
 
-const character = loadSelectedCharacter();
+let character = loadSelectedCharacter();
 let challenge = loadSelectedChallenge();
 
 /** @type {Set<NodeId>} */
@@ -208,6 +208,7 @@ const logView = createLogView({
 
 const panel = createPanel(
   {
+    characterSelect: requireElement('#character-select', HTMLSelectElement),
     challengeSelect: requireElement('#challenge-select', HTMLSelectElement),
     challenge: requireElement('#challenge', HTMLElement),
     points: requireElement('#remaining-points', HTMLElement),
@@ -218,8 +219,26 @@ const panel = createPanel(
     sequenceEnemies: requireElement('#sequence-enemies', HTMLElement),
     sequenceRestartButton: requireElement('#sequence-restart-button', HTMLButtonElement),
   },
+  CHARACTERS,
   character.challenges,
   {
+    onSelectCharacter(characterId) {
+      const selected = CHARACTERS.find((candidate) => candidate.id === characterId);
+      // 選択肢は CHARACTERS から作っているので、見つからなければ呼び出し側のバグ
+      if (selected === undefined) {
+        throw new Error(`存在しないキャラです: ${characterId}`);
+      }
+      character = selected;
+      challenge = loadSelectedChallenge();
+      resetProgress();
+      const selectionSaved = writeStorage(SELECTED_CHARACTER_KEY, character.id);
+      const notice = loadBuild();
+      messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
+      treeView.setTree(character.tree);
+      panel.setChallenges(character.challenges);
+      logView.clear();
+      render();
+    },
     onSelectChallenge(challengeId) {
       const selected = character.challenges.find((candidate) => candidate.id === challengeId);
       // 選択肢は character.challenges から作っているので、見つからなければ呼び出し側のバグ
@@ -318,7 +337,7 @@ function render() {
   const releasable = new Set([...owned].filter((id) => canRelease(character.tree, owned, id)));
   treeView.render(owned, acquirable, releasable);
   // 押しても何も起きない・拒否される状態では、ボタンを押せなくする
-  panel.render(challenge, points, progress, isBuildLocked() || owned.size <= 1);
+  panel.render(character, challenge, points, progress, isBuildLocked() || owned.size <= 1);
   buildStatsView.render(createProfile(currentBuild(), progress?.rewards));
 }
 

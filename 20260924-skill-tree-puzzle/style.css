@@ -47,7 +47,7 @@ body {
   gap: 8px;
 }
 
-.challenge-select {
+.status-select {
   width: 100%;
   min-height: var(--tap-min);
   margin-top: 8px;

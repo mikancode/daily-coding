@@ -6,6 +6,7 @@ import { ELEMENT_NAMES } from './element-names.js';
 
 /**
  * @typedef {import('../types.js').Challenge} Challenge
+ * @typedef {import('../types.js').Character} Character
  * @typedef {import('../types.js').ElementId} ElementId
  * @typedef {import('../types.js').Enemy} Enemy
  * @typedef {import('../types.js').SequenceProgress} SequenceProgress
@@ -65,9 +66,10 @@ function formatSequenceStatus(challenge, progress) {
 }
 
 /**
- * お題の選択と情報・残り pt・挑戦と全リセットのボタン。連戦のお題では、挑戦の代わりに戦う相手を選ぶボタンを出す。
+ * キャラとお題の選択・お題の情報・残り pt・挑戦と全リセットのボタン。連戦のお題では、挑戦の代わりに戦う相手を選ぶボタンを出す。
  * 選んだ・押したときの処理は呼び出し側が持つ
  * @param {{
+ *   characterSelect: HTMLSelectElement,
  *   challengeSelect: HTMLSelectElement,
  *   challenge: HTMLElement,
  *   points: HTMLElement,
@@ -78,8 +80,10 @@ function formatSequenceStatus(challenge, progress) {
  *   sequenceEnemies: HTMLElement,
  *   sequenceRestartButton: HTMLButtonElement,
  * }} elements
- * @param {readonly Challenge[]} challenges
+ * @param {readonly Character[]} characters
+ * @param {readonly Challenge[]} challenges 最初に選ばれているキャラのお題。キャラを切り替えたら setChallenges で差し替える
  * @param {{
+ *   onSelectCharacter: (characterId: string) => void,
  *   onSelectChallenge: (challengeId: string) => void,
  *   onChallenge: () => void,
  *   onReset: () => void,
@@ -87,10 +91,20 @@ function formatSequenceStatus(challenge, progress) {
  *   onRestartSequence: () => void,
  * }} handlers
  */
-export function createPanel(elements, challenges, handlers) {
-  elements.challengeSelect.replaceChildren(
-    ...challenges.map((challenge) => new Option(challenge.name, challenge.id)),
+export function createPanel(elements, characters, challenges, handlers) {
+  elements.characterSelect.replaceChildren(
+    ...characters.map((character) => new Option(character.name, character.id)),
   );
+  elements.characterSelect.addEventListener('change', () => {
+    handlers.onSelectCharacter(elements.characterSelect.value);
+  });
+  /** @param {readonly Challenge[]} options */
+  function setChallenges(options) {
+    elements.challengeSelect.replaceChildren(
+      ...options.map((challenge) => new Option(challenge.name, challenge.id)),
+    );
+  }
+  setChallenges(challenges);
   elements.challengeSelect.addEventListener('change', () => {
     handlers.onSelectChallenge(elements.challengeSelect.value);
   });
@@ -99,13 +113,16 @@ export function createPanel(elements, challenges, handlers) {
   elements.sequenceRestartButton.addEventListener('click', handlers.onRestartSequence);
 
   return {
+    setChallenges,
     /**
+     * @param {Character} character
      * @param {Challenge} challenge
      * @param {number} remainingPoints
      * @param {SequenceProgress | null} progress 連戦のお題のときだけ渡す
      * @param {boolean} resetDisabled 全リセットを押せなくするか
      */
-    render(challenge, remainingPoints, progress, resetDisabled) {
+    render(character, challenge, remainingPoints, progress, resetDisabled) {
+      elements.characterSelect.value = character.id;
       elements.challengeSelect.value = challenge.id;
       elements.resetButton.disabled = resetDisabled;
       // 敵ごとに1行。改行は CSS の white-space: pre-line で表示する
