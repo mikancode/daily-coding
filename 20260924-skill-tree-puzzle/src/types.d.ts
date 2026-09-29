@@ -56,6 +56,60 @@ export interface EndureEffect {
   readonly type: 'endure';
 }
 
+/** 攻撃（通常攻撃の1発・反撃）を当てた直後。与えたダメージ × ratio を切り捨てて回復する。最大 HP は超えない */
+export interface DrainEffect {
+  readonly type: 'drain';
+  readonly ratio: number;
+}
+
+/** 攻撃（通常攻撃の1発・反撃）を受けた直後。ダメージが0でも、この戦闘中の攻撃が amount 上がる */
+export interface RageEffect {
+  readonly type: 'rage';
+  readonly amount: number;
+}
+
+/** 攻撃（通常攻撃の1発・反撃）で、相手の防御を引かない */
+export interface PierceEffect {
+  readonly type: 'pierce';
+}
+
+/** 攻撃（通常攻撃の1発・反撃）を当てた直後。この戦闘中、相手の防御を amount 下げる。0 未満にはしない */
+export interface ArmorBreakEffect {
+  readonly type: 'armorBreak';
+  readonly amount: number;
+}
+
+/** ターン数が every の倍数のとき、通常攻撃の与ダメージを damageMultiplier 倍にする */
+export interface TempoEffect {
+  readonly type: 'tempo';
+  readonly every: number;
+  readonly damageMultiplier: number;
+}
+
+/**
+ * 周期スキル。回ってきたターンは物理で殴り、通常攻撃の与ダメージを 1 + perTurn × 経過ターン数 倍にする。
+ * 経過ターン数は前回の発動から（初回は戦闘開始から）数える
+ */
+export interface ChargeEffect {
+  readonly type: 'charge';
+  readonly perTurn: number;
+}
+
+/** 攻撃（通常攻撃の1発・反撃）を当てた直後。相手に刻印を amount 付ける */
+export interface MarkEffect {
+  readonly type: 'mark';
+  readonly amount: number;
+}
+
+/** 周期スキル。回ってきたターンは物理で殴り、相手の刻印を全部使って、通常攻撃の与ダメージを 1 + perMark × 使った数 倍にする */
+export interface BurstEffect {
+  readonly type: 'burst';
+  readonly perMark: number;
+}
+
+/** ローテーションに入る能力 */
+export type RotationSkill = ElementEffect | ChargeEffect | BurstEffect;
+
 /** 能力。ツリーのノードと敵の両方が同じ定義で持つ */
 export type Effect =
   | StatEffect
@@ -65,7 +119,15 @@ export type Effect =
   | CounterEffect
   | RegenEffect
   | PoisonEffect
-  | EndureEffect;
+  | EndureEffect
+  | DrainEffect
+  | RageEffect
+  | PierceEffect
+  | ArmorBreakEffect
+  | TempoEffect
+  | ChargeEffect
+  | MarkEffect
+  | BurstEffect;
 
 /** 表示位置。単位はグリッドのマス目で、画面上の大きさへの換算は描画側で行う */
 export interface GridPosition {
@@ -139,20 +201,40 @@ export interface CombatantProfile {
   hits: number;
   ratio: number;
   conditionals: ConditionalEffect[];
-  /** 周期スキルの属性を、ローテーションの順に並べたもの。空なら毎ターン物理 */
-  rotation: ElementId[];
+  tempos: TempoEffect[];
+  /** 周期スキルを、ローテーションの順に並べたもの。空なら毎ターン物理 */
+  rotation: RotationSkill[];
   /** 反撃のダメージの合計。0 なら反撃しない */
   counter: number;
   regen: number;
   poison: number;
   endure: boolean;
+  /** 吸収の割合の合計。0 なら吸収しない */
+  drain: number;
+  rage: number;
+  pierce: boolean;
+  armorBreak: number;
+  mark: number;
   /** 味方は属性の軽減を持たないので空 */
   resistances: Readonly<Partial<Record<ElementId, number>>>;
 }
 
 export type Actor = 'player' | 'boss';
 
-/** actor は行動した側。HP は行動を受けた側（regen・endure は自分）の残り */
+/**
+ * 攻撃を受けた側の、その1発で変わった状態。変わったものだけを持つ。
+ * 逆上・破甲・刻印は1発ごとに起きるので、行を増やさず攻撃の行に添える
+ */
+export interface TargetChanges {
+  /** 逆上で上がったあとの攻撃 */
+  readonly attack?: number;
+  /** 破甲で下がったあとの防御 */
+  readonly defense?: number;
+  /** 付いたあとの刻印の数 */
+  readonly marks?: number;
+}
+
+/** actor は行動した側。HP は行動を受けた側（regen・endure・drain は自分）の残り */
 export type LogEntry =
   | {
       readonly type: 'hit';
@@ -161,8 +243,19 @@ export type LogEntry =
       readonly element: ElementId;
       readonly damage: number;
       readonly targetHp: number;
+      readonly changes?: TargetChanges;
     }
-  | { readonly type: 'counter'; readonly actor: Actor; readonly turn: number; readonly damage: number; readonly targetHp: number }
+  | {
+      readonly type: 'counter';
+      readonly actor: Actor;
+      readonly turn: number;
+      readonly damage: number;
+      readonly targetHp: number;
+      readonly changes?: TargetChanges;
+    }
+  | { readonly type: 'drain'; readonly actor: Actor; readonly turn: number; readonly amount: number; readonly hp: number }
+  | { readonly type: 'charge'; readonly actor: Actor; readonly turn: number; readonly multiplier: number }
+  | { readonly type: 'burst'; readonly actor: Actor; readonly turn: number; readonly marks: number; readonly multiplier: number }
   | { readonly type: 'poison'; readonly actor: Actor; readonly turn: number; readonly damage: number; readonly targetHp: number }
   | { readonly type: 'regen'; readonly actor: Actor; readonly turn: number; readonly amount: number; readonly hp: number }
   | { readonly type: 'endure'; readonly actor: Actor; readonly turn: number; readonly hp: number }

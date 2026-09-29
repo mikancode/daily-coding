@@ -62,8 +62,13 @@ describe('createProfile との組み合わせ', () => {
     assert.equal(profile.defense, 10);
   });
 
-  test('属性は書いた順がローテーションの順になる', () => {
-    assert.deepEqual(profileOf(effectsOf('Ice,Fire,Thunder')).rotation, ['ice', 'fire', 'thunder']);
+  test('周期スキルは書いた順がローテーションの順になる', () => {
+    assert.deepEqual(profileOf(effectsOf('Ice,Charge,Fire,Burst')).rotation, [
+      { type: 'element', element: 'ice' },
+      { type: 'charge', perTurn: 0.5 },
+      { type: 'element', element: 'fire' },
+      { type: 'burst', perMark: 0.2 },
+    ]);
   });
 });
 

@@ -8,7 +8,31 @@ import { ELEMENT_NAMES } from './element-names.js';
  * @typedef {import('../types.js').LoseReason} LoseReason
  * @typedef {import('../types.js').SimulationResult} SimulationResult
  * @typedef {import('../types.js').SimulationSummary} SimulationSummary
+ * @typedef {import('../types.js').TargetChanges} TargetChanges
  */
+
+/** 倍率は小数の誤差（1.6000000000000001 など）を見せないよう、小数第2位までで出す */
+const MULTIPLIER_DIGITS = 2;
+
+/** @param {number} multiplier @returns {string} */
+const formatMultiplier = (multiplier) => `${Number(multiplier.toFixed(MULTIPLIER_DIGITS))}倍`;
+
+/**
+ * 攻撃の行に、受けた側の変わった状態を添える
+ * @param {TargetChanges | undefined} changes
+ * @returns {string}
+ */
+function formatChanges(changes) {
+  if (changes === undefined) {
+    return '';
+  }
+  const parts = [
+    ...(changes.attack === undefined ? [] : [`逆上で攻撃 ${changes.attack}`]),
+    ...(changes.defense === undefined ? [] : [`破甲で防御 ${changes.defense}`]),
+    ...(changes.marks === undefined ? [] : [`刻印 ${changes.marks}`]),
+  ];
+  return ` ／ ${parts.join('・')}`;
+}
 
 /** @type {Readonly<Record<LoseReason, string>>} */
 const LOSE_REASONS = {
@@ -28,13 +52,31 @@ function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
   const byPlayer = entry.type !== 'turnLimit' && entry.actor === 'player';
   switch (entry.type) {
     case 'hit':
-      return byPlayer
-        ? `${entry.turn}T ${ELEMENT_NAMES[entry.element]}で ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
-        : `${entry.turn}T ボスの${ELEMENT_NAMES[entry.element]}攻撃で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`;
+      return (
+        (byPlayer
+          ? `${entry.turn}T ${ELEMENT_NAMES[entry.element]}で ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
+          : `${entry.turn}T ボスの${ELEMENT_NAMES[entry.element]}攻撃で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`) +
+        formatChanges(entry.changes)
+      );
     case 'counter':
+      return (
+        (byPlayer
+          ? `${entry.turn}T 反撃でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
+          : `${entry.turn}T 反撃で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`) +
+        formatChanges(entry.changes)
+      );
+    case 'drain':
       return byPlayer
-        ? `${entry.turn}T 反撃でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
-        : `${entry.turn}T 反撃で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`;
+        ? `${entry.turn}T 吸収で ${entry.amount} 回復（${playerHp(entry.hp)}）`
+        : `${entry.turn}T ボスが吸収で ${entry.amount} 回復（${bossHp(entry.hp)}）`;
+    case 'charge':
+      return byPlayer
+        ? `${entry.turn}T 溜めを放った（与ダメージ${formatMultiplier(entry.multiplier)}）`
+        : `${entry.turn}T ボスが溜めを放った（与ダメージ${formatMultiplier(entry.multiplier)}）`;
+    case 'burst':
+      return byPlayer
+        ? `${entry.turn}T 刻印 ${entry.marks} を解放（与ダメージ${formatMultiplier(entry.multiplier)}）`
+        : `${entry.turn}T ボスが刻印 ${entry.marks} を解放（与ダメージ${formatMultiplier(entry.multiplier)}）`;
     case 'poison':
       return byPlayer
         ? `${entry.turn}T 毒でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
