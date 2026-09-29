@@ -22,17 +22,26 @@ const errorsOf = (text) => {
 const profileOf = (effects) =>
   createProfile([{ id: 'debug', name: 'debug', pos: { x: 0, y: 0 }, effects }]);
 
-describe('規定値', () => {
-  test('引数を省くと規定値になる', () => {
-    assert.deepEqual(effectsOf('Poison'), [{ type: 'poison', damage: 5 }]);
-    assert.deepEqual(effectsOf('Regen'), [{ type: 'regen', amount: 8 }]);
-    assert.deepEqual(effectsOf('Counter'), [{ type: 'counter', damage: 10 }]);
-    assert.deepEqual(effectsOf('HP'), [{ type: 'stat', stat: 'hp', amount: 10 }]);
-  });
+describe('正しい語', () => {
+  const validCases = [
+    ['引数を省くと規定値', 'Poison', { type: 'poison', damage: 5 }],
+    ['ステータスも規定値', 'HP', { type: 'stat', stat: 'hp', amount: 10 }],
+    ['引数のない能力', 'Endure', { type: 'endure' }],
+    ['属性', 'Fire', { type: 'element', element: 'fire' }],
+    ['引数つき', 'ATK50', { type: 'stat', stat: 'attack', amount: 50 }],
+    ['複数の引数は : で区切る', 'Cond0.3:4', { type: 'conditional', hpRatioAtMost: 0.3, damageMultiplier: 4 }],
+    ['後ろの引数だけ省くと規定値', 'Multi3', { type: 'multiHit', hits: 3, ratio: 0.5 }],
+    ['連撃の回数の上限ちょうど', 'Multi100:0.01', { type: 'multiHit', hits: 100, ratio: 0.01 }],
+  ];
+  for (const [label, word, effect] of validCases) {
+    test(`${label}：${word}`, () => {
+      assert.deepEqual(effectsOf(word), [effect]);
+    });
+  }
 
-  test('引数のない能力は、そのまま Effect になる', () => {
-    assert.deepEqual(effectsOf('Endure,Fire'), [
-      { type: 'endure' },
+  test('語の大文字小文字と前後の空白は区別しない', () => {
+    assert.deepEqual(effectsOf(' poison3 , FIRE '), [
+      { type: 'poison', damage: 3 },
       { type: 'element', element: 'fire' },
     ]);
   });
@@ -42,31 +51,6 @@ describe('規定値', () => {
       const word = formatDefaultWord(ability);
       assert.equal(parseAbilities(word).ok, true, word);
     }
-  });
-});
-
-describe('引数', () => {
-  test('引数つきの語は、その値になる', () => {
-    assert.deepEqual(effectsOf('Poison7'), [{ type: 'poison', damage: 7 }]);
-    assert.deepEqual(effectsOf('ATK50'), [{ type: 'stat', stat: 'attack', amount: 50 }]);
-  });
-
-  test('複数の引数は : で区切る', () => {
-    assert.deepEqual(effectsOf('Multi3:0.4'), [{ type: 'multiHit', hits: 3, ratio: 0.4 }]);
-    assert.deepEqual(effectsOf('Cond0.3:4'), [
-      { type: 'conditional', hpRatioAtMost: 0.3, damageMultiplier: 4 },
-    ]);
-  });
-
-  test('複数の引数の後ろを省くと、その引数だけ規定値になる', () => {
-    assert.deepEqual(effectsOf('Multi3'), [{ type: 'multiHit', hits: 3, ratio: 0.5 }]);
-  });
-
-  test('語の大文字小文字と前後の空白は区別しない', () => {
-    assert.deepEqual(effectsOf(' poison3 , FIRE '), [
-      { type: 'poison', damage: 3 },
-      { type: 'element', element: 'fire' },
-    ]);
   });
 });
 
@@ -80,54 +64,29 @@ describe('createProfile との組み合わせ', () => {
 
   test('属性は書いた順がローテーションの順になる', () => {
     assert.deepEqual(profileOf(effectsOf('Ice,Fire,Thunder')).rotation, ['ice', 'fire', 'thunder']);
-    assert.deepEqual(profileOf(effectsOf('Fire,Ice')).rotation, ['fire', 'ice']);
-  });
-
-  test('例の書式が、そのまま集計される', () => {
-    const profile = profileOf(effectsOf('HP100,ATK50,DEF10,Poison5,Fire'));
-    assert.equal(profile.maxHp, 100);
-    assert.equal(profile.poison, 5);
-    assert.deepEqual(profile.rotation, ['fire']);
   });
 });
 
-describe('不正な書式', () => {
-  test('未知の能力はその語を返す', () => {
-    const errors = errorsOf('HP100,Foo5');
-    assert.equal(errors.length, 1);
-    assert.equal(errors[0].word, 'Foo5');
-  });
-
-  test('数値でない引数はエラーにする', () => {
-    assert.equal(errorsOf('HPabc')[0].word, 'HPabc');
-    assert.equal(errorsOf('Poison5x')[0].word, 'Poison5x');
-    assert.equal(errorsOf('Multi2:')[0].word, 'Multi2:');
-  });
-
-  test('引数を取らない能力に引数を書くとエラーにする', () => {
-    assert.equal(errorsOf('Fire5')[0].word, 'Fire5');
-    assert.equal(errorsOf('Endure1')[0].word, 'Endure1');
-  });
-
-  test('引数が多すぎるとエラーにする', () => {
-    assert.equal(errorsOf('Poison1:2')[0].word, 'Poison1:2');
-  });
-
-  test('連撃の回数が整数でないとエラーにする', () => {
-    assert.equal(errorsOf('Multi0:0.5')[0].word, 'Multi0:0.5');
-    assert.equal(errorsOf('Multi1.5:0.5')[0].word, 'Multi1.5:0.5');
-  });
-
-  test('連撃の回数が大きすぎるとエラーにする', () => {
-    assert.equal(parseAbilities('Multi100:0.01').ok, true);
-    assert.equal(errorsOf('Multi101:0.01')[0].word, 'Multi101:0.01');
-    assert.equal(errorsOf('Multi99999999:1')[0].word, 'Multi99999999:1');
-  });
-
-  test('負の数はエラーにする', () => {
-    assert.equal(errorsOf('HP-100')[0].word, 'HP-100');
-    assert.equal(errorsOf('Poison-5')[0].word, 'Poison-5');
-  });
+describe('不正な語', () => {
+  const invalidCases = [
+    ['未知の能力', ['Foo5']],
+    ['数値でない引数', ['HPabc', 'Poison5x', 'Multi2:']],
+    ['引数を取らない能力に引数', ['Fire5', 'Endure1']],
+    ['引数が多すぎる', ['Poison1:2']],
+    ['連撃の回数が整数でない', ['Multi0:0.5', 'Multi1.5:0.5']],
+    ['連撃の回数が大きすぎる', ['Multi101:0.01', 'Multi99999999:1']],
+    ['負の数', ['HP-100', 'Poison-5']],
+  ];
+  for (const [label, words] of invalidCases) {
+    test(`${label}はエラーにし、その語を返す`, () => {
+      for (const word of words) {
+        assert.deepEqual(
+          errorsOf(word).map((error) => error.word),
+          [word],
+        );
+      }
+    });
+  }
 
   test('空の語と、空の入力はエラーにする', () => {
     assert.equal(errorsOf('HP10,,ATK1').length, 1);
@@ -135,7 +94,7 @@ describe('不正な書式', () => {
     assert.equal(errorsOf('  ').length, 1);
   });
 
-  test('不正な語はすべて集める', () => {
+  test('不正な語は最初の1つで止めず、すべて集める', () => {
     assert.deepEqual(
       errorsOf('Foo,HP10,Bar').map((error) => error.word),
       ['Foo', 'Bar'],

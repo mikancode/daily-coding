@@ -1,6 +1,6 @@
 // @ts-check
 
-import { findAbility } from './ability-table.js';
+import { fillArguments, findAbility } from './ability-table.js';
 
 /**
  * @typedef {import('../types.js').AbilityError} AbilityError
@@ -28,21 +28,12 @@ function parseWord(word) {
     return { reason: '知らない能力です' };
   }
   const texts = rest === '' ? [] : rest.split(ARGUMENT_SEPARATOR);
-  if (ability.defaults.length === 0 && texts.length > 0) {
-    return { reason: `${ability.name} は引数を取りません` };
+  const invalid = texts.find((text) => !NUMBER_PATTERN.test(text));
+  if (invalid !== undefined) {
+    return { reason: `引数「${invalid}」は数値ではありません` };
   }
-  if (texts.length > ability.defaults.length) {
-    return { reason: `${ability.name} の引数は最大 ${ability.defaults.length} 個です` };
-  }
-  const args = [...ability.defaults];
-  for (const [index, text] of texts.entries()) {
-    if (!NUMBER_PATTERN.test(text)) {
-      return { reason: `引数「${text}」は数値ではありません` };
-    }
-    args[index] = Number(text);
-  }
-  const problem = ability.check?.(args) ?? null;
-  return problem === null ? { effect: ability.build(...args) } : { reason: problem };
+  const filled = fillArguments(ability, texts.map(Number));
+  return 'reason' in filled ? filled : { effect: ability.build(...filled.args) };
 }
 
 /**
