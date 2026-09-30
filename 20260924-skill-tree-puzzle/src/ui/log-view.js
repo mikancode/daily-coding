@@ -18,20 +18,19 @@ const MULTIPLIER_DIGITS = 2;
 const formatMultiplier = (multiplier) => `${Number(multiplier.toFixed(MULTIPLIER_DIGITS))}倍`;
 
 /**
- * 攻撃の行に、受けた側の変わった状態を添える
+ * 攻撃の行に、掛かった好機の倍率と、受けた側の変わった状態を添える
+ * @param {number | undefined} tempo
  * @param {TargetChanges | undefined} changes
  * @returns {string}
  */
-function formatChanges(changes) {
-  if (changes === undefined) {
-    return '';
-  }
+function formatAddenda(tempo, changes) {
   const parts = [
-    ...(changes.attack === undefined ? [] : [`逆上で攻撃 ${changes.attack}`]),
-    ...(changes.defense === undefined ? [] : [`破甲で防御 ${changes.defense}`]),
-    ...(changes.marks === undefined ? [] : [`刻印 ${changes.marks}`]),
+    ...(tempo === undefined ? [] : [`好機で${formatMultiplier(tempo)}`]),
+    ...(changes?.attack === undefined ? [] : [`逆上で攻撃 ${changes.attack}`]),
+    ...(changes?.defense === undefined ? [] : [`破甲で防御 ${changes.defense}`]),
+    ...(changes?.marks === undefined ? [] : [`刻印 ${changes.marks}`]),
   ];
-  return ` ／ ${parts.join('・')}`;
+  return parts.length === 0 ? '' : ` ／ ${parts.join('・')}`;
 }
 
 /** @type {Readonly<Record<LoseReason, string>>} */
@@ -56,14 +55,14 @@ function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
         (byPlayer
           ? `${entry.turn}T ${ELEMENT_NAMES[entry.element]}で ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
           : `${entry.turn}T ボスの${ELEMENT_NAMES[entry.element]}攻撃で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`) +
-        formatChanges(entry.changes)
+        formatAddenda(entry.tempo, entry.changes)
       );
     case 'counter':
       return (
         (byPlayer
           ? `${entry.turn}T 反撃でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
           : `${entry.turn}T 反撃で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`) +
-        formatChanges(entry.changes)
+        formatAddenda(undefined, entry.changes)
       );
     case 'drain':
       return byPlayer

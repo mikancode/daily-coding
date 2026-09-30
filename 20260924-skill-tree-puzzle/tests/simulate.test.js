@@ -501,8 +501,13 @@ describe('倍率の能力', () => {
     const outcome = simulate([ORIGIN, tempo], challenge({ hp: 1000, attack: 0, turnLimit: 4 }));
 
     assert.deepEqual(
-      entriesOf(outcome, 'player', 'hit').map((entry) => entry.damage),
-      [10, 30, 10, 30],
+      entriesOf(outcome, 'player', 'hit').map((entry) => [entry.damage, entry.tempo]),
+      [
+        [10, undefined],
+        [30, 3],
+        [10, undefined],
+        [30, 3],
+      ],
     );
   });
 
@@ -521,6 +526,7 @@ describe('倍率の能力', () => {
     );
 
     assert.equal(entriesOf(outcome, 'boss', 'hit')[0].damage, 20);
+    assert.equal(entriesOf(outcome, 'boss', 'hit')[0].tempo, 2);
     assert.equal(entriesOf(outcome, 'boss', 'counter')[0].damage, 5);
   });
 

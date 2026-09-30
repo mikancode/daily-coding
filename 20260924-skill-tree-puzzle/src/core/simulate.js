@@ -376,6 +376,7 @@ function useRotationSkill(attacker, defender, turn, log) {
 function act(attacker, defender, turn, log) {
   const { element, multiplier: skillMultiplier } = useRotationSkill(attacker, defender, turn, log);
   const reduction = defender.profile.resistances[element] ?? NO_REDUCTION;
+  const tempo = tempoMultiplier(attacker.profile, turn);
 
   for (let hit = 0; hit < attacker.profile.hits; hit++) {
     const raw =
@@ -383,7 +384,7 @@ function act(attacker, defender, turn, log) {
       attacker.profile.ratio *
       (1 - reduction) *
       conditionalMultiplier(attacker.profile, attacker.hp) *
-      tempoMultiplier(attacker.profile, turn) *
+      tempo *
       skillMultiplier;
     const damage = damageTaken(Math.floor(raw + FLOAT_TOLERANCE), defenseAgainst(attacker, defender));
     const defeated = strike(attacker, defender, damage, turn, log, (targetHp, changes) => ({
@@ -393,6 +394,7 @@ function act(attacker, defender, turn, log) {
       element,
       damage,
       targetHp,
+      ...(tempo !== NEUTRAL_MULTIPLIER && { tempo }),
       ...(changes && { changes }),
     }));
     if (defeated) {
