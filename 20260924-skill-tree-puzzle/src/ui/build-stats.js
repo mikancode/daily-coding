@@ -1,6 +1,6 @@
 // @ts-check
 
-import { formatAttack, formatConditional, formatRotation } from './ability-names.js';
+import { formatAttack, formatProfileAbilities, formatRotation } from './ability-names.js';
 
 /**
  * @typedef {import('../types.js').CombatantProfile} CombatantProfile
@@ -16,7 +16,7 @@ export function formatBuildStats(profile) {
     formatAttack(profile),
     `防御 ${profile.defense}`,
     `ローテーション：${formatRotation(profile.rotation)}`,
-    ...profile.conditionals.map(formatConditional),
+    ...formatProfileAbilities(profile),
   ].join(' / ');
 }
 

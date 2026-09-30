@@ -34,4 +34,21 @@ describe('formatBuildStats', () => {
       'HP 100 / 攻撃 13 / 防御 2 / ローテーション：雷→炎 / HP 50%以下で与ダメージ2倍',
     );
   });
+
+  test('溜め・解放はローテーションに、ほかの能力は後ろに並べる', () => {
+    const build = [
+      ORIGIN,
+      node('charge', [{ type: 'charge', perTurn: 0.5 }]),
+      node('ice', [{ type: 'element', element: 'ice' }]),
+      node('burst', [{ type: 'burst', perMark: 0.2 }]),
+      node('tempo', [{ type: 'tempo', every: 2, damageMultiplier: 2 }]),
+      node('drain', [{ type: 'drain', ratio: 0.5 }]),
+      node('pierce', [{ type: 'pierce' }]),
+      node('mark', [{ type: 'mark', amount: 1 }]),
+    ];
+    assert.equal(
+      formatBuildStats(createProfile(build)),
+      'HP 100 / 攻撃 13 / 防御 0 / ローテーション：溜め→氷→解放 / 2の倍数のターンに与ダメージ2倍 / 吸収 50% / 貫通 / 刻印 1',
+    );
+  });
 });

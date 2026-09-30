@@ -316,6 +316,256 @@ describe('能力を味方が持つ場合と敵が持つ場合', () => {
   });
 });
 
+describe('攻撃を当てた・受けたときの能力', () => {
+  // 契機になる攻撃は、通常攻撃の1発と反撃。毒は含めない
+
+  test('drain：味方は与ダメージの割合を回復し、満タンなら回復しない', () => {
+    const drain = node('drain', [{ type: 'drain', ratio: 0.5 }]);
+    const outcome = simulate([ORIGIN, drain], challenge({ hp: 1000, attack: 10, turnLimit: 2 }));
+
+    assert.deepEqual(entriesOf(outcome, 'player', 'drain'), [{ type: 'drain', actor: 'player', turn: 2, amount: 5, hp: 95 }]);
+  });
+
+  test('drain：敵も与ダメージの割合を回復する', () => {
+    const outcome = simulate([ORIGIN], challenge({ hp: 100, attack: 10, abilities: [{ type: 'drain', ratio: 0.5 }], turnLimit: 1 }));
+
+    assert.deepEqual(entriesOf(outcome, 'boss', 'drain'), [{ type: 'drain', actor: 'boss', turn: 1, amount: 5, hp: 95 }]);
+  });
+
+  test('drain：反撃では回復し、毒では回復しない', () => {
+    const vampire = node('vampire', [
+      { type: 'drain', ratio: 0.5 },
+      { type: 'counter', damage: 6 },
+      { type: 'poison', damage: 4 },
+    ]);
+    const outcome = simulate([ORIGIN, vampire], challenge({ hp: 1000, attack: 10, turnLimit: 1 }));
+
+    // 被弾で HP 90 になり、反撃の 6 の半分を回復する。ターン終了の毒では回復しない
+    assert.deepEqual(entriesOf(outcome, 'player', 'drain'), [{ type: 'drain', actor: 'player', turn: 1, amount: 3, hp: 93 }]);
+  });
+
+  test('rage：味方は被弾するたびに攻撃が上がり、防御で0になった1発も数える', () => {
+    const rage = node('rage', [
+      { type: 'rage', amount: 2 },
+      { type: 'stat', stat: 'defense', amount: 20 },
+    ]);
+    const outcome = simulate(
+      [ORIGIN, rage],
+      challenge({ hp: 1000, attack: 10, abilities: [{ type: 'multiHit', hits: 2, ratio: 0.5 }], turnLimit: 2 }),
+    );
+
+    assert.deepEqual(
+      entriesOf(outcome, 'boss', 'hit').slice(0, 2).map((entry) => [entry.damage, entry.changes]),
+      [
+        [0, { attack: 12 }],
+        [0, { attack: 14 }],
+      ],
+    );
+    assert.equal(entriesOf(outcome, 'player', 'hit')[1].damage, 14);
+  });
+
+  test('rage：敵も被弾すると攻撃が上がる', () => {
+    const outcome = simulate([ORIGIN], challenge({ hp: 1000, attack: 10, abilities: [{ type: 'rage', amount: 3 }], turnLimit: 1 }));
+
+    assert.deepEqual(entriesOf(outcome, 'player', 'hit')[0].changes, { attack: 13 });
+    assert.equal(entriesOf(outcome, 'boss', 'hit')[0].damage, 13);
+  });
+
+  test('rage：反撃は被弾に数え、毒は数えない', () => {
+    const rage = node('rage', [{ type: 'rage', amount: 2 }]);
+    const outcome = simulate(
+      [ORIGIN, rage],
+      challenge({
+        hp: 1000,
+        attack: 0,
+        abilities: [
+          { type: 'counter', damage: 5 },
+          { type: 'poison', damage: 4 },
+        ],
+        turnLimit: 2,
+      }),
+    );
+
+    // 1ターン目に反撃とボスの攻撃（0 ダメージ）で +4。毒も数えると、2ターン目は 16 になる
+    assert.equal(entriesOf(outcome, 'player', 'hit')[1].damage, 14);
+  });
+
+  test('pierce：味方も敵も、相手の防御を引かない。反撃にも効く', () => {
+    const pierce = node('pierce', [{ type: 'pierce' }, { type: 'counter', damage: 7 }]);
+    const armor = node('armor', [{ type: 'stat', stat: 'defense', amount: 5 }]);
+    const outcome = simulate(
+      [ORIGIN, pierce, armor],
+      challenge({ hp: 1000, attack: 10, defense: 5, abilities: [{ type: 'pierce' }], turnLimit: 1 }),
+    );
+
+    assert.equal(entriesOf(outcome, 'player', 'hit')[0].damage, 10);
+    assert.equal(entriesOf(outcome, 'boss', 'hit')[0].damage, 10);
+    assert.equal(entriesOf(outcome, 'player', 'counter')[0].damage, 7);
+  });
+
+  test('armorBreak：味方は当てるたびに相手の防御を下げ、0 未満にはしない', () => {
+    const breaker = node('break', [{ type: 'armorBreak', amount: 2 }]);
+    const outcome = simulate([ORIGIN, breaker], challenge({ hp: 1000, attack: 0, defense: 5, turnLimit: 3 }));
+
+    assert.deepEqual(
+      entriesOf(outcome, 'player', 'hit').map((entry) => [entry.damage, entry.changes]),
+      [
+        [5, { defense: 3 }],
+        [7, { defense: 1 }],
+        [9, { defense: 0 }],
+      ],
+    );
+  });
+
+  test('armorBreak：敵も当てるたびに相手の防御を下げる', () => {
+    const armor = node('armor', [{ type: 'stat', stat: 'defense', amount: 4 }]);
+    const outcome = simulate(
+      [ORIGIN, armor],
+      challenge({ hp: 1000, attack: 10, abilities: [{ type: 'armorBreak', amount: 3 }], turnLimit: 2 }),
+    );
+
+    assert.deepEqual(
+      entriesOf(outcome, 'boss', 'hit').map((entry) => entry.damage),
+      [6, 9],
+    );
+  });
+
+  test('armorBreak：反撃でも相手の防御を下げる', () => {
+    const breaker = node('break', [
+      { type: 'armorBreak', amount: 1 },
+      { type: 'counter', damage: 5 },
+    ]);
+    const outcome = simulate([ORIGIN, breaker], challenge({ hp: 1000, attack: 10, defense: 3, turnLimit: 2 }));
+
+    // 1ターン目の通常攻撃で 3→2、反撃で 2→1 に下がる
+    assert.deepEqual(
+      entriesOf(outcome, 'player', 'hit').map((entry) => entry.damage),
+      [7, 9],
+    );
+  });
+
+  test('mark・burst：味方は刻印を付け、解放で全部使って倍率を掛ける', () => {
+    const mark = node('mark', [{ type: 'mark', amount: 1 }]);
+    const burst = node('burst', [{ type: 'burst', perMark: 0.5 }]);
+    const outcome = simulate([ORIGIN, mark, ICE, burst], challenge({ hp: 1000, attack: 0, turnLimit: 4 }));
+
+    assert.deepEqual(
+      entriesOf(outcome, 'player', 'hit').map((entry) => [entry.element, entry.damage, entry.changes]),
+      [
+        ['ice', 10, { marks: 1 }],
+        ['physical', 15, { marks: 1 }],
+        ['ice', 10, { marks: 2 }],
+        ['physical', 20, { marks: 1 }],
+      ],
+    );
+    assert.deepEqual(
+      entriesOf(outcome, 'player', 'burst').map((entry) => [entry.marks, entry.multiplier]),
+      [
+        [1, 1.5],
+        [2, 2],
+      ],
+    );
+  });
+
+  test('mark・burst：敵も刻印を付けて解放する', () => {
+    const outcome = simulate(
+      [ORIGIN],
+      challenge({
+        hp: 1000,
+        attack: 10,
+        abilities: [
+          { type: 'mark', amount: 2 },
+          { type: 'burst', perMark: 0.5 },
+        ],
+        turnLimit: 2,
+      }),
+    );
+
+    assert.deepEqual(
+      entriesOf(outcome, 'boss', 'hit').map((entry) => entry.damage),
+      [10, 20],
+    );
+  });
+
+  test('倒した1発では、受けた側の状態を変えない', () => {
+    const mark = node('mark', [{ type: 'mark', amount: 1 }]);
+    const outcome = simulate([ORIGIN, mark], challenge({ hp: 10, attack: 0 }));
+
+    assert.equal(entriesOf(outcome, 'player', 'hit')[0].changes, undefined);
+  });
+});
+
+describe('倍率の能力', () => {
+  test('tempo：味方は倍数のターンだけ倍率が掛かる', () => {
+    const tempo = node('tempo', [{ type: 'tempo', every: 2, damageMultiplier: 3 }]);
+    const outcome = simulate([ORIGIN, tempo], challenge({ hp: 1000, attack: 0, turnLimit: 4 }));
+
+    assert.deepEqual(
+      entriesOf(outcome, 'player', 'hit').map((entry) => [entry.damage, entry.tempo]),
+      [
+        [10, undefined],
+        [30, 3],
+        [10, undefined],
+        [30, 3],
+      ],
+    );
+  });
+
+  test('tempo：敵も倍数のターンだけ倍率が掛かり、反撃には掛からない', () => {
+    const outcome = simulate(
+      [ORIGIN],
+      challenge({
+        hp: 1000,
+        attack: 10,
+        abilities: [
+          { type: 'tempo', every: 1, damageMultiplier: 2 },
+          { type: 'counter', damage: 5 },
+        ],
+        turnLimit: 1,
+      }),
+    );
+
+    assert.equal(entriesOf(outcome, 'boss', 'hit')[0].damage, 20);
+    assert.equal(entriesOf(outcome, 'boss', 'hit')[0].tempo, 2);
+    assert.equal(entriesOf(outcome, 'boss', 'counter')[0].damage, 5);
+  });
+
+  test('charge：倍率は前回の発動からの経過ターン数で決まり、初回は戦闘開始から数える', () => {
+    const charge = node('charge', [{ type: 'charge', perTurn: 0.5 }]);
+    const outcome = simulate([ORIGIN, charge, FIRE, ICE], challenge({ hp: 1000, attack: 0, turnLimit: 4 }));
+
+    // 1ターン目は経過1で 1.5 倍、4ターン目は周期スキル3つぶんの経過3で 2.5 倍
+    assert.deepEqual(
+      entriesOf(outcome, 'player', 'hit').map((entry) => [entry.element, entry.damage]),
+      [
+        ['physical', 15],
+        ['fire', 10],
+        ['ice', 10],
+        ['physical', 25],
+      ],
+    );
+    assert.deepEqual(
+      entriesOf(outcome, 'player', 'charge').map((entry) => [entry.turn, entry.multiplier]),
+      [
+        [1, 1.5],
+        [4, 2.5],
+      ],
+    );
+  });
+
+  test('charge：周期スキルが溜めだけなら、毎ターン経過1の倍率で殴る', () => {
+    const outcome = simulate(
+      [ORIGIN],
+      challenge({ hp: 1000, attack: 10, abilities: [{ type: 'charge', perTurn: 1 }], turnLimit: 2 }),
+    );
+
+    assert.deepEqual(
+      entriesOf(outcome, 'boss', 'hit').map((entry) => entry.damage),
+      [20, 20],
+    );
+  });
+});
+
 describe('組のお題', () => {
   // 起点だけのビルドは 10 ダメージ × 1 発・HP 100
   const beatable = challenge({ hp: 20, attack: 10 });
