@@ -1,4 +1,5 @@
 // @ts-check
+// デバッグ入力の欄とボタン。ツリーを介さず、文字列で指定した能力で戦闘を試す
 
 import { ABILITIES, formatDefaultWord } from '../core/ability-table.js';
 import { parseAbilities } from '../core/parse-abilities.js';

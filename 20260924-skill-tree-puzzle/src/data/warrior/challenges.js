@@ -1,4 +1,5 @@
 // @ts-check
+// 戦士のお題（敵の組と配布 pt）。敵ごとのコメントに想定解を書く
 
 /**
  * @typedef {import('../../types.js').Challenge} Challenge

@@ -1,4 +1,5 @@
 // @ts-check
+// 入口。選んだキャラ・お題・取得済みノード・連戦の進行を状態として持ち、判定（core）と描画（ui）を繋ぐ
 
 import { canAcquire, canRelease } from './core/build.js';
 import { simulateChallenge } from './core/challenge.js';

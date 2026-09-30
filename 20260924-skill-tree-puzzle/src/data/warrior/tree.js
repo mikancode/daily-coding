@@ -1,4 +1,5 @@
 // @ts-check
+// 戦士のスキルツリー（ノードの配置・能力・辺）
 
 import { resolveAbility } from '../../core/ability-table.js';
 

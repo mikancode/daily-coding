@@ -1,4 +1,5 @@
 // @ts-check
+// ブラウザへの保存（localStorage）。保存キーの命名と、選んだキャラ・お題・ビルドの読み書きをまとめる
 
 import { restoreBuild, serializeBuild } from './core/saved-build.js';
 

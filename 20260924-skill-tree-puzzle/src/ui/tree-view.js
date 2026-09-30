@@ -1,4 +1,5 @@
 // @ts-check
+// スキルツリーの描画と、ノードのタップの通知
 
 /**
  * @typedef {import('../types.js').NodeId} NodeId

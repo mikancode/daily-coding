@@ -1,4 +1,5 @@
 // @ts-check
+// キャラの一覧（ID・名前・ツリー・お題）。画面・検証・テストは、ここを通してだけツリーとお題を受け取る
 
 import { CHALLENGES as WARRIOR_CHALLENGES } from './warrior/challenges.js';
 import { TREE as WARRIOR_TREE } from './warrior/tree.js';

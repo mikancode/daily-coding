@@ -1,4 +1,5 @@
 // @ts-check
+// 戦闘ログと結果の表示。敵が複数なら敵ごとのタブで切り替える
 
 import { ELEMENT_NAMES } from './element-names.js';
 

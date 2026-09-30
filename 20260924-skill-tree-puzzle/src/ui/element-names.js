@@ -1,4 +1,5 @@
 // @ts-check
+// 属性の表示名
 
 /**
  * @typedef {import('../types.js').ElementId} ElementId

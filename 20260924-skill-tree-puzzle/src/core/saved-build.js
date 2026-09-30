@@ -1,4 +1,5 @@
 // @ts-check
+// 保存するビルドの書き出しと、保存したビルドが今のツリーで組めるかの確認。localStorage には触らない
 
 import { collectConnected } from './build.js';
 
