@@ -1,6 +1,6 @@
 // @ts-check
 
-import { createEnemyProfile } from '../core/simulate.js';
+import { createEnemyProfile } from '../core/profile.js';
 import { formatAbility, formatAttack, formatReward } from './ability-names.js';
 import { ELEMENT_NAMES } from './element-names.js';
 

@@ -1,8 +1,10 @@
 // @ts-check
 
 import { canAcquire, canRelease } from './core/build.js';
+import { simulateChallenge } from './core/challenge.js';
+import { createProfile } from './core/profile.js';
 import { restoreBuild, serializeBuild } from './core/saved-build.js';
-import { createProfile, simulate, simulateChallenge } from './core/simulate.js';
+import { simulate } from './core/simulate.js';
 import { CHARACTERS } from './data/characters.js';
 import { createBuildStatsView } from './ui/build-stats.js';
 import { createDebugInput } from './ui/debug-input.js';
