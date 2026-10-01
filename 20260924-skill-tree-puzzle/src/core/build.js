@@ -1,4 +1,5 @@
 // @ts-check
+// ツリーの隣接と、ノードを取得・解除できるかの判定
 
 /**
  * @typedef {import('../types.js').NodeId} NodeId

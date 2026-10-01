@@ -1,8 +1,11 @@
 // @ts-check
+// ビルドと敵1体の戦闘を1ターンずつ進め、ログと勝敗を返す。
+// 戦闘中に変わる状態（Fighter）はこのファイルの中に閉じる
+
+import { createEnemyProfile, createProfile } from './profile.js';
 
 /**
  * @typedef {import('../types.js').Build} Build
- * @typedef {import('../types.js').Challenge} Challenge
  * @typedef {import('../types.js').Enemy} Enemy
  * @typedef {import('../types.js').LogEntry} LogEntry
  * @typedef {import('../types.js').LoseReason} LoseReason
@@ -18,9 +21,6 @@
 const DEFAULT_ELEMENT = 'physical';
 /** 軽減率を書いていない属性は軽減しない */
 const NO_REDUCTION = 0;
-/** multiHit を取っていなければ、1ターンに1回、攻撃そのままの威力で殴る */
-const SINGLE_HIT = 1;
-const FULL_RATIO = 1;
 /** 条件を満たさない、または conditional を取っていなければ倍率は掛からない */
 const NEUTRAL_MULTIPLIER = 1;
 /** 食いしばりで踏みとどまったときの HP */
@@ -30,125 +30,6 @@ const ENDURE_HP = 1;
  * 例：100 × (1 − 0.9) は 9.999… になり floor すると 9 に、100 × 0.57 は 56.999… になり HP 57 で発動しない
  */
 const FLOAT_TOLERANCE = 1e-9;
-
-/**
- * @param {CombatantProfile['resistances']} resistances
- * @returns {CombatantProfile}
- */
-function emptyProfile(resistances) {
-  return {
-    maxHp: 0,
-    attack: 0,
-    defense: 0,
-    hits: SINGLE_HIT,
-    ratio: FULL_RATIO,
-    conditionals: [],
-    tempos: [],
-    rotation: [],
-    counter: 0,
-    regen: 0,
-    poison: 0,
-    endure: false,
-    drain: 0,
-    rage: 0,
-    pierce: false,
-    armorBreak: 0,
-    mark: 0,
-    resistances,
-  };
-}
-
-/**
- * 敵と味方で同じ集計を通す。能力の効き方が両者でずれないようにするため
- * @param {CombatantProfile} profile
- * @param {Effect} effect
- */
-function applyEffect(profile, effect) {
-  switch (effect.type) {
-    case 'stat':
-      if (effect.stat === 'hp') profile.maxHp += effect.amount;
-      if (effect.stat === 'attack') profile.attack += effect.amount;
-      if (effect.stat === 'defense') profile.defense += effect.amount;
-      break;
-    case 'multiHit':
-      // 分割の重ねがけ。2回分割を2つ取れば4回になる
-      profile.hits *= effect.hits;
-      profile.ratio *= effect.ratio;
-      break;
-    case 'conditional':
-      profile.conditionals.push(effect);
-      break;
-    case 'tempo':
-      profile.tempos.push(effect);
-      break;
-    case 'element':
-    case 'charge':
-    case 'burst':
-      profile.rotation.push(effect);
-      break;
-    case 'counter':
-      profile.counter += effect.damage;
-      break;
-    case 'regen':
-      profile.regen += effect.amount;
-      break;
-    case 'poison':
-      profile.poison += effect.damage;
-      break;
-    case 'endure':
-      profile.endure = true;
-      break;
-    case 'drain':
-      profile.drain += effect.ratio;
-      break;
-    case 'rage':
-      profile.rage += effect.amount;
-      break;
-    case 'pierce':
-      profile.pierce = true;
-      break;
-    case 'armorBreak':
-      profile.armorBreak += effect.amount;
-      break;
-    case 'mark':
-      profile.mark += effect.amount;
-      break;
-  }
-}
-
-/**
- * 勝敗の判定と画面のステータス表示の両方から使う。計算を二重に書くと、表示と判定がずれるため
- * @param {Build} build ツリーの定義順。周期スキルはこの順でローテーションに入る
- * @param {readonly Effect[]} [rewards] 連戦で獲得した報酬。倒した順にビルドの後ろへ足す
- * @returns {CombatantProfile}
- */
-export function createProfile(build, rewards = []) {
-  const profile = emptyProfile({});
-  for (const node of build) {
-    for (const effect of node.effects) {
-      applyEffect(profile, effect);
-    }
-  }
-  for (const effect of rewards) {
-    applyEffect(profile, effect);
-  }
-  return profile;
-}
-
-/**
- * @param {Enemy} enemy
- * @returns {CombatantProfile}
- */
-export function createEnemyProfile(enemy) {
-  const profile = emptyProfile(enemy.resistances);
-  profile.maxHp = enemy.hp;
-  profile.attack = enemy.attack;
-  profile.defense = enemy.defense;
-  for (const effect of enemy.abilities) {
-    applyEffect(profile, effect);
-  }
-  return profile;
-}
 
 /**
  * 条件は1発ごとに、その時点の HP で判定する。反撃で HP が減ると、同じターンの次の1発から効く
@@ -497,96 +378,4 @@ export function simulate(build, enemy, rewards = []) {
 
   log.push({ type: 'turnLimit', turn: enemy.turnLimit });
   return finish(enemy.turnLimit);
-}
-
-/**
- * お題の敵それぞれと戦った結果を、敵の順に全員分返す。結果の画面で敵ごとの勝敗を並べるため
- * @param {Build} build
- * @param {Challenge} challenge
- * @returns {SimulationResult[]}
- */
-export function simulateChallenge(build, challenge) {
-  return challenge.enemies.map((enemy) => simulate(build, enemy));
-}
-
-/**
- * 敵を order の順に1体ずつ倒し、勝つたびにその敵の報酬を足して次の敵と戦う。
- * 負けた戦闘で打ち切るので、返す結果は order より短くなることがある
- * @param {Build} build
- * @param {Challenge} challenge
- * @param {readonly number[]} order 戦う敵の challenge.enemies での位置
- * @returns {SimulationResult[]}
- */
-export function simulateSequence(build, challenge, order) {
-  /** @type {Effect[]} */
-  const rewards = [];
-  /** @type {SimulationResult[]} */
-  const results = [];
-  for (const index of order) {
-    const enemy = challenge.enemies[index];
-    const result = simulate(build, enemy, rewards);
-    results.push(result);
-    if (result.result === 'lose') {
-      break;
-    }
-    rewards.push(...(enemy.reward ?? []));
-  }
-  return results;
-}
-
-/**
- * @template T
- * @param {readonly T[]} items
- * @returns {T[][]}
- */
-function permutations(items) {
-  if (items.length <= 1) {
-    return [[...items]];
-  }
-  return items.flatMap((item, index) =>
-    permutations([...items.slice(0, index), ...items.slice(index + 1)]).map((rest) => [item, ...rest]),
-  );
-}
-
-/**
- * @param {Challenge} challenge
- * @returns {number[][]}
- */
-function enemyOrders(challenge) {
-  return permutations(challenge.enemies.map((_, index) => index));
-}
-
-/**
- * 全員に勝てる戦う順番（敵の位置の並び）をすべて返す。独立のお題では順番に意味が無いので使わない
- * @param {Build} build
- * @param {Challenge} challenge
- * @returns {number[][]}
- */
-export function winningOrders(build, challenge) {
-  return enemyOrders(challenge).filter((order) => wonAll(build, challenge, order));
-}
-
-/**
- * @param {Build} build
- * @param {Challenge} challenge
- * @param {readonly number[]} order
- * @returns {boolean}
- */
-function wonAll(build, challenge, order) {
-  const results = simulateSequence(build, challenge, order);
-  return results.length === order.length && results.every((result) => result.result === 'win');
-}
-
-/**
- * 独立のお題は、すべての敵に勝てばクリア。総当たりで何度も呼ぶので、1体に負けた時点で残りの敵は判定しない。
- * 連戦のお題は、全員に勝てる順番が1つでもあればクリア
- * @param {Build} build
- * @param {Challenge} challenge
- * @returns {boolean}
- */
-export function clearsChallenge(build, challenge) {
-  if (challenge.mode === 'sequence') {
-    return enemyOrders(challenge).some((order) => wonAll(build, challenge, order));
-  }
-  return challenge.enemies.every((enemy) => simulate(build, enemy).result === 'win');
 }

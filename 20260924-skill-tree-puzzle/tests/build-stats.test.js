@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createProfile } from '../src/core/simulate.js';
+import { createProfile } from '../src/core/profile.js';
 import { formatBuildStats } from '../src/ui/build-stats.js';
 
 /** @param {string} id @param {object[]} effects */

@@ -1,6 +1,7 @@
 // @ts-check
+// キャラとお題の選択・お題の情報・残り pt・挑戦とリセットのボタン、連戦の相手選び
 
-import { createEnemyProfile } from '../core/simulate.js';
+import { createEnemyProfile } from '../core/profile.js';
 import { formatAbility, formatAttack, formatReward } from './ability-names.js';
 import { ELEMENT_NAMES } from './element-names.js';
 

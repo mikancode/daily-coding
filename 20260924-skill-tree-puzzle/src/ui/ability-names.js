@@ -1,4 +1,5 @@
 // @ts-check
+// 能力・攻撃・ローテーション・報酬の表示用の文言
 
 import { ELEMENT_NAMES } from './element-names.js';
 

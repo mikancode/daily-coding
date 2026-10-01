@@ -22,14 +22,47 @@
 | `src/data/` | キャラの一覧（`characters.js`）と、キャラごとのツリー・お題の定数（`<キャラID>/`） |
 | `src/ui/` | 描画とタップの通知。判定を持たない |
 | `src/main.js` | 選んだキャラ・お題と取得済みノードを状態として持ち、判定と描画を繋ぐ |
+| `src/storage.js` | ブラウザへの保存（localStorage）の読み書き。`main.js` だけが使う |
 
-依存は `main.js` → `ui` / `core` / `data`、`ui` → `core`、`data` → `core` の一方向にする。
+ファイル単位では次のとおり。各ファイルの先頭のコメントにも、同じ役割を書いている。
+
+```text
+src/
+├── main.js      # 入口。状態を持ち、判定と描画を繋ぐ
+├── storage.js   # 保存キーの命名と、選んだキャラ・お題・ビルドの読み書き
+├── types.d.ts   # 型の定義
+├── core/
+│   ├── profile.js         # ビルド・敵の能力を、戦う側ごとの集計（CombatantProfile）にまとめる
+│   ├── simulate.js        # ビルドと敵1体の戦闘を1ターンずつ進め、ログと勝敗を返す
+│   ├── challenge.js       # お題単位の判定（独立戦・連戦・戦う順番の総当たり・クリア判定）
+│   ├── build.js           # ツリーの隣接と、ノードを取得・解除できるかの判定
+│   ├── enumerate.js       # 配布 pt で組めるビルドをすべて列挙する
+│   ├── saved-build.js     # 保存するビルドの書き出しと、今のツリーで組めるかの確認
+│   ├── ability-table.js   # 能力の表（語・日本語名・規定値・Effect の作り方）
+│   └── parse-abilities.js # デバッグ入力の文字列を Effect の配列にする
+├── data/
+│   ├── characters.js      # キャラの一覧（ID・名前・ツリー・お題）
+│   └── warrior/           # 戦士
+│       ├── tree.js        # スキルツリー
+│       └── challenges.js  # お題（敵の組と配布 pt）
+└── ui/
+    ├── tree-view.js       # ツリーの描画とタップの通知
+    ├── panel.js           # キャラとお題の選択・お題の情報・残り pt・ボタン・連戦の相手選び
+    ├── log-view.js        # 戦闘ログと結果の表示。敵が複数なら敵ごとに切り替える
+    ├── debug-input.js     # デバッグ入力の欄とボタン
+    ├── build-stats.js     # 組んだビルドのステータスの表示
+    ├── ability-names.js   # 能力・攻撃・ローテーション・報酬の表示
+    └── element-names.js   # 属性の表示名
+```
+
+依存は `main.js` → `storage.js` / `ui` / `core` / `data`、`storage.js` → `core`、`ui` → `core`、`data` → `core` の一方向にする。
+`core` の戦闘まわりは `challenge.js` → `simulate.js` → `profile.js` の順に依存する。
 `data` が `core` を使うのは、ツリーのノードを能力の表（`core/ability-table.js`）から作るため。
 `core` は `ui` を知らないので、`node --test` と `scripts/verify.js` から DOM 無しで動かせる。
 
 表示と判定で、同じ集計を使う。
 ビルドのステータス表示（`ui/build-stats.js`）とお題のボスの表示（`ui/panel.js`）は、
-勝敗の判定と同じ `createProfile` / `createEnemyProfile`（`core/simulate.js`）から作る。
+勝敗の判定と同じ `createProfile` / `createEnemyProfile`（`core/profile.js`）から作る。
 計算を二重に書くと、画面の数値とログの結果がずれるため。
 
 ## 3. 戦闘モデル
@@ -124,7 +157,7 @@ HP を減らす処理は、攻撃・反撃・毒のどれも `takeDamage` を通
 ### 新しい能力を足す手順
 
 1. `src/types.d.ts` に型を足し、`Effect` の union と、必要なら `CombatantProfile` のフィールドに加える
-2. `core/simulate.js` の `emptyProfile` に初期値を、`applyEffect` に集計を足す
+2. `core/profile.js` の `emptyProfile` に初期値を、`applyEffect` に集計を足す
 3. `core/simulate.js` で、能力が割り込む場所に処理を足す。HP を減らすなら `takeDamage` を通す。
    攻撃を当てた・受けたときの能力なら `strike` に足す
 4. ログに出すなら、`LogEntry` に種類を足し、`ui/log-view.js` で文章にする

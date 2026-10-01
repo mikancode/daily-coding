@@ -1,9 +1,20 @@
 // @ts-check
+// 入口。選んだキャラ・お題・取得済みノード・連戦の進行を状態として持ち、判定（core）と描画（ui）を繋ぐ
 
 import { canAcquire, canRelease } from './core/build.js';
-import { restoreBuild, serializeBuild } from './core/saved-build.js';
-import { createProfile, simulate, simulateChallenge } from './core/simulate.js';
+import { simulateChallenge } from './core/challenge.js';
+import { createProfile } from './core/profile.js';
+import { simulate } from './core/simulate.js';
 import { CHARACTERS } from './data/characters.js';
+import {
+  STORAGE_UNAVAILABLE_MESSAGE,
+  loadSavedBuild,
+  loadSelectedChallenge,
+  loadSelectedCharacter,
+  saveBuild,
+  saveSelectedChallenge,
+  saveSelectedCharacter,
+} from './storage.js';
 import { createBuildStatsView } from './ui/build-stats.js';
 import { createDebugInput } from './ui/debug-input.js';
 import { createLogView } from './ui/log-view.js';
@@ -11,8 +22,6 @@ import { createPanel } from './ui/panel.js';
 import { createTreeView } from './ui/tree-view.js';
 
 /**
- * @typedef {import('./types.js').Challenge} Challenge
- * @typedef {import('./types.js').Character} Character
  * @typedef {import('./types.js').NodeId} NodeId
  * @typedef {import('./types.js').SequenceProgress} SequenceProgress
  */
@@ -34,77 +43,10 @@ function requireElement(selector, type) {
 
 const messageElement = requireElement('#message', HTMLElement);
 
-/**
- * Pages のオリジンは daily-coding の全プロダクトで共有するので、保存キーにはプロダクト名を前置する。
- * キャラごとのデータは `skill-tree-puzzle:<キャラID>:` の下に置き、選んだキャラだけはキャラの外に置く
- */
-const STORAGE_KEY_PREFIX = 'skill-tree-puzzle';
-const SELECTED_CHARACTER_KEY = `${STORAGE_KEY_PREFIX}:character`;
-const STORAGE_UNAVAILABLE_MESSAGE = 'ビルドを保存できない環境です';
 const BUILD_LOCKED_MESSAGE = '連戦中はビルドを変えられません。変えるなら「1体目からやり直す」を押してください';
-const INVALID_SAVED_BUILD_MESSAGE = '保存したビルドが今のツリーでは組めないため、最初からにしました';
 
-/** お題の選択はキャラごとに覚える */
-function selectedChallengeKey() {
-  return `${STORAGE_KEY_PREFIX}:${character.id}:challenge`;
-}
-
-/**
- * ビルドはお題ごとに組み直すので、保存もキャラとお題ごとに分ける
- * @param {Challenge} target
- */
-function buildStorageKey(target) {
-  return `${STORAGE_KEY_PREFIX}:${character.id}:build:${target.id}`;
-}
-
-/**
- * localStorage から読む。保存が無ければ null。プライベートブラウズなどで読めなければ undefined
- * @param {string} key
- * @returns {string | null | undefined}
- */
-function readStorage(key) {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return undefined;
-  }
-}
-
-/**
- * プライベートブラウズや容量超過では localStorage が例外を投げる。保存できなくても遊べるようにする
- * @param {string} key
- * @param {string} value
- * @returns {boolean} 保存できたら true
- */
-function writeStorage(key, value) {
-  try {
-    localStorage.setItem(key, value);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * 保存が無い、読めない、または今は無いキャラの ID なら、最初のキャラから始める
- * @returns {Character}
- */
-function loadSelectedCharacter() {
-  const savedId = readStorage(SELECTED_CHARACTER_KEY);
-  return CHARACTERS.find((candidate) => candidate.id === savedId) ?? CHARACTERS[0];
-}
-
-/**
- * 保存が無い、読めない、または今は無いお題の ID なら、最初のお題から始める
- * @returns {Challenge}
- */
-function loadSelectedChallenge() {
-  const savedId = readStorage(selectedChallengeKey());
-  return character.challenges.find((candidate) => candidate.id === savedId) ?? character.challenges[0];
-}
-
-let character = loadSelectedCharacter();
-let challenge = loadSelectedChallenge();
+let character = loadSelectedCharacter(CHARACTERS);
+let challenge = loadSelectedChallenge(character);
 
 /** @type {Set<NodeId>} */
 const owned = new Set([character.tree.originId]);
@@ -115,33 +57,14 @@ function resetBuild() {
 }
 
 /**
- * @returns {boolean} 保存できたら true
- */
-function saveBuild() {
-  return writeStorage(buildStorageKey(challenge), serializeBuild(character.tree, owned));
-}
-
-/**
- * 保存が無い・組めないときは起点だけから始める。お題を切り替えたときに、前のお題のビルドを持ち越さないため
+ * お題を切り替えたときに、前のお題のビルドを持ち越さないよう、保存したビルドで置き換える
  * @returns {string | null} 知らせることがあればその文言
  */
 function loadBuild() {
-  resetBuild();
-  const raw = readStorage(buildStorageKey(challenge));
-  if (raw === undefined) {
-    return STORAGE_UNAVAILABLE_MESSAGE;
-  }
-  const restored = restoreBuild(character.tree, challenge.points, raw);
-  switch (restored.status) {
-    case 'none':
-      return null;
-    case 'restored':
-      restored.owned.forEach((id) => owned.add(id));
-      return null;
-    case 'invalid':
-      // 起点だけの状態で上書きし、次に開いたときに同じ知らせを出さない
-      return saveBuild() ? INVALID_SAVED_BUILD_MESSAGE : STORAGE_UNAVAILABLE_MESSAGE;
-  }
+  const saved = loadSavedBuild(character, challenge);
+  owned.clear();
+  saved.owned.forEach((id) => owned.add(id));
+  return saved.notice;
 }
 
 /**
@@ -229,9 +152,9 @@ const panel = createPanel(
         throw new Error(`存在しないキャラです: ${characterId}`);
       }
       character = selected;
-      challenge = loadSelectedChallenge();
+      challenge = loadSelectedChallenge(character);
       resetProgress();
-      const selectionSaved = writeStorage(SELECTED_CHARACTER_KEY, character.id);
+      const selectionSaved = saveSelectedCharacter(character);
       const notice = loadBuild();
       messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
       treeView.setTree(character.tree);
@@ -247,7 +170,7 @@ const panel = createPanel(
       }
       challenge = selected;
       resetProgress();
-      const selectionSaved = writeStorage(selectedChallengeKey(), challenge.id);
+      const selectionSaved = saveSelectedChallenge(character, challenge);
       const notice = loadBuild();
       messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
       logView.clear();
@@ -288,7 +211,7 @@ const panel = createPanel(
     },
     onReset() {
       resetBuild();
-      messageElement.textContent = saveBuild() ? '' : STORAGE_UNAVAILABLE_MESSAGE;
+      messageElement.textContent = saveBuild(character, challenge, owned) ? '' : STORAGE_UNAVAILABLE_MESSAGE;
       logView.clear();
       render();
     },
@@ -322,7 +245,7 @@ const treeView = createTreeView(requireElement('#tree', SVGSVGElement), characte
   if (reason !== null) {
     messageElement.textContent = reason;
   } else {
-    messageElement.textContent = saveBuild() ? '' : STORAGE_UNAVAILABLE_MESSAGE;
+    messageElement.textContent = saveBuild(character, challenge, owned) ? '' : STORAGE_UNAVAILABLE_MESSAGE;
   }
   render();
 });

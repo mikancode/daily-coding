@@ -38,30 +38,13 @@ node 20260924-skill-tree-puzzle/scripts/verify.js
 ├── style.css
 ├── jsconfig.json   # 型検査の設定。依存定義ファイルではない
 ├── src/
-│   ├── main.js     # 状態を持ち、判定と描画を繋ぐ
+│   ├── main.js     # 画面の入口。状態を持ち、判定と描画を繋ぐ
 │   ├── types.d.ts  # 型の定義
-│   ├── core/
-│   │   ├── build.js     # ノードを取得・解除できるかの判定
-│   │   ├── ability-table.js  # デバッグ入力で指定できる能力の表（語・日本語名・規定値・Effect の作り方）
-│   │   ├── parse-abilities.js # デバッグ入力の文字列を Effect の配列にする
-│   │   ├── enumerate.js # 配布 pt で組めるビルドをすべて列挙する
-│   │   ├── saved-build.js # 保存したビルドの書き出しと、今のツリーで組めるかの確認
-│   │   └── simulate.js  # 敵・味方を同じ能力の定義で動かして勝敗を決め、お題の敵すべてに勝てたかを見る
-│   ├── data/
-│   │   ├── characters.js  # キャラの一覧（ID・名前・ツリー・お題）
-│   │   └── warrior/       # 戦士
-│   │       ├── tree.js        # スキルツリー（30ノード）
-│   │       └── challenges.js  # お題（敵の組と配布 pt）
-│   └── ui/
-│       ├── tree-view.js      # ツリーの描画とタップの通知
-│       ├── panel.js          # キャラとお題の選択・お題の情報・残り pt・挑戦と全リセットのボタン
-│       ├── log-view.js       # 戦闘ログと結果の表示。ボスが複数ならボスごとに切り替える
-│       ├── debug-input.js    # デバッグ入力の欄とボタン
-│       ├── build-stats.js    # 組んだビルドのステータスの表示
-│       ├── ability-names.js  # 能力・ローテーションの表示
-│       └── element-names.js  # 属性の表示名
+│   ├── core/       # 判定（戦闘・取得と解除・ビルドの列挙など）。DOM に触らない
+│   ├── data/       # キャラごとのツリーとお題
+│   └── ui/         # 描画とタップの通知
 ├── docs/
-│   └── design.md   # 設計の前提と判断の理由（開発者向け）
+│   └── design.md   # 設計の前提と判断の理由、ファイル単位の構成（開発者向け）
 ├── scripts/
 │   └── verify.js   # キャラのお題ごとの総当たり検証
 └── tests/          # node --test で実行するテスト

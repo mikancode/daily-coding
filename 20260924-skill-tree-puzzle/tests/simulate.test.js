@@ -1,13 +1,8 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  clearsChallenge,
-  createProfile,
-  simulate,
-  simulateChallenge,
-  simulateSequence,
-  winningOrders,
-} from '../src/core/simulate.js';
+import { clearsChallenge, simulateChallenge, simulateSequence, winningOrders } from '../src/core/challenge.js';
+import { createProfile } from '../src/core/profile.js';
+import { simulate } from '../src/core/simulate.js';
 
 // 数値は実データ（#54 で調整する）に依存させず、テスト内で固定する
 

@@ -1,4 +1,5 @@
 // @ts-check
+// デバッグ入力の文字列を、能力の表に沿って Effect の配列にする
 
 import { fillArguments, findAbility } from './ability-table.js';
 

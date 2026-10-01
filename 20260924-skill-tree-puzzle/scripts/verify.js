@@ -3,7 +3,7 @@
 
 import { CHARACTERS } from '../src/data/characters.js';
 import { enumerateBuilds } from '../src/core/enumerate.js';
-import { clearsChallenge, winningOrders } from '../src/core/simulate.js';
+import { clearsChallenge, winningOrders } from '../src/core/challenge.js';
 
 /**
  * 連戦のお題で確かめる4項目。仮データの間は判定を出力するだけで、終了コードには反映しない

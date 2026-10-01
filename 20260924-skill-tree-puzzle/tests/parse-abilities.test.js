@@ -2,7 +2,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ABILITIES, formatDefaultWord } from '../src/core/ability-table.js';
 import { parseAbilities } from '../src/core/parse-abilities.js';
-import { createProfile } from '../src/core/simulate.js';
+import { createProfile } from '../src/core/profile.js';
 
 /** @param {string} text */
 const effectsOf = (text) => {

@@ -1,4 +1,5 @@
 // @ts-check
+// 組んだビルドのステータスの表示
 
 import { formatAttack, formatProfileAbilities, formatRotation } from './ability-names.js';
 

@@ -1,4 +1,5 @@
 // @ts-check
+// 配布 pt で組めるビルドをすべて列挙する。お題の解を総当たりで確かめるため
 
 import { createAdjacency } from './build.js';
 

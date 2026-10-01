@@ -1,4 +1,5 @@
 // @ts-check
+// 能力の表。入力の語・日本語名・引数の規定値・Effect の作り方を1か所に持ち、ツリーのノードとデバッグ入力の両方から使う
 
 /**
  * @typedef {import('../types.js').AbilityDefinition} AbilityDefinition
