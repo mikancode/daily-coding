@@ -8,6 +8,7 @@ import { parseAbilities } from '../core/parse-abilities.js';
  * @typedef {import('../types.js').AbilityDefinition} AbilityDefinition
  * @typedef {import('../types.js').AbilityError} AbilityError
  * @typedef {import('../types.js').Effect} Effect
+ * @typedef {import('../types.js').StatId} StatId
  */
 
 /** ツリーの起点ノードの基礎ステータスと同じ値。ここから増減して試せるようにする */
@@ -45,6 +46,66 @@ function appendWord(text, word) {
 }
 
 /**
+ * 1語が指定したステータスの語なら、その値を返す。
+ * 判定と同じ規則で読むため、パーサーに1語ずつ渡す（大文字小文字・前後の空白・引数の省略も同じに扱う）
+ * @param {string} word
+ * @param {StatId} stat
+ * @returns {number | undefined} 別の能力の語や不正な語なら undefined（値が0の語と区別する）
+ */
+function readStatAmount(word, stat) {
+  const parsed = parseAbilities(word);
+  if (!parsed.ok) {
+    return undefined;
+  }
+  const [effect] = parsed.effects;
+  return effect.type === 'stat' && effect.stat === stat ? effect.amount : undefined;
+}
+
+/**
+ * @param {number} value
+ * @returns {number} 小数点以下の桁数。整数なら0
+ */
+function countDecimalPlaces(value) {
+  return (String(value).split('.')[1] ?? '').length;
+}
+
+/**
+ * 2つの値の和。
+ * 浮動小数点の誤差（`1.07 + 1` が `2.0700000000000003` になる）を欄に出さないよう、小数点以下の桁数が多いほうにそろえて丸める。
+ * 末尾の0は残さない（`1.5 + 1.5` は `3`）
+ * @param {number} a
+ * @param {number} b
+ * @returns {number}
+ */
+function addKeepingDecimalPlaces(a, b) {
+  const places = Math.max(countDecimalPlaces(a), countDecimalPlaces(b));
+  return Number((a + b).toFixed(places));
+}
+
+/**
+ * 能力のボタンを押したあとの欄の文字列。
+ * ステータスは、最後にある同じステータスの語の値に足して書き換える。押すたびに語が増えると、今の値が読み取りにくくなるため。
+ * 同じステータスの語が無いときと、ステータス以外の能力は、規定値つきの1語を末尾に足す
+ * @param {string} text
+ * @param {AbilityDefinition} ability
+ * @returns {string}
+ */
+export function addAbilityWord(text, ability) {
+  const effect = ability.build(...ability.defaults);
+  if (effect.type === 'stat') {
+    const words = text.split(WORD_SEPARATOR);
+    for (let index = words.length - 1; index >= 0; index -= 1) {
+      const amount = readStatAmount(words[index], effect.stat);
+      if (amount !== undefined) {
+        words[index] = words[index].replace(words[index].trim(), `${ability.name}${addKeepingDecimalPlaces(amount, effect.amount)}`);
+        return words.join(WORD_SEPARATOR);
+      }
+    }
+  }
+  return appendWord(text, formatDefaultWord(ability));
+}
+
+/**
  * @param {{
  *   text: HTMLTextAreaElement,
  *   buttons: HTMLElement,
@@ -69,7 +130,7 @@ export function createDebugInput(elements, handlers) {
     button.className = 'button';
     button.textContent = formatButtonLabel(ability);
     button.addEventListener('click', () => {
-      elements.text.value = appendWord(elements.text.value, formatDefaultWord(ability));
+      elements.text.value = addAbilityWord(elements.text.value, ability);
     });
     elements.buttons.append(button);
   }
