@@ -62,6 +62,27 @@ function readStatAmount(word, stat) {
 }
 
 /**
+ * @param {number} value
+ * @returns {number} 小数点以下の桁数。整数なら0
+ */
+function countDecimalPlaces(value) {
+  return (String(value).split('.')[1] ?? '').length;
+}
+
+/**
+ * 2つの値の和。
+ * 浮動小数点の誤差（`1.07 + 1` が `2.0700000000000003` になる）を欄に出さないよう、小数点以下の桁数が多いほうにそろえて丸める。
+ * 末尾の0は残さない（`1.5 + 1.5` は `3`）
+ * @param {number} a
+ * @param {number} b
+ * @returns {number}
+ */
+function addKeepingDecimalPlaces(a, b) {
+  const places = Math.max(countDecimalPlaces(a), countDecimalPlaces(b));
+  return Number((a + b).toFixed(places));
+}
+
+/**
  * 能力のボタンを押したあとの欄の文字列。
  * ステータスは、最後にある同じステータスの語の値に足して書き換える。押すたびに語が増えると、今の値が読み取りにくくなるため。
  * 同じステータスの語が無いときと、ステータス以外の能力は、規定値つきの1語を末尾に足す
@@ -76,7 +97,7 @@ export function addAbilityWord(text, ability) {
     for (let index = words.length - 1; index >= 0; index -= 1) {
       const amount = readStatAmount(words[index], effect.stat);
       if (amount !== undefined) {
-        words[index] = words[index].replace(words[index].trim(), `${ability.name}${amount + effect.amount}`);
+        words[index] = words[index].replace(words[index].trim(), `${ability.name}${addKeepingDecimalPlaces(amount, effect.amount)}`);
         return words.join(WORD_SEPARATOR);
       }
     }
