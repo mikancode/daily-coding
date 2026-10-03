@@ -47,11 +47,12 @@ src/
 │       └── challenges.js  # お題（敵の組と配布 pt）
 └── ui/
     ├── tree-view.js       # ツリーの描画とタップの通知
-    ├── panel.js           # キャラとお題の選択・お題の情報・残り pt・ボタン・連戦の相手選び
+    ├── panel.js           # キャラとお題の選択・お題の情報とボスの能力の説明・残り pt・ボタン・連戦の相手選び
     ├── log-view.js        # 戦闘ログと結果の表示。敵が複数なら敵ごとに切り替える
     ├── debug-input.js     # デバッグ入力の欄とボタン
     ├── build-stats.js     # 組んだビルドのステータスの表示
-    ├── ability-names.js   # 能力・攻撃・ローテーション・報酬の表示
+    ├── node-description.js # タップしたノードの能力の説明の表示
+    ├── ability-names.js   # 能力・攻撃・ローテーション・報酬の表示と、能力の説明
     └── element-names.js   # 属性の表示名
 ```
 
@@ -161,13 +162,14 @@ HP を減らす処理は、攻撃・反撃・毒のどれも `takeDamage` を通
 3. `core/simulate.js` で、能力が割り込む場所に処理を足す。HP を減らすなら `takeDamage` を通す。
    攻撃を当てた・受けたときの能力なら `strike` に足す
 4. ログに出すなら、`LogEntry` に種類を足し、`ui/log-view.js` で文章にする
-5. `ui/ability-names.js` の `formatAbility` に、敵の能力一覧での表示を足す
+5. `ui/ability-names.js` の `formatAbility` に敵の能力一覧での表示を、`describeEffect` に効き方の説明を足す。
+   説明はノードのタップとボスの能力の欄の両方に出る
 6. `core/ability-table.js` の `ABILITIES` に1行足す（入力の語・日本語名・引数の規定値・`Effect` を返す関数）。
    デバッグ入力のボタン・パーサーの規定値と、ツリーのノードの効果・表示名がこの行から作られる。
    引数に範囲の制約があれば `check` に書く
 7. `tests/simulate.test.js` にテストを足す
 
-手順 5 の足し忘れは、`formatAbility` の戻り値が足りなくなるので `tsc` で分かる。
+手順 5 の足し忘れは、`formatAbility`・`describeEffect` の戻り値が足りなくなるので `tsc` で分かる。
 手順 2 の `applyEffect` は戻り値を持たず、足し忘れても型検査では分からないので、テストで確かめる。
 手順 6 の足し忘れは、ツリーのノードで使えば読み込み時の例外で分かる。使わなければ、デバッグ入力で指定できないだけになる。
 

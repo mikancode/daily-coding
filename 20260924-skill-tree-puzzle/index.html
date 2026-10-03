@@ -17,9 +17,14 @@
       <select id="character-select" class="status-select" aria-label="キャラ"></select>
       <select id="challenge-select" class="status-select" aria-label="お題"></select>
       <p id="challenge" class="challenge"></p>
+      <details id="boss-abilities" class="boss-abilities">
+        <summary class="boss-abilities-summary">ボスの能力</summary>
+        <p id="boss-abilities-text" class="boss-abilities-text"></p>
+      </details>
       <p id="build-stats" class="build-stats"></p>
     </header>
     <svg id="tree" class="tree" role="img" aria-label="スキルツリー"></svg>
+    <p id="node-description" class="node-description" aria-live="polite"></p>
     <p id="message" class="message" aria-live="polite"></p>
     <section id="sequence" class="sequence" aria-label="連戦" hidden>
       <p id="sequence-status" class="sequence-status"></p>

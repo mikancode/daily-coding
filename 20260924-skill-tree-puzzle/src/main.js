@@ -18,6 +18,7 @@ import {
 import { createBuildStatsView } from './ui/build-stats.js';
 import { createDebugInput } from './ui/debug-input.js';
 import { createLogView } from './ui/log-view.js';
+import { createNodeDescriptionView } from './ui/node-description.js';
 import { createPanel } from './ui/panel.js';
 import { createTreeView } from './ui/tree-view.js';
 
@@ -149,6 +150,8 @@ const panel = createPanel(
     characterSelect: requireElement('#character-select', HTMLSelectElement),
     challengeSelect: requireElement('#challenge-select', HTMLSelectElement),
     challenge: requireElement('#challenge', HTMLElement),
+    bossAbilities: requireElement('#boss-abilities', HTMLDetailsElement),
+    bossAbilitiesText: requireElement('#boss-abilities-text', HTMLElement),
     points: requireElement('#remaining-points', HTMLElement),
     challengeButton: requireElement('#challenge-button', HTMLButtonElement),
     resetButton: requireElement('#reset-button', HTMLButtonElement),
@@ -173,6 +176,7 @@ const panel = createPanel(
       const notice = loadBuild();
       messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
       treeView.setTree(character.tree);
+      nodeDescriptionView.clear();
       panel.setChallenges(character.challenges);
       logView.clear();
       render();
@@ -188,6 +192,7 @@ const panel = createPanel(
       const selectionSaved = saveSelectedChallenge(character, challenge);
       const notice = loadBuild();
       messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
+      nodeDescriptionView.clear();
       logView.clear();
       render();
     },
@@ -257,7 +262,15 @@ createDebugInput(
 
 const buildStatsView = createBuildStatsView(requireElement('#build-stats', HTMLElement));
 
+const nodeDescriptionView = createNodeDescriptionView(requireElement('#node-description', HTMLElement));
+
 const treeView = createTreeView(requireElement('#tree', SVGSVGElement), character.tree, (nodeId) => {
+  const node = character.tree.nodes.find((candidate) => candidate.id === nodeId);
+  // ノード ID はツリーの描画から来るので、見つからなければ呼び出し側のバグ
+  if (node === undefined) {
+    throw new Error(`存在しないノードです: ${nodeId}`);
+  }
+  nodeDescriptionView.render(node);
   const reason = toggleNode(nodeId);
   if (reason !== null) {
     messageElement.textContent = reason;

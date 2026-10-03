@@ -1,5 +1,5 @@
 // @ts-check
-// 能力・攻撃・ローテーション・報酬の表示用の文言
+// 能力・攻撃・ローテーション・報酬の表示用の文言と、能力の説明
 
 import { ELEMENT_NAMES } from './element-names.js';
 
@@ -154,4 +154,63 @@ export function formatReward(effect) {
     default:
       return formatAbility(effect) ?? '';
   }
+}
+
+/**
+ * 説明文の主語。英字の後ろだけ助詞の前に空白を入れるので、助詞まで含める
+ * @type {Readonly<Record<'hp' | 'attack' | 'defense', string>>}
+ */
+const STAT_SUBJECTS = { hp: '最大 HP が', attack: '攻撃が', defense: '防御が' };
+
+/**
+ * 能力の効き方の説明。ノードとボスの能力を、同じ文言で説明する
+ * @param {Effect} effect
+ * @returns {string}
+ */
+export function describeEffect(effect) {
+  switch (effect.type) {
+    case 'stat':
+      return `${STAT_SUBJECTS[effect.stat]} ${effect.amount} 上がる`;
+    case 'multiHit':
+      return `通常攻撃が ${effect.hits} 回になる。1発の威力は攻撃の ${effect.ratio} 倍`;
+    case 'conditional':
+      return `HP が ${Math.round(effect.hpRatioAtMost * PERCENT)}% 以下のとき、与えるダメージが ${effect.damageMultiplier} 倍`;
+    case 'element':
+      return effect.element === 'physical'
+        ? '周期スキル。回ってきたターンは物理で攻撃する'
+        : `周期スキル。回ってきたターンは${ELEMENT_NAMES[effect.element]}属性で攻撃する`;
+    case 'counter':
+      return `攻撃を1発受けるたびに、${effect.damage} − 相手の防御 のダメージを返す`;
+    case 'regen':
+      return `ターン開始時に、HP を ${effect.amount} 回復する`;
+    case 'poison':
+      return `ターン終了時に、相手の防御を無視して ${effect.damage} のダメージを与える`;
+    case 'endure':
+      return '戦闘中に1回だけ、倒れるダメージを受けても HP 1 で踏みとどまる';
+    case 'drain':
+      return `攻撃を当てるたびに、与えたダメージの ${Math.round(effect.ratio * PERCENT)}% だけ HP を回復する`;
+    case 'rage':
+      return `攻撃を受けるたびに、この戦闘中の攻撃が ${effect.amount} 上がる`;
+    case 'pierce':
+      return '攻撃で、相手の防御を引かない';
+    case 'armorBreak':
+      return `攻撃を当てるたびに、この戦闘中の相手の防御を ${effect.amount} 下げる`;
+    case 'tempo':
+      return `${effect.every} の倍数のターンに、与えるダメージが ${effect.damageMultiplier} 倍`;
+    case 'charge':
+      return `周期スキル。回ってきたターンは物理で攻撃し、前回から経過した1ターンにつき与えるダメージ +${effect.perTurn} 倍`;
+    case 'mark':
+      return `攻撃を当てるたびに、相手に刻印を ${effect.amount} 付ける`;
+    case 'burst':
+      return `周期スキル。回ってきたターンは物理で攻撃し、相手の刻印を全部使って、1つにつき与えるダメージ +${effect.perMark} 倍`;
+  }
+}
+
+/**
+ * 能力1つぶんの説明の行。名前は報酬の表示と同じく、ステータスの加算と連撃も省かない
+ * @param {Effect} effect
+ * @returns {string}
+ */
+export function formatEffectDescription(effect) {
+  return `${formatReward(effect)}：${describeEffect(effect)}`;
 }

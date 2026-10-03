@@ -1,8 +1,8 @@
 // @ts-check
-// キャラとお題の選択・お題の情報・残り pt・挑戦とリセットのボタン、連戦の相手選び
+// キャラとお題の選択・お題の情報とボスの能力の説明・残り pt・挑戦とリセットのボタン、連戦の相手選び
 
 import { createEnemyProfile } from '../core/profile.js';
-import { formatAbility, formatAttack, formatReward } from './ability-names.js';
+import { formatAbility, formatAttack, formatEffectDescription, formatReward } from './ability-names.js';
 import { ELEMENT_NAMES } from './element-names.js';
 
 /**
@@ -57,6 +57,21 @@ function formatEnemy(enemy) {
 }
 
 /**
+ * ボスの能力の説明。ボス名の行に続けて、能力1つを1行で並べ、ボスの間は1行空ける
+ * @param {readonly Enemy[]} enemies
+ * @returns {string}
+ */
+export function formatBossAbilities(enemies) {
+  return enemies
+    .map((enemy) =>
+      [enemy.name, ...(enemy.abilities.length === 0 ? ['能力なし'] : enemy.abilities.map(formatEffectDescription))].join(
+        '\n',
+      ),
+    )
+    .join('\n\n');
+}
+
+/**
  * @param {Challenge} challenge
  * @param {SequenceProgress} progress
  * @returns {string}
@@ -73,6 +88,8 @@ function formatSequenceStatus(challenge, progress) {
  *   characterSelect: HTMLSelectElement,
  *   challengeSelect: HTMLSelectElement,
  *   challenge: HTMLElement,
+ *   bossAbilities: HTMLDetailsElement,
+ *   bossAbilitiesText: HTMLElement,
  *   points: HTMLElement,
  *   challengeButton: HTMLButtonElement,
  *   resetButton: HTMLButtonElement,
@@ -130,6 +147,9 @@ export function createPanel(elements, characters, challenges, handlers) {
       elements.resetButton.disabled = resetDisabled;
       // 敵ごとに1行。改行は CSS の white-space: pre-line で表示する
       elements.challenge.textContent = challenge.enemies.map(formatEnemy).join('\n');
+      // 説明することが無いお題では、開いても空になるので出さない
+      elements.bossAbilities.hidden = challenge.enemies.every((enemy) => enemy.abilities.length === 0);
+      elements.bossAbilitiesText.textContent = formatBossAbilities(challenge.enemies);
       elements.points.textContent = `残り ${remainingPoints} / ${challenge.points} pt`;
 
       elements.challengeButton.hidden = progress !== null;

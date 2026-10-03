@@ -67,6 +67,20 @@ body {
   white-space: pre-line;
 }
 
+.boss-abilities-summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.boss-abilities-text {
+  margin: 0;
+  font-size: 0.8125rem;
+  white-space: pre-line;
+}
+
 .build-stats {
   margin: 4px 0 0;
   font-size: 0.8125rem;
@@ -173,6 +187,16 @@ body {
 
 .tree-node.is-releasable .tree-node-body {
   stroke: var(--color-accent);
+}
+
+.node-description {
+  margin: 0;
+  font-size: 0.8125rem;
+  white-space: pre-line;
+}
+
+.node-description:empty {
+  display: none;
 }
 
 .message {
