@@ -183,6 +183,8 @@ export interface Challenge {
   readonly enemies: readonly Enemy[];
   /** 配布ポイント。起点は含まない */
   readonly points: number;
+  /** 開発用のお題。URL に `?debug` を付けたときだけ選べる。省略は公開 */
+  readonly debugOnly?: boolean;
 }
 
 /** キャラごとにツリーとお題を持つ。お題はキャラ専用で、敵を共有するときは敵の定義を import する */

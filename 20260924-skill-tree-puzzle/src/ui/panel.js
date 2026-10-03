@@ -96,6 +96,8 @@ export function createPanel(elements, characters, challenges, handlers) {
   elements.characterSelect.replaceChildren(
     ...characters.map((character) => new Option(character.name, character.id)),
   );
+  // 選ぶ余地が無いときは出さない。キャラを足せば出る
+  elements.characterSelect.hidden = characters.length <= 1;
   elements.characterSelect.addEventListener('change', () => {
     handlers.onSelectCharacter(elements.characterSelect.value);
   });

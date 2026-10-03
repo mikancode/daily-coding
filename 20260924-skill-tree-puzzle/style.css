@@ -233,6 +233,10 @@ body {
   display: grid;
   gap: 8px;
 }
+/* display: grid が hidden 属性より優先されるので、公開版でデバッグ入力が残らないよう明示する */
+.debug[hidden] {
+  display: none;
+}
 .debug > * {
   min-width: 0;
 }

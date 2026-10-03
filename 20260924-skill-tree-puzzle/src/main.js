@@ -22,6 +22,7 @@ import { createPanel } from './ui/panel.js';
 import { createTreeView } from './ui/tree-view.js';
 
 /**
+ * @typedef {import('./types.js').Character} Character
  * @typedef {import('./types.js').NodeId} NodeId
  * @typedef {import('./types.js').SequenceProgress} SequenceProgress
  */
@@ -43,9 +44,23 @@ function requireElement(selector, type) {
 
 const messageElement = requireElement('#message', HTMLElement);
 
+/** URL に `?debug` を付けたときだけ、開発用のお題とデバッグ入力を出す */
+const DEBUG_MODE = new URLSearchParams(location.search).has('debug');
+
+/**
+ * 画面で選べるキャラとお題。開発用のお題を外すと、保存した選択が開発用のお題でも、無い ID として先頭のお題から始まる
+ * @type {readonly Character[]}
+ */
+const characters = DEBUG_MODE
+  ? CHARACTERS
+  : CHARACTERS.map((entry) => ({
+      ...entry,
+      challenges: entry.challenges.filter((candidate) => candidate.debugOnly !== true),
+    }));
+
 const BUILD_LOCKED_MESSAGE = '連戦中はビルドを変えられません。変えるなら「1体目からやり直す」を押してください';
 
-let character = loadSelectedCharacter(CHARACTERS);
+let character = loadSelectedCharacter(characters);
 let challenge = loadSelectedChallenge(character);
 
 /** @type {Set<NodeId>} */
@@ -142,12 +157,12 @@ const panel = createPanel(
     sequenceEnemies: requireElement('#sequence-enemies', HTMLElement),
     sequenceRestartButton: requireElement('#sequence-restart-button', HTMLButtonElement),
   },
-  CHARACTERS,
+  characters,
   character.challenges,
   {
     onSelectCharacter(characterId) {
-      const selected = CHARACTERS.find((candidate) => candidate.id === characterId);
-      // 選択肢は CHARACTERS から作っているので、見つからなければ呼び出し側のバグ
+      const selected = characters.find((candidate) => candidate.id === characterId);
+      // 選択肢は characters から作っているので、見つからなければ呼び出し側のバグ
       if (selected === undefined) {
         throw new Error(`存在しないキャラです: ${characterId}`);
       }
@@ -217,6 +232,8 @@ const panel = createPanel(
     },
   },
 );
+
+requireElement('#debug', HTMLDetailsElement).hidden = !DEBUG_MODE;
 
 createDebugInput(
   {
