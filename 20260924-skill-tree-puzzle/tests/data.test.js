@@ -87,6 +87,10 @@ for (const { id: characterId, tree, challenges } of CHARACTERS) {
     }
   });
 
+  test(`${characterId}: 公開版で選べるお題が1つ以上ある`, () => {
+    assert.ok(challenges.some((challenge) => challenge.debugOnly !== true));
+  });
+
   test(`${characterId}: 連戦のお題は、敵を ${SEQUENCE_ENEMY_COUNT} 体持ち、全員が報酬を持つ`, () => {
     for (const challenge of challenges.filter((candidate) => candidate.mode === 'sequence')) {
       assert.equal(challenge.enemies.length, SEQUENCE_ENEMY_COUNT, `${challenge.id}.enemies`);
