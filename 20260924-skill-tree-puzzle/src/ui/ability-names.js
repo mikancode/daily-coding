@@ -127,13 +127,13 @@ export function toBadge(effect) {
 }
 
 /**
- * タップしたノードの説明。ノード名の行に続けて、能力1つを1行で並べる。
- * ノード名が能力名を並べたものなので、行には能力名を繰り返さない
+ * タップしたノードの説明。能力1つを1行で並べる。
+ * 吹き出しはノードを指して出し、ノードには名前が書いてあるので、名前は繰り返さない
  * @param {SkillNode} node
  * @returns {string}
  */
 export function formatNodeDescription(node) {
-  return [node.name, ...node.effects.map(describeEffect)].join('\n');
+  return node.effects.map(describeEffect).join('\n');
 }
 
 /**

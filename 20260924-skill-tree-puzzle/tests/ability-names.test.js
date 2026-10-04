@@ -30,7 +30,7 @@ describe('describeEffect', () => {
 });
 
 describe('formatNodeDescription', () => {
-  test('ノード名の行に続けて、能力1つを1行で並べる', () => {
+  test('ノード名は出さず、能力1つを1行で並べる', () => {
     const node = {
       id: 'test',
       name: '連撃・背水',
@@ -38,8 +38,8 @@ describe('formatNodeDescription', () => {
       effects: [resolveAbility('Multi').effect, resolveAbility('Cond').effect],
     };
     const lines = formatNodeDescription(node).split('\n');
-    assert.equal(lines.length, 3);
-    assert.equal(lines[0], '連撃・背水');
+    assert.equal(lines.length, 2);
+    assert.ok(!lines.includes('連撃・背水'));
   });
 });
 

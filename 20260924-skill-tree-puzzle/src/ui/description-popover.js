@@ -34,11 +34,20 @@ export function createDescriptionPopover(root, popover) {
    * 下に出すと画面からはみ出すときだけ、上に出す
    * @param {Element} anchor 吹き出しが指す要素
    * @param {string} text
+   * @param {string} [note] 説明と分けて出す補足。ノードを取得・解除できなかった理由に使う
    */
-  function open(anchor, text) {
+  function open(anchor, text, note) {
     close();
     openAnchor = anchor;
-    popover.textContent = text;
+    const body = document.createElement('div');
+    body.textContent = text;
+    popover.replaceChildren(body);
+    if (note !== undefined) {
+      const noteElement = document.createElement('div');
+      noteElement.className = 'ability-popover-note';
+      noteElement.textContent = note;
+      popover.append(noteElement);
+    }
     popover.classList.remove('is-above');
     popover.hidden = false;
     const rootRect = root.getBoundingClientRect();

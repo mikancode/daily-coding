@@ -44,7 +44,8 @@ function requireElement(selector, type) {
   return element;
 }
 
-const messageElement = requireElement('#message', HTMLElement);
+/** ノードのタップ以外の知らせ（保存できない・保存したビルドを捨てた・連戦の結果）。ノードの理由は吹き出しに出す */
+const noticeElement = requireElement('#notice', HTMLElement);
 
 /** URL に `?debug` を付けたときだけ、開発用のお題とデバッグ入力を出す */
 const DEBUG_MODE = new URLSearchParams(location.search).has('debug');
@@ -179,7 +180,7 @@ const panel = createPanel(
       resetProgress();
       const selectionSaved = saveSelectedCharacter(character);
       const notice = loadBuild();
-      messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
+      noticeElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
       treeView.setTree(character.tree);
       panel.setChallenges(character.challenges);
       logView.clear();
@@ -195,7 +196,7 @@ const panel = createPanel(
       resetProgress();
       const selectionSaved = saveSelectedChallenge(character, challenge);
       const notice = loadBuild();
-      messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
+      noticeElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
       logView.clear();
       render();
     },
@@ -217,24 +218,24 @@ const panel = createPanel(
         started: true,
       };
       if (!won) {
-        messageElement.textContent = `${enemy.name}に負けました。次の相手を選び直すか、1体目からやり直してください`;
+        noticeElement.textContent = `${enemy.name}に負けました。次の相手を選び直すか、1体目からやり直してください`;
       } else if (defeated.length === challenge.enemies.length) {
-        messageElement.textContent = '連戦クリア！';
+        noticeElement.textContent = '連戦クリア！';
       } else {
-        messageElement.textContent = `${enemy.name}を倒して報酬を得ました。次の相手を選んでください`;
+        noticeElement.textContent = `${enemy.name}を倒して報酬を得ました。次の相手を選んでください`;
       }
       logView.render([result], { ...challenge, enemies: [enemy] });
       render();
     },
     onRestartSequence() {
       resetProgress();
-      messageElement.textContent = '';
+      noticeElement.textContent = '';
       logView.clear();
       render();
     },
     onReset() {
       resetBuild();
-      messageElement.textContent = saveBuild(character, challenge, owned) ? '' : STORAGE_UNAVAILABLE_MESSAGE;
+      noticeElement.textContent = saveBuild(character, challenge, owned) ? '' : STORAGE_UNAVAILABLE_MESSAGE;
       logView.clear();
       render();
     },
@@ -278,16 +279,12 @@ const treeView = createTreeView(requireElement('#tree', SVGSVGElement), characte
     throw new Error(`存在しないノードです: ${nodeId}`);
   }
   const reason = toggleNode(nodeId);
-  if (reason !== null) {
-    messageElement.textContent = reason;
-  } else {
-    messageElement.textContent = saveBuild(character, challenge, owned) ? '' : STORAGE_UNAVAILABLE_MESSAGE;
+  if (reason === null) {
+    noticeElement.textContent = saveBuild(character, challenge, owned) ? '' : STORAGE_UNAVAILABLE_MESSAGE;
   }
-  // render が吹き出しを閉じるので、描き直してから開く。取得・解除できなかったノードの効き方も読めるようにする。
-  // 吹き出しがツリーの下の理由の表示に重なることがあるので、理由は吹き出しにも添える
+  // render が吹き出しを閉じるので、描き直してから開く。取得・解除できなかったノードの効き方も読めるようにする
   render();
-  const description = formatNodeDescription(node);
-  popover.open(treeView.nodeBody(nodeId), reason === null ? description : `${description}\n${reason}`);
+  popover.open(treeView.nodeBody(nodeId), formatNodeDescription(node), reason ?? undefined);
 });
 
 function render() {
@@ -306,5 +303,5 @@ function render() {
 }
 
 resetProgress();
-messageElement.textContent = loadBuild() ?? '';
+noticeElement.textContent = loadBuild() ?? '';
 render();
