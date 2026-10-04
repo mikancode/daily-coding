@@ -15,6 +15,7 @@ import {
   saveSelectedChallenge,
   saveSelectedCharacter,
 } from './storage.js';
+import { createAbilityBadges } from './ui/ability-badges.js';
 import { createBuildStatsView } from './ui/build-stats.js';
 import { createDebugInput } from './ui/debug-input.js';
 import { createLogView } from './ui/log-view.js';
@@ -145,13 +146,16 @@ const logView = createLogView({
   entries: requireElement('#log-entries', HTMLOListElement),
 });
 
+const abilityBadges = createAbilityBadges(
+  requireElement('.app', HTMLElement),
+  requireElement('#ability-popover', HTMLElement),
+);
+
 const panel = createPanel(
   {
     characterSelect: requireElement('#character-select', HTMLSelectElement),
     challengeSelect: requireElement('#challenge-select', HTMLSelectElement),
     challenge: requireElement('#challenge', HTMLElement),
-    bossAbilities: requireElement('#boss-abilities', HTMLDetailsElement),
-    bossAbilitiesText: requireElement('#boss-abilities-text', HTMLElement),
     points: requireElement('#remaining-points', HTMLElement),
     challengeButton: requireElement('#challenge-button', HTMLButtonElement),
     resetButton: requireElement('#reset-button', HTMLButtonElement),
@@ -162,6 +166,7 @@ const panel = createPanel(
   },
   characters,
   character.challenges,
+  abilityBadges,
   {
     onSelectCharacter(characterId) {
       const selected = characters.find((candidate) => candidate.id === characterId);
@@ -260,7 +265,13 @@ createDebugInput(
   },
 );
 
-const buildStatsView = createBuildStatsView(requireElement('#build-stats', HTMLElement));
+const buildStatsView = createBuildStatsView(
+  {
+    text: requireElement('#build-stats-text', HTMLElement),
+    badges: requireElement('#build-stats-badges', HTMLElement),
+  },
+  abilityBadges,
+);
 
 const nodeDescriptionView = createNodeDescriptionView(requireElement('#node-description', HTMLElement));
 
@@ -281,6 +292,7 @@ const treeView = createTreeView(requireElement('#tree', SVGSVGElement), characte
 });
 
 function render() {
+  abilityBadges.close();
   const points = remainingPoints();
   const acquirable = new Set(
     points > 0

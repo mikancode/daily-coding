@@ -16,12 +16,11 @@
       </div>
       <select id="character-select" class="status-select" aria-label="キャラ"></select>
       <select id="challenge-select" class="status-select" aria-label="お題"></select>
-      <p id="challenge" class="challenge"></p>
-      <details id="boss-abilities" class="boss-abilities">
-        <summary class="boss-abilities-summary">ボスの能力</summary>
-        <p id="boss-abilities-text" class="boss-abilities-text"></p>
-      </details>
-      <p id="build-stats" class="build-stats"></p>
+      <div id="challenge" class="challenge"></div>
+      <div class="build-stats">
+        <p id="build-stats-text" class="build-stats-text"></p>
+        <div id="build-stats-badges" class="badges"></div>
+      </div>
     </header>
     <svg id="tree" class="tree" role="img" aria-label="スキルツリー"></svg>
     <p id="node-description" class="node-description" aria-live="polite"></p>
@@ -51,6 +50,7 @@
       <p id="log-enemy-summary" class="log-summary" hidden></p>
       <ol id="log-entries" class="log-entries"></ol>
     </section>
+    <p id="ability-popover" class="ability-popover" role="status" hidden></p>
   </main>
 </body>
 </html>

@@ -1,16 +1,16 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ABILITIES, resolveAbility } from '../src/core/ability-table.js';
-import { describeEffect } from '../src/ui/ability-names.js';
+import { createEnemyProfile } from '../src/core/profile.js';
+import { describeEffect, formatBadgeLabel, profileEffects } from '../src/ui/ability-names.js';
 import { formatNodeDescription } from '../src/ui/node-description.js';
-import { formatBossAbilities } from '../src/ui/panel.js';
 
 describe('describeEffect', () => {
   for (const ability of ABILITIES) {
-    test(`能力の表の ${ability.name} に説明文がある`, () => {
-      const description = describeEffect(ability.build(...ability.defaults));
-      assert.equal(typeof description, 'string');
-      assert.notEqual(description.trim(), '');
+    test(`能力の表の ${ability.name} に説明文とバッジ名がある`, () => {
+      const effect = ability.build(...ability.defaults);
+      assert.notEqual(describeEffect(effect).trim(), '');
+      assert.notEqual(formatBadgeLabel(effect).trim(), '');
     });
   }
 
@@ -44,15 +44,25 @@ describe('formatNodeDescription', () => {
   });
 });
 
-describe('formatBossAbilities', () => {
-  test('ボスごとに名前と能力を並べ、能力が無いボスは「能力なし」にする', () => {
-    const enemy = { hp: 100, attack: 10, defense: 0, resistances: {}, turnLimit: 10 };
-    const text = formatBossAbilities([
-      { ...enemy, name: '棘', abilities: [{ type: 'counter', damage: 10 }] },
-      { ...enemy, name: '甲虫', abilities: [] },
-    ]);
-    assert.equal(text.split('\n\n').length, 2);
-    assert.ok(text.startsWith('棘\n反撃 10：'));
-    assert.ok(text.endsWith('甲虫\n能力なし'));
+describe('profileEffects', () => {
+  const enemy = { name: 'テスト', hp: 100, attack: 10, defense: 0, resistances: {}, turnLimit: 10 };
+
+  test('ボスの能力は、ステータスの加算と連撃を除いてバッジにする', () => {
+    const effects = profileEffects(
+      createEnemyProfile({
+        ...enemy,
+        abilities: [
+          { type: 'stat', stat: 'attack', amount: 5 },
+          { type: 'multiHit', hits: 2, ratio: 0.5 },
+          { type: 'counter', damage: 10 },
+          { type: 'element', element: 'fire' },
+        ],
+      }),
+    );
+    assert.deepEqual(effects.map(formatBadgeLabel), ['炎', '反撃 10']);
+  });
+
+  test('能力が無いボスは、バッジを出さない', () => {
+    assert.deepEqual(profileEffects(createEnemyProfile({ ...enemy, abilities: [] })), []);
   });
 });
