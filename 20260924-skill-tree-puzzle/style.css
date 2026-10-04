@@ -42,13 +42,6 @@ body {
   padding: 8px;
 }
 
-.status-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
 .status-select {
   width: 100%;
   min-height: var(--tap-min);
@@ -60,14 +53,6 @@ body {
   color: var(--color-text);
   font: inherit;
   font-weight: bold;
-}
-
-/* やり込みの目標なので、ボスの情報より目立たせる */
-.challenge-record {
-  margin: 4px 0 0;
-  font-size: 0.8125rem;
-  font-weight: bold;
-  color: var(--color-accent);
 }
 
 .challenge {
@@ -83,6 +68,23 @@ body {
 
 .build-stats {
   font-size: 0.8125rem;
+}
+
+/* pt はツリーに使うので、ノードをタップする場所のすぐ上に、残り pt と記録を並べる。幅が足りなければ記録を次の行へ送る */
+.points-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 8px;
+  margin-top: 8px;
+}
+
+/* やり込みの目標なので、ボスの情報より目立たせる。残り pt と見分けるため太字にはしない */
+.challenge-record {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-accent);
 }
 
 /*

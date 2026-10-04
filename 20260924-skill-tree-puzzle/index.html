@@ -10,17 +10,17 @@
 <body>
   <main class="app">
     <header class="status">
-      <div class="status-heading">
-        <h1 class="title">スキルツリー・パズル</h1>
-        <p id="remaining-points" class="points"></p>
-      </div>
+      <h1 class="title">スキルツリー・パズル</h1>
       <select id="character-select" class="status-select" aria-label="キャラ"></select>
       <select id="challenge-select" class="status-select" aria-label="お題"></select>
-      <p id="challenge-record" class="challenge-record"></p>
       <div id="challenge" class="challenge"></div>
       <div class="build-stats">
         <p id="build-stats-text" class="build-stats-text"></p>
         <div id="build-stats-badges" class="badges"></div>
+      </div>
+      <div class="points-row">
+        <p id="remaining-points" class="points"></p>
+        <p id="challenge-record" class="challenge-record"></p>
       </div>
     </header>
     <svg id="tree" class="tree" role="img" aria-label="スキルツリー"></svg>
