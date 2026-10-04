@@ -1,12 +1,14 @@
 // @ts-check
-// キャラとお題の選択・お題の情報とボスの能力のバッジ・残り pt・挑戦とリセットのボタン、連戦の相手選び
+// キャラとお題の選択・お題の記録（自己ベスト・最少 pt・★）・お題の情報とボスの能力のバッジ・残り pt・挑戦とリセットのボタン、連戦の相手選び
 
+import { earnedStar } from '../core/clear-record.js';
 import { createEnemyProfile } from '../core/profile.js';
 import { formatAttack, formatReward, profileEffects, toBadge } from './ability-names.js';
 import { ELEMENT_NAMES } from './element-names.js';
 
 /**
  * @typedef {import('../types.js').Challenge} Challenge
+ * @typedef {import('../types.js').ChallengeRecords} ChallengeRecords
  * @typedef {import('../types.js').Character} Character
  * @typedef {import('../types.js').CombatantProfile} CombatantProfile
  * @typedef {import('../types.js').ElementId} ElementId
@@ -67,11 +69,45 @@ function formatSequenceStatus(challenge, progress) {
 }
 
 /**
+ * 自己ベストが無いお題は、開示した後も最少 pt だけを出す（開発用のお題は、開示の条件に入らないため未クリアのことがある）
+ * @param {Challenge} challenge
+ * @param {ChallengeRecords} records
+ * @returns {string}
+ */
+function formatRecord(challenge, records) {
+  const best = records.bests.get(challenge.id) ?? null;
+  if (!records.revealed) {
+    return best === null ? '最少 ?? pt' : `自己ベスト ${best} pt / 最少 ?? pt（全お題クリアで開示）`;
+  }
+  const minimum = `最少 ${challenge.minimumPoints} pt`;
+  if (best === null) {
+    return minimum;
+  }
+  const star = earnedStar(challenge, best, records.revealed) ? '★ ' : '';
+  return `${star}自己ベスト ${best} pt / ${minimum}`;
+}
+
+/**
+ * 選択肢では、名前の頭をそろえて読みやすくするため、印を名前の後ろに付ける
+ * @param {Challenge} challenge
+ * @param {ChallengeRecords} records
+ * @returns {string}
+ */
+function formatChallengeOption(challenge, records) {
+  const best = records.bests.get(challenge.id) ?? null;
+  if (best === null) {
+    return challenge.name;
+  }
+  return `${challenge.name} ${earnedStar(challenge, best, records.revealed) ? '★' : '✓'}`;
+}
+
+/**
  * キャラとお題の選択・お題の情報・残り pt・挑戦と全リセットのボタン。連戦のお題では、挑戦の代わりに戦う相手を選ぶボタンを出す。
  * 選んだ・押したときの処理は呼び出し側が持つ
  * @param {{
  *   characterSelect: HTMLSelectElement,
  *   challengeSelect: HTMLSelectElement,
+ *   challengeRecord: HTMLElement,
  *   challenge: HTMLElement,
  *   points: HTMLElement,
  *   challengeButton: HTMLButtonElement,
@@ -121,13 +157,19 @@ export function createPanel(elements, characters, challenges, popover, handlers)
     /**
      * @param {Character} character
      * @param {Challenge} challenge
+     * @param {ChallengeRecords} records キャラのお題の記録
      * @param {number} remainingPoints
      * @param {SequenceProgress | null} progress 連戦のお題のときだけ渡す
      * @param {boolean} resetDisabled 全リセットを押せなくするか
      */
-    render(character, challenge, remainingPoints, progress, resetDisabled) {
+    render(character, challenge, records, remainingPoints, progress, resetDisabled) {
       elements.characterSelect.value = character.id;
+      // 選択肢は setChallenges で character.challenges から作っているので、並びが一致する
+      character.challenges.forEach((candidate, index) => {
+        elements.challengeSelect.options[index].textContent = formatChallengeOption(candidate, records);
+      });
       elements.challengeSelect.value = challenge.id;
+      elements.challengeRecord.textContent = formatRecord(challenge, records);
       elements.resetButton.disabled = resetDisabled;
       elements.challenge.replaceChildren(
         ...challenge.enemies.map((enemy) => {

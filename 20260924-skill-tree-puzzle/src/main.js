@@ -1,17 +1,20 @@
 // @ts-check
-// 入口。選んだキャラ・お題・取得済みノード・連戦の進行を状態として持ち、判定（core）と描画（ui）を繋ぐ
+// 入口。選んだキャラ・お題・取得済みノード・連戦の進行を状態として持ち、判定（core）と描画（ui）を繋ぐ。クリアしたら記録する
 
 import { canAcquire, canRelease } from './core/build.js';
 import { simulateChallenge } from './core/challenge.js';
+import { clearsByResults, clearsBySequence, isMinimumRevealed } from './core/clear-record.js';
 import { createProfile } from './core/profile.js';
 import { simulate } from './core/simulate.js';
 import { CHARACTERS } from './data/characters.js';
 import {
   STORAGE_UNAVAILABLE_MESSAGE,
+  loadBest,
   loadSavedBuild,
   loadSelectedChallenge,
   loadSelectedCharacter,
   saveBuild,
+  saveClear,
   saveSelectedChallenge,
   saveSelectedCharacter,
 } from './storage.js';
@@ -25,6 +28,7 @@ import { createTreeView } from './ui/tree-view.js';
 
 /**
  * @typedef {import('./types.js').Character} Character
+ * @typedef {import('./types.js').ChallengeRecords} ChallengeRecords
  * @typedef {import('./types.js').NodeId} NodeId
  * @typedef {import('./types.js').SequenceProgress} SequenceProgress
  */
@@ -62,6 +66,8 @@ const characters = DEBUG_MODE
     }));
 
 const BUILD_LOCKED_MESSAGE = '連戦中はビルドを変えられません。変えるなら「1体目からやり直す」を押してください';
+const RECORD_UNAVAILABLE_MESSAGE = '記録を保存できない環境です';
+const MINIMUM_REVEALED_MESSAGE = '全お題クリア！ 最少 pt を開示しました';
 
 let character = loadSelectedCharacter(characters);
 let challenge = loadSelectedChallenge(character);
@@ -111,6 +117,38 @@ function currentBuild() {
 }
 
 /**
+ * 記録の持ち場は保存だけにし、画面に出すたびに読む。保存できない環境では、未クリアとして出る
+ * @returns {ChallengeRecords}
+ */
+function loadRecords() {
+  const bests = new Map(character.challenges.map((candidate) => [candidate.id, loadBest(character, candidate)]));
+  return { bests, revealed: isMinimumRevealed(character.challenges, (candidate) => bests.get(candidate.id) !== null) };
+}
+
+/**
+ * 今のビルドでクリアしたことを記録し、知らせる文言を返す
+ * @param {string} clearedMessage 先頭に付ける、クリアの知らせ
+ * @returns {string}
+ */
+function recordClear(clearedMessage) {
+  const wasRevealed = loadRecords().revealed;
+  const previousBest = loadBest(character, challenge);
+  const usedPoints = owned.size - 1;
+  const { improved, saved } = saveClear(character, challenge, usedPoints);
+  if (!saved) {
+    return `${clearedMessage} ${RECORD_UNAVAILABLE_MESSAGE}`;
+  }
+  if (!wasRevealed && loadRecords().revealed) {
+    return MINIMUM_REVEALED_MESSAGE;
+  }
+  const used = `${clearedMessage} 使った pt ${usedPoints}`;
+  if (previousBest === null) {
+    return used;
+  }
+  return improved ? `${used}（自己ベスト更新）` : `${used}（自己ベスト ${previousBest} pt）`;
+}
+
+/**
  * タップしても見た目が変わらないときに、無反応に見えないよう理由を出す
  * @param {NodeId} nodeId
  * @returns {string | null} 取得・解除できたら null
@@ -156,6 +194,7 @@ const panel = createPanel(
   {
     characterSelect: requireElement('#character-select', HTMLSelectElement),
     challengeSelect: requireElement('#challenge-select', HTMLSelectElement),
+    challengeRecord: requireElement('#challenge-record', HTMLElement),
     challenge: requireElement('#challenge', HTMLElement),
     points: requireElement('#remaining-points', HTMLElement),
     challengeButton: requireElement('#challenge-button', HTMLButtonElement),
@@ -201,7 +240,11 @@ const panel = createPanel(
       render();
     },
     onChallenge() {
-      logView.render(simulateChallenge(currentBuild(), challenge), challenge);
+      const results = simulateChallenge(currentBuild(), challenge);
+      // 前の挑戦のクリアの知らせを、負けた結果と並べて残さない
+      noticeElement.textContent = clearsByResults(results) ? recordClear('クリア！') : '';
+      logView.render(results, challenge);
+      render();
     },
     onFightEnemy(enemyIndex) {
       // 連戦のお題のときだけ、戦う相手を選ぶボタンが出る
@@ -219,8 +262,8 @@ const panel = createPanel(
       };
       if (!won) {
         noticeElement.textContent = `${enemy.name}に負けました。次の相手を選び直すか、1体目からやり直してください`;
-      } else if (defeated.length === challenge.enemies.length) {
-        noticeElement.textContent = '連戦クリア！';
+      } else if (clearsBySequence(challenge, progress)) {
+        noticeElement.textContent = recordClear('連戦クリア！');
       } else {
         noticeElement.textContent = `${enemy.name}を倒して報酬を得ました。次の相手を選んでください`;
       }
@@ -254,7 +297,8 @@ createDebugInput(
   },
   {
     onFight(effects) {
-      // ツリーを介さず、指定した能力を1つの疑似ノードとして渡す。並び順がローテーションの順になる
+      // ツリーを介さず、指定した能力を1つの疑似ノードとして渡す。並び順がローテーションの順になる。
+      // ツリーで組んだビルドではないので、勝ってもクリアとして記録しない
       const build = [{ id: 'debug', name: 'debug', pos: { x: 0, y: 0 }, effects }];
       logView.render(simulateChallenge(build, challenge), challenge);
     },
@@ -298,7 +342,7 @@ function render() {
   const releasable = new Set([...owned].filter((id) => canRelease(character.tree, owned, id)));
   treeView.render(owned, acquirable, releasable);
   // 押しても何も起きない・拒否される状態では、ボタンを押せなくする
-  panel.render(character, challenge, points, progress, isBuildLocked() || owned.size <= 1);
+  panel.render(character, challenge, loadRecords(), points, progress, isBuildLocked() || owned.size <= 1);
   buildStatsView.render(createProfile(currentBuild(), progress?.rewards));
 }
 
