@@ -96,7 +96,7 @@ export function createDescriptionPopover(root, popover) {
               close();
               return;
             }
-            open(button, `${badge.label}：${badge.description}`);
+            open(button, badge.description);
             button.setAttribute('aria-expanded', 'true');
           });
           return button;
