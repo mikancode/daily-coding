@@ -283,9 +283,11 @@ const treeView = createTreeView(requireElement('#tree', SVGSVGElement), characte
   } else {
     messageElement.textContent = saveBuild(character, challenge, owned) ? '' : STORAGE_UNAVAILABLE_MESSAGE;
   }
-  // render が吹き出しを閉じるので、描き直してから開く。取得・解除できなかったノードの効き方も読めるようにする
+  // render が吹き出しを閉じるので、描き直してから開く。取得・解除できなかったノードの効き方も読めるようにする。
+  // 吹き出しがツリーの下の理由の表示に重なることがあるので、理由は吹き出しにも添える
   render();
-  popover.open(treeView.nodeBody(nodeId), formatNodeDescription(node));
+  const description = formatNodeDescription(node);
+  popover.open(treeView.nodeBody(nodeId), reason === null ? description : `${description}\n${reason}`);
 });
 
 function render() {
