@@ -183,6 +183,8 @@ export interface Challenge {
   readonly enemies: readonly Enemy[];
   /** 配布ポイント。起点は含まない */
   readonly points: number;
+  /** 最少クリア pt。配布 pt で組めるビルドの総当たりと一致することをテストで確かめる */
+  readonly minimumPoints: number;
   /** 開発用のお題。URL に `?debug` を付けたときだけ選べる。省略は公開 */
   readonly debugOnly?: boolean;
 }
