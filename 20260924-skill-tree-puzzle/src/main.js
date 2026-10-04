@@ -16,7 +16,9 @@ import {
   saveSelectedCharacter,
 } from './storage.js';
 import { createBuildStatsView } from './ui/build-stats.js';
+import { createDescriptionPopover } from './ui/description-popover.js';
 import { createDebugInput } from './ui/debug-input.js';
+import { formatNodeDescription } from './ui/ability-names.js';
 import { createLogView } from './ui/log-view.js';
 import { createPanel } from './ui/panel.js';
 import { createTreeView } from './ui/tree-view.js';
@@ -42,7 +44,8 @@ function requireElement(selector, type) {
   return element;
 }
 
-const messageElement = requireElement('#message', HTMLElement);
+/** ノードのタップ以外の知らせ（保存できない・保存したビルドを捨てた・連戦の結果）。ノードの理由は吹き出しに出す */
+const noticeElement = requireElement('#notice', HTMLElement);
 
 /** URL に `?debug` を付けたときだけ、開発用のお題とデバッグ入力を出す */
 const DEBUG_MODE = new URLSearchParams(location.search).has('debug');
@@ -144,6 +147,11 @@ const logView = createLogView({
   entries: requireElement('#log-entries', HTMLOListElement),
 });
 
+const popover = createDescriptionPopover(
+  requireElement('.app', HTMLElement),
+  requireElement('#ability-popover', HTMLElement),
+);
+
 const panel = createPanel(
   {
     characterSelect: requireElement('#character-select', HTMLSelectElement),
@@ -159,6 +167,7 @@ const panel = createPanel(
   },
   characters,
   character.challenges,
+  popover,
   {
     onSelectCharacter(characterId) {
       const selected = characters.find((candidate) => candidate.id === characterId);
@@ -171,7 +180,7 @@ const panel = createPanel(
       resetProgress();
       const selectionSaved = saveSelectedCharacter(character);
       const notice = loadBuild();
-      messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
+      noticeElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
       treeView.setTree(character.tree);
       panel.setChallenges(character.challenges);
       logView.clear();
@@ -187,7 +196,7 @@ const panel = createPanel(
       resetProgress();
       const selectionSaved = saveSelectedChallenge(character, challenge);
       const notice = loadBuild();
-      messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
+      noticeElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
       logView.clear();
       render();
     },
@@ -209,24 +218,24 @@ const panel = createPanel(
         started: true,
       };
       if (!won) {
-        messageElement.textContent = `${enemy.name}に負けました。次の相手を選び直すか、1体目からやり直してください`;
+        noticeElement.textContent = `${enemy.name}に負けました。次の相手を選び直すか、1体目からやり直してください`;
       } else if (defeated.length === challenge.enemies.length) {
-        messageElement.textContent = '連戦クリア！';
+        noticeElement.textContent = '連戦クリア！';
       } else {
-        messageElement.textContent = `${enemy.name}を倒して報酬を得ました。次の相手を選んでください`;
+        noticeElement.textContent = `${enemy.name}を倒して報酬を得ました。次の相手を選んでください`;
       }
       logView.render([result], { ...challenge, enemies: [enemy] });
       render();
     },
     onRestartSequence() {
       resetProgress();
-      messageElement.textContent = '';
+      noticeElement.textContent = '';
       logView.clear();
       render();
     },
     onReset() {
       resetBuild();
-      messageElement.textContent = saveBuild(character, challenge, owned) ? '' : STORAGE_UNAVAILABLE_MESSAGE;
+      noticeElement.textContent = saveBuild(character, challenge, owned) ? '' : STORAGE_UNAVAILABLE_MESSAGE;
       logView.clear();
       render();
     },
@@ -255,19 +264,31 @@ createDebugInput(
   },
 );
 
-const buildStatsView = createBuildStatsView(requireElement('#build-stats', HTMLElement));
+const buildStatsView = createBuildStatsView(
+  {
+    text: requireElement('#build-stats-text', HTMLElement),
+    badges: requireElement('#build-stats-badges', HTMLElement),
+  },
+  popover,
+);
 
 const treeView = createTreeView(requireElement('#tree', SVGSVGElement), character.tree, (nodeId) => {
-  const reason = toggleNode(nodeId);
-  if (reason !== null) {
-    messageElement.textContent = reason;
-  } else {
-    messageElement.textContent = saveBuild(character, challenge, owned) ? '' : STORAGE_UNAVAILABLE_MESSAGE;
+  const node = character.tree.nodes.find((candidate) => candidate.id === nodeId);
+  // ノード ID はツリーの描画から来るので、見つからなければ呼び出し側のバグ
+  if (node === undefined) {
+    throw new Error(`存在しないノードです: ${nodeId}`);
   }
+  const reason = toggleNode(nodeId);
+  if (reason === null) {
+    noticeElement.textContent = saveBuild(character, challenge, owned) ? '' : STORAGE_UNAVAILABLE_MESSAGE;
+  }
+  // render が吹き出しを閉じるので、描き直してから開く。取得・解除できなかったノードの効き方も読めるようにする
   render();
+  popover.open(treeView.nodeBody(nodeId), formatNodeDescription(node), reason ?? undefined);
 });
 
 function render() {
+  popover.close();
   const points = remainingPoints();
   const acquirable = new Set(
     points > 0
@@ -282,5 +303,5 @@ function render() {
 }
 
 resetProgress();
-messageElement.textContent = loadBuild() ?? '';
+noticeElement.textContent = loadBuild() ?? '';
 render();

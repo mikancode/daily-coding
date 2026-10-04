@@ -32,6 +32,8 @@ body {
 }
 
 .app {
+  /* 能力の説明の吹き出しを、この中の位置で重ねて出すため */
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -64,12 +66,99 @@ body {
   margin: 4px 0 0;
   color: var(--color-muted);
   font-size: 0.8125rem;
-  white-space: pre-line;
+}
+
+.enemy-stats,
+.build-stats-text {
+  margin: 4px 0 0;
 }
 
 .build-stats {
-  margin: 4px 0 0;
   font-size: 0.8125rem;
+}
+
+/*
+ * バッジの見た目は小さいチップにして、行を詰める。
+ * 押しやすさのため、タップ領域（button）の高さは --tap-min を保つ
+ */
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 6px;
+}
+
+.badges[hidden] {
+  display: none;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.badge-label {
+  padding: 2px 10px;
+  border: 1px solid var(--color-special);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-special) 35%, var(--color-bg));
+}
+
+.badge[aria-expanded='true'] .badge-label {
+  border-color: var(--color-accent);
+}
+
+/*
+ * タップしたバッジ・ノードの説明。周りの配置を動かさないよう、.app を基準に重ねて出す。
+ * 上端と三角の位置（--arrow-x）は description-popover.js が開くたびに与える
+ */
+.ability-popover {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  z-index: 1;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--color-accent);
+  border-radius: 8px;
+  background: var(--color-node);
+  font-size: 0.8125rem;
+  white-space: pre-line;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.5);
+}
+
+.ability-popover::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: calc(var(--arrow-x, 50%) - 6px);
+  width: 10px;
+  height: 10px;
+  border-top: 1px solid var(--color-accent);
+  border-left: 1px solid var(--color-accent);
+  background: var(--color-node);
+  transform: rotate(45deg);
+}
+
+/* 取得・解除できなかった理由。能力の説明と区別できるよう、区切り線の下に警告色で出す */
+.ability-popover-note {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-edge);
+  color: var(--color-danger);
+}
+
+/* 指す要素の上に出したときは、三角を下側に回す */
+.ability-popover.is-above::before {
+  top: auto;
+  bottom: -6px;
+  transform: rotate(225deg);
 }
 
 .title {
@@ -175,12 +264,16 @@ body {
   stroke: var(--color-accent);
 }
 
-.message {
-  min-height: 1.5em;
+/* ボタンより下に置くので、出てもボタンは動かない */
+.notice {
   margin: 0;
   color: var(--color-muted);
   font-size: 0.875rem;
   text-align: center;
+}
+
+.notice:empty {
+  display: none;
 }
 
 .actions {

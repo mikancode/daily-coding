@@ -172,6 +172,19 @@ export function createTreeView(svg, tree, onTap) {
   return {
     setTree: draw,
     /**
+     * ノードの見た目の矩形。吹き出しで指すときに使う
+     * @param {NodeId} nodeId
+     * @returns {Element}
+     */
+    nodeBody(nodeId) {
+      const body = nodeElements.get(nodeId)?.querySelector('.tree-node-body');
+      // ノード ID はタップの通知から来るので、見つからなければ呼び出し側のバグ
+      if (body == null) {
+        throw new Error(`存在しないノードです: ${nodeId}`);
+      }
+      return body;
+    },
+    /**
      * @param {ReadonlySet<NodeId>} owned
      * @param {ReadonlySet<NodeId>} acquirable 今タップすれば取れるノード
      * @param {ReadonlySet<NodeId>} releasable 今タップすれば外せるノード

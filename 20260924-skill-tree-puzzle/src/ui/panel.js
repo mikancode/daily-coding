@@ -1,16 +1,18 @@
 // @ts-check
-// キャラとお題の選択・お題の情報・残り pt・挑戦とリセットのボタン、連戦の相手選び
+// キャラとお題の選択・お題の情報とボスの能力のバッジ・残り pt・挑戦とリセットのボタン、連戦の相手選び
 
 import { createEnemyProfile } from '../core/profile.js';
-import { formatAbility, formatAttack, formatReward } from './ability-names.js';
+import { formatAttack, formatReward, profileEffects, toBadge } from './ability-names.js';
 import { ELEMENT_NAMES } from './element-names.js';
 
 /**
  * @typedef {import('../types.js').Challenge} Challenge
  * @typedef {import('../types.js').Character} Character
+ * @typedef {import('../types.js').CombatantProfile} CombatantProfile
  * @typedef {import('../types.js').ElementId} ElementId
  * @typedef {import('../types.js').Enemy} Enemy
  * @typedef {import('../types.js').SequenceProgress} SequenceProgress
+ * @typedef {ReturnType<typeof import('./description-popover.js').createDescriptionPopover>} DescriptionPopover
  */
 
 const PERCENT = 100;
@@ -41,16 +43,14 @@ function formatRewardSuffix(enemy) {
 }
 
 /**
+ * 1行目に出す、ボスの基本ステータスとお題の条件。能力は2行目のバッジに出す
  * @param {Enemy} enemy
+ * @param {CombatantProfile} profile
  * @returns {string}
  */
-function formatEnemy(enemy) {
-  // 能力のステータス加算・連撃を含めた値を出す。判定と同じ集計を通し、表示と判定がずれないようにする
-  const profile = createEnemyProfile(enemy);
-  const abilities = enemy.abilities.map(formatAbility).filter((text) => text !== null);
+function formatEnemy(enemy, profile) {
   return (
     `${enemy.name}　HP ${profile.maxHp} / ${formatAttack(profile)} / 防御 ${profile.defense}` +
-    (abilities.length === 0 ? '' : ` / ${abilities.join('・')}`) +
     ` / ${enemy.turnLimit}ターン以内${formatResistances(enemy)}` +
     formatRewardSuffix(enemy)
   );
@@ -83,6 +83,7 @@ function formatSequenceStatus(challenge, progress) {
  * }} elements
  * @param {readonly Character[]} characters
  * @param {readonly Challenge[]} challenges 最初に選ばれているキャラのお題。キャラを切り替えたら setChallenges で差し替える
+ * @param {DescriptionPopover} popover
  * @param {{
  *   onSelectCharacter: (characterId: string) => void,
  *   onSelectChallenge: (challengeId: string) => void,
@@ -92,7 +93,7 @@ function formatSequenceStatus(challenge, progress) {
  *   onRestartSequence: () => void,
  * }} handlers
  */
-export function createPanel(elements, characters, challenges, handlers) {
+export function createPanel(elements, characters, challenges, popover, handlers) {
   elements.characterSelect.replaceChildren(
     ...characters.map((character) => new Option(character.name, character.id)),
   );
@@ -128,8 +129,21 @@ export function createPanel(elements, characters, challenges, handlers) {
       elements.characterSelect.value = character.id;
       elements.challengeSelect.value = challenge.id;
       elements.resetButton.disabled = resetDisabled;
-      // 敵ごとに1行。改行は CSS の white-space: pre-line で表示する
-      elements.challenge.textContent = challenge.enemies.map(formatEnemy).join('\n');
+      elements.challenge.replaceChildren(
+        ...challenge.enemies.map((enemy) => {
+          // 能力のステータス加算・連撃を含めた値を出す。判定と同じ集計を通し、表示と判定がずれないようにする
+          const profile = createEnemyProfile(enemy);
+          const stats = document.createElement('p');
+          stats.className = 'enemy-stats';
+          stats.textContent = formatEnemy(enemy, profile);
+          const badges = document.createElement('div');
+          badges.className = 'badges';
+          popover.renderBadges(badges, profileEffects(profile).map(toBadge));
+          const block = document.createElement('div');
+          block.append(stats, badges);
+          return block;
+        }),
+      );
       elements.points.textContent = `残り ${remainingPoints} / ${challenge.points} pt`;
 
       elements.challengeButton.hidden = progress !== null;

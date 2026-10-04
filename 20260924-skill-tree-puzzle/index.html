@@ -16,11 +16,13 @@
       </div>
       <select id="character-select" class="status-select" aria-label="キャラ"></select>
       <select id="challenge-select" class="status-select" aria-label="お題"></select>
-      <p id="challenge" class="challenge"></p>
-      <p id="build-stats" class="build-stats"></p>
+      <div id="challenge" class="challenge"></div>
+      <div class="build-stats">
+        <p id="build-stats-text" class="build-stats-text"></p>
+        <div id="build-stats-badges" class="badges"></div>
+      </div>
     </header>
     <svg id="tree" class="tree" role="img" aria-label="スキルツリー"></svg>
-    <p id="message" class="message" aria-live="polite"></p>
     <section id="sequence" class="sequence" aria-label="連戦" hidden>
       <p id="sequence-status" class="sequence-status"></p>
       <div id="sequence-enemies" class="sequence-enemies"></div>
@@ -30,6 +32,7 @@
       <button id="reset-button" class="button" type="button">全リセット</button>
       <button id="challenge-button" class="button is-primary" type="button">挑戦</button>
     </div>
+    <p id="notice" class="notice" aria-live="polite"></p>
     <details id="debug" class="debug" hidden>
       <summary class="debug-summary">デバッグ入力</summary>
       <textarea id="debug-text" class="debug-text" rows="3" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="能力の指定"></textarea>
@@ -46,6 +49,7 @@
       <p id="log-enemy-summary" class="log-summary" hidden></p>
       <ol id="log-entries" class="log-entries"></ol>
     </section>
+    <div id="ability-popover" class="ability-popover" role="status" hidden></div>
   </main>
 </body>
 </html>
