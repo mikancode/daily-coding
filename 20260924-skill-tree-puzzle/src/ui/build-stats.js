@@ -1,11 +1,11 @@
 // @ts-check
 // 組んだビルドのステータスと能力のバッジの表示
 
-import { PHYSICAL, formatAttack, profileEffects } from './ability-names.js';
+import { formatAttack, profileEffects, toBadge } from './ability-names.js';
 
 /**
  * @typedef {import('../types.js').CombatantProfile} CombatantProfile
- * @typedef {import('../types.js').Effect} Effect
+ * @typedef {import('./ability-badges.js').Badge} Badge
  * @typedef {ReturnType<typeof import('./ability-badges.js').createAbilityBadges>} AbilityBadges
  */
 
@@ -19,13 +19,20 @@ export function formatBuildStats(profile) {
 }
 
 /**
- * 2行目にバッジで出す能力。周期スキルが無ければ毎ターン物理で殴るので、物理を先頭に置く
- * @param {CombatantProfile} profile
- * @returns {Effect[]}
+ * 周期スキルを1つも取っていないときに、ローテーションの代わりに置くバッジ。
+ * 物理の周期スキルを取ったときと取り違えないよう、説明を分ける
+ * @type {Badge}
  */
-export function buildStatsEffects(profile) {
-  const effects = profileEffects(profile);
-  return profile.rotation.length === 0 ? [PHYSICAL, ...effects] : effects;
+const NO_ROTATION_BADGE = { label: '物理', description: '周期スキルを取っていないので、毎ターン物理で攻撃する' };
+
+/**
+ * 2行目に出す能力のバッジ。周期スキルが無ければ、毎ターン物理で殴ることを先頭に示す
+ * @param {CombatantProfile} profile
+ * @returns {Badge[]}
+ */
+export function buildStatsBadges(profile) {
+  const badges = profileEffects(profile).map(toBadge);
+  return profile.rotation.length === 0 ? [NO_ROTATION_BADGE, ...badges] : badges;
 }
 
 /**
@@ -38,7 +45,7 @@ export function createBuildStatsView(elements, abilityBadges) {
     /** @param {CombatantProfile} profile */
     render(profile) {
       elements.text.textContent = formatBuildStats(profile);
-      abilityBadges.render(elements.badges, buildStatsEffects(profile));
+      abilityBadges.render(elements.badges, buildStatsBadges(profile));
     },
   };
 }

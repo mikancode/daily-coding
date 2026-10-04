@@ -1,10 +1,9 @@
 // @ts-check
 // 能力のバッジの描画と、タップしたバッジの説明を出す吹き出し
 
-import { describeEffect, formatBadgeLabel } from './ability-names.js';
-
 /**
- * @typedef {import('../types.js').Effect} Effect
+ * バッジ1つぶん。名前と、タップしたときに吹き出しへ出す説明
+ * @typedef {{ label: string, description: string }} Badge
  */
 
 /**
@@ -27,13 +26,13 @@ export function createAbilityBadges(root, popover) {
    * 横幅は root の内側いっぱいに固定し、三角だけをバッジの中心に合わせる。
    * 横の位置を毎回求めずに済み、画面の端のバッジでもはみ出さないため
    * @param {HTMLButtonElement} button
-   * @param {Effect} effect
+   * @param {Badge} badge
    */
-  function open(button, effect) {
+  function open(button, badge) {
     close();
     openButton = button;
     button.setAttribute('aria-expanded', 'true');
-    popover.textContent = `${formatBadgeLabel(effect)}：${describeEffect(effect)}`;
+    popover.textContent = `${badge.label}：${badge.description}`;
     popover.hidden = false;
     const rootRect = root.getBoundingClientRect();
     const buttonRect = button.getBoundingClientRect();
@@ -55,11 +54,11 @@ export function createAbilityBadges(root, popover) {
     close,
     /**
      * @param {HTMLElement} container
-     * @param {readonly Effect[]} effects
+     * @param {readonly Badge[]} badges
      */
-    render(container, effects) {
+    render(container, badges) {
       container.replaceChildren(
-        ...effects.map((effect) => {
+        ...badges.map((badge) => {
           const button = document.createElement('button');
           button.type = 'button';
           button.className = 'badge';
@@ -67,19 +66,19 @@ export function createAbilityBadges(root, popover) {
           button.setAttribute('aria-controls', popover.id);
           const label = document.createElement('span');
           label.className = 'badge-label';
-          label.textContent = formatBadgeLabel(effect);
+          label.textContent = badge.label;
           button.append(label);
           button.addEventListener('click', () => {
             if (openButton === button) {
               close();
             } else {
-              open(button, effect);
+              open(button, badge);
             }
           });
           return button;
         }),
       );
-      container.hidden = effects.length === 0;
+      container.hidden = badges.length === 0;
     },
   };
 }

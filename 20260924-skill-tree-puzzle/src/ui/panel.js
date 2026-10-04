@@ -2,7 +2,7 @@
 // キャラとお題の選択・お題の情報とボスの能力のバッジ・残り pt・挑戦とリセットのボタン、連戦の相手選び
 
 import { createEnemyProfile } from '../core/profile.js';
-import { formatAttack, formatReward, profileEffects } from './ability-names.js';
+import { formatAttack, formatReward, profileEffects, toBadge } from './ability-names.js';
 import { ELEMENT_NAMES } from './element-names.js';
 
 /**
@@ -138,7 +138,7 @@ export function createPanel(elements, characters, challenges, abilityBadges, han
           stats.textContent = formatEnemy(enemy, profile);
           const badges = document.createElement('div');
           badges.className = 'badges';
-          abilityBadges.render(badges, profileEffects(profile));
+          abilityBadges.render(badges, profileEffects(profile).map(toBadge));
           const block = document.createElement('div');
           block.append(stats, badges);
           return block;

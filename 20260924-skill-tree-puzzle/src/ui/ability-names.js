@@ -7,7 +7,6 @@ import { ELEMENT_NAMES } from './element-names.js';
  * @typedef {import('../types.js').CombatantProfile} CombatantProfile
  * @typedef {import('../types.js').ConditionalEffect} ConditionalEffect
  * @typedef {import('../types.js').Effect} Effect
- * @typedef {import('../types.js').ElementEffect} ElementEffect
  * @typedef {import('../types.js').TempoEffect} TempoEffect
  */
 
@@ -118,6 +117,15 @@ export function formatReward(effect) {
 const STAT_SUBJECTS = { hp: '最大 HP が', attack: '攻撃が', defense: '防御が' };
 
 /**
+ * 能力のバッジ。名前と説明は、ノードとボスで同じ文言を使う
+ * @param {Effect} effect
+ * @returns {import('./ability-badges.js').Badge}
+ */
+export function toBadge(effect) {
+  return { label: formatBadgeLabel(effect), description: describeEffect(effect) };
+}
+
+/**
  * 能力の効き方の説明。ノードとボスの能力を、同じ文言で説明する
  * @param {Effect} effect
  * @returns {string}
@@ -160,12 +168,6 @@ export function describeEffect(effect) {
       return `周期スキル。回ってきたターンは物理で攻撃し、相手の刻印を全部使って、1つにつき与えるダメージ +${effect.perMark} 倍`;
   }
 }
-
-/**
- * 周期スキルを1つも持たない側は、毎ターン物理で殴る
- * @type {ElementEffect}
- */
-export const PHYSICAL = { type: 'element', element: 'physical' };
 
 /**
  * 集計した能力を、バッジに並べる Effect の形に戻す。ステータスと連撃は1行目に出すので含めない。

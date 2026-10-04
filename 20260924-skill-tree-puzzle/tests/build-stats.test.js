@@ -1,8 +1,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createProfile } from '../src/core/profile.js';
-import { formatBadgeLabel } from '../src/ui/ability-names.js';
-import { buildStatsEffects, formatBuildStats } from '../src/ui/build-stats.js';
+import { buildStatsBadges, formatBuildStats } from '../src/ui/build-stats.js';
 
 /** @param {string} id @param {object[]} effects */
 const node = (id, effects) => ({ id, name: id, pos: { x: 0, y: 0 }, effects });
@@ -13,7 +12,7 @@ const ORIGIN = node('origin', [
 ]);
 
 /** @param {object[]} build @returns {string[]} */
-const badgeLabels = (build) => buildStatsEffects(createProfile(build)).map(formatBadgeLabel);
+const badgeLabels = (build) => buildStatsBadges(createProfile(build)).map(({ label }) => label);
 
 describe('formatBuildStats', () => {
   test('1行目は HP・攻撃・防御だけを出す', () => {
@@ -26,9 +25,11 @@ describe('formatBuildStats', () => {
   });
 });
 
-describe('buildStatsEffects', () => {
+describe('buildStatsBadges', () => {
   test('周期スキルが無ければ、毎ターン物理で殴るので物理のバッジを出す', () => {
-    assert.deepEqual(badgeLabels([ORIGIN]), ['物理']);
+    const [badge] = buildStatsBadges(createProfile([ORIGIN]));
+    assert.equal(badge.label, '物理');
+    assert.ok(badge.description.includes('周期スキルを取っていない'));
   });
 
   test('周期スキルはローテーションの順に先頭へ、ほかの能力は後ろに並べる', () => {
