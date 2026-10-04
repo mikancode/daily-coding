@@ -5,8 +5,8 @@ import { formatAttack, profileEffects, toBadge } from './ability-names.js';
 
 /**
  * @typedef {import('../types.js').CombatantProfile} CombatantProfile
- * @typedef {import('./ability-badges.js').Badge} Badge
- * @typedef {ReturnType<typeof import('./ability-badges.js').createAbilityBadges>} AbilityBadges
+ * @typedef {import('./description-popover.js').Badge} Badge
+ * @typedef {ReturnType<typeof import('./description-popover.js').createDescriptionPopover>} DescriptionPopover
  */
 
 /**
@@ -38,14 +38,14 @@ export function buildStatsBadges(profile) {
 /**
  * 組んだビルドのステータス。挑戦前にログから初期値を読み取って暗算しなくて済むよう、常に出す
  * @param {{ text: HTMLElement, badges: HTMLElement }} elements
- * @param {AbilityBadges} abilityBadges
+ * @param {DescriptionPopover} popover
  */
-export function createBuildStatsView(elements, abilityBadges) {
+export function createBuildStatsView(elements, popover) {
   return {
     /** @param {CombatantProfile} profile */
     render(profile) {
       elements.text.textContent = formatBuildStats(profile);
-      abilityBadges.render(elements.badges, buildStatsBadges(profile));
+      popover.renderBadges(elements.badges, buildStatsBadges(profile));
     },
   };
 }

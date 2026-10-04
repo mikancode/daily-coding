@@ -2,8 +2,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ABILITIES, resolveAbility } from '../src/core/ability-table.js';
 import { createEnemyProfile } from '../src/core/profile.js';
-import { describeEffect, formatBadgeLabel, profileEffects } from '../src/ui/ability-names.js';
-import { formatNodeDescription } from '../src/ui/node-description.js';
+import { describeEffect, formatBadgeLabel, formatNodeDescription, profileEffects } from '../src/ui/ability-names.js';
 
 describe('describeEffect', () => {
   for (const ability of ABILITIES) {

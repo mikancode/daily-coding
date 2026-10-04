@@ -51,9 +51,8 @@ src/
     ├── log-view.js        # 戦闘ログと結果の表示。敵が複数なら敵ごとに切り替える
     ├── debug-input.js     # デバッグ入力の欄とボタン
     ├── build-stats.js     # 組んだビルドのステータスと能力のバッジの表示
-    ├── ability-badges.js  # 能力のバッジと、タップしたバッジの説明の吹き出し
-    ├── node-description.js # タップしたノードの能力の説明の表示
-    ├── ability-names.js   # 能力・攻撃・報酬の表示と、能力のバッジ名・説明
+    ├── description-popover.js # 能力やノードの説明の吹き出しと、能力のバッジ
+    ├── ability-names.js   # 能力・攻撃・報酬の表示と、能力のバッジ名・説明、ノードの説明
     └── element-names.js   # 属性の表示名
 ```
 

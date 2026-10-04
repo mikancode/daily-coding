@@ -7,6 +7,7 @@ import { ELEMENT_NAMES } from './element-names.js';
  * @typedef {import('../types.js').CombatantProfile} CombatantProfile
  * @typedef {import('../types.js').ConditionalEffect} ConditionalEffect
  * @typedef {import('../types.js').Effect} Effect
+ * @typedef {import('../types.js').SkillNode} SkillNode
  * @typedef {import('../types.js').TempoEffect} TempoEffect
  */
 
@@ -119,10 +120,20 @@ const STAT_SUBJECTS = { hp: '最大 HP が', attack: '攻撃が', defense: '防�
 /**
  * 能力のバッジ。名前と説明は、ノードとボスで同じ文言を使う
  * @param {Effect} effect
- * @returns {import('./ability-badges.js').Badge}
+ * @returns {import('./description-popover.js').Badge}
  */
 export function toBadge(effect) {
   return { label: formatBadgeLabel(effect), description: describeEffect(effect) };
+}
+
+/**
+ * タップしたノードの説明。ノード名の行に続けて、能力1つを1行で並べる。
+ * ノード名が能力名を並べたものなので、行には能力名を繰り返さない
+ * @param {SkillNode} node
+ * @returns {string}
+ */
+export function formatNodeDescription(node) {
+  return [node.name, ...node.effects.map(describeEffect)].join('\n');
 }
 
 /**

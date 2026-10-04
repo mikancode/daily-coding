@@ -12,7 +12,7 @@ import { ELEMENT_NAMES } from './element-names.js';
  * @typedef {import('../types.js').ElementId} ElementId
  * @typedef {import('../types.js').Enemy} Enemy
  * @typedef {import('../types.js').SequenceProgress} SequenceProgress
- * @typedef {ReturnType<typeof import('./ability-badges.js').createAbilityBadges>} AbilityBadges
+ * @typedef {ReturnType<typeof import('./description-popover.js').createDescriptionPopover>} DescriptionPopover
  */
 
 const PERCENT = 100;
@@ -83,7 +83,7 @@ function formatSequenceStatus(challenge, progress) {
  * }} elements
  * @param {readonly Character[]} characters
  * @param {readonly Challenge[]} challenges 最初に選ばれているキャラのお題。キャラを切り替えたら setChallenges で差し替える
- * @param {AbilityBadges} abilityBadges
+ * @param {DescriptionPopover} popover
  * @param {{
  *   onSelectCharacter: (characterId: string) => void,
  *   onSelectChallenge: (challengeId: string) => void,
@@ -93,7 +93,7 @@ function formatSequenceStatus(challenge, progress) {
  *   onRestartSequence: () => void,
  * }} handlers
  */
-export function createPanel(elements, characters, challenges, abilityBadges, handlers) {
+export function createPanel(elements, characters, challenges, popover, handlers) {
   elements.characterSelect.replaceChildren(
     ...characters.map((character) => new Option(character.name, character.id)),
   );
@@ -138,7 +138,7 @@ export function createPanel(elements, characters, challenges, abilityBadges, han
           stats.textContent = formatEnemy(enemy, profile);
           const badges = document.createElement('div');
           badges.className = 'badges';
-          abilityBadges.render(badges, profileEffects(profile).map(toBadge));
+          popover.renderBadges(badges, profileEffects(profile).map(toBadge));
           const block = document.createElement('div');
           block.append(stats, badges);
           return block;

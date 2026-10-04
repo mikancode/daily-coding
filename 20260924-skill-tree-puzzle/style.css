@@ -115,8 +115,8 @@ body {
 }
 
 /*
- * タップしたバッジの説明。周りの配置を動かさないよう、.app を基準に重ねて出す。
- * 上端と三角の位置（--arrow-x）は ability-badges.js が開くたびに与える
+ * タップしたバッジ・ノードの説明。周りの配置を動かさないよう、.app を基準に重ねて出す。
+ * 上端と三角の位置（--arrow-x）は description-popover.js が開くたびに与える
  */
 .ability-popover {
   position: absolute;
@@ -129,6 +129,7 @@ body {
   border-radius: 8px;
   background: var(--color-node);
   font-size: 0.8125rem;
+  white-space: pre-line;
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.5);
 }
 
@@ -143,6 +144,13 @@ body {
   border-left: 1px solid var(--color-accent);
   background: var(--color-node);
   transform: rotate(45deg);
+}
+
+/* 指す要素の上に出したときは、三角を下側に回す */
+.ability-popover.is-above::before {
+  top: auto;
+  bottom: -6px;
+  transform: rotate(225deg);
 }
 
 .title {
@@ -246,16 +254,6 @@ body {
 
 .tree-node.is-releasable .tree-node-body {
   stroke: var(--color-accent);
-}
-
-.node-description {
-  margin: 0;
-  font-size: 0.8125rem;
-  white-space: pre-line;
-}
-
-.node-description:empty {
-  display: none;
 }
 
 .message {

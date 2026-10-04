@@ -15,11 +15,11 @@ import {
   saveSelectedChallenge,
   saveSelectedCharacter,
 } from './storage.js';
-import { createAbilityBadges } from './ui/ability-badges.js';
 import { createBuildStatsView } from './ui/build-stats.js';
+import { createDescriptionPopover } from './ui/description-popover.js';
 import { createDebugInput } from './ui/debug-input.js';
+import { formatNodeDescription } from './ui/ability-names.js';
 import { createLogView } from './ui/log-view.js';
-import { createNodeDescriptionView } from './ui/node-description.js';
 import { createPanel } from './ui/panel.js';
 import { createTreeView } from './ui/tree-view.js';
 
@@ -146,7 +146,7 @@ const logView = createLogView({
   entries: requireElement('#log-entries', HTMLOListElement),
 });
 
-const abilityBadges = createAbilityBadges(
+const popover = createDescriptionPopover(
   requireElement('.app', HTMLElement),
   requireElement('#ability-popover', HTMLElement),
 );
@@ -166,7 +166,7 @@ const panel = createPanel(
   },
   characters,
   character.challenges,
-  abilityBadges,
+  popover,
   {
     onSelectCharacter(characterId) {
       const selected = characters.find((candidate) => candidate.id === characterId);
@@ -181,7 +181,6 @@ const panel = createPanel(
       const notice = loadBuild();
       messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
       treeView.setTree(character.tree);
-      nodeDescriptionView.clear();
       panel.setChallenges(character.challenges);
       logView.clear();
       render();
@@ -197,7 +196,6 @@ const panel = createPanel(
       const selectionSaved = saveSelectedChallenge(character, challenge);
       const notice = loadBuild();
       messageElement.textContent = notice ?? (selectionSaved ? '' : STORAGE_UNAVAILABLE_MESSAGE);
-      nodeDescriptionView.clear();
       logView.clear();
       render();
     },
@@ -270,10 +268,8 @@ const buildStatsView = createBuildStatsView(
     text: requireElement('#build-stats-text', HTMLElement),
     badges: requireElement('#build-stats-badges', HTMLElement),
   },
-  abilityBadges,
+  popover,
 );
-
-const nodeDescriptionView = createNodeDescriptionView(requireElement('#node-description', HTMLElement));
 
 const treeView = createTreeView(requireElement('#tree', SVGSVGElement), character.tree, (nodeId) => {
   const node = character.tree.nodes.find((candidate) => candidate.id === nodeId);
@@ -281,18 +277,19 @@ const treeView = createTreeView(requireElement('#tree', SVGSVGElement), characte
   if (node === undefined) {
     throw new Error(`存在しないノードです: ${nodeId}`);
   }
-  nodeDescriptionView.render(node);
   const reason = toggleNode(nodeId);
   if (reason !== null) {
     messageElement.textContent = reason;
   } else {
     messageElement.textContent = saveBuild(character, challenge, owned) ? '' : STORAGE_UNAVAILABLE_MESSAGE;
   }
+  // render が吹き出しを閉じるので、描き直してから開く。取得・解除できなかったノードの効き方も読めるようにする
   render();
+  popover.open(treeView.nodeBody(nodeId), formatNodeDescription(node));
 });
 
 function render() {
-  abilityBadges.close();
+  popover.close();
   const points = remainingPoints();
   const acquirable = new Set(
     points > 0
