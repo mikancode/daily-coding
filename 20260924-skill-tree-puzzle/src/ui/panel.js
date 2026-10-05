@@ -69,6 +69,7 @@ function formatSequenceStatus(challenge, progress) {
 }
 
 /**
+ * 残り pt と同じ行に収まるよう、BEST（自己ベスト）・MIN（最少 pt）と短く書く。
  * 自己ベストが無いお題は、開示した後も最少 pt だけを出す（開発用のお題は、開示の条件に入らないため未クリアのことがある）
  * @param {Challenge} challenge
  * @param {ChallengeRecords} records
@@ -76,15 +77,12 @@ function formatSequenceStatus(challenge, progress) {
  */
 function formatRecord(challenge, records) {
   const best = records.bests.get(challenge.id) ?? null;
-  if (!records.revealed) {
-    return best === null ? '最少 ?? pt' : `自己ベスト ${best} pt / 最少 ?? pt（全お題クリアで開示）`;
-  }
-  const minimum = `最少 ${challenge.minimumPoints} pt`;
+  const minimum = records.revealed ? `MIN ${challenge.minimumPoints}pt` : 'MIN ?pt (全クリアで表示)';
   if (best === null) {
     return minimum;
   }
   const star = earnedStar(challenge, best, records.revealed) ? '★ ' : '';
-  return `${star}自己ベスト ${best} pt / ${minimum}`;
+  return `${star}BEST ${best}pt / ${minimum}`;
 }
 
 /**
