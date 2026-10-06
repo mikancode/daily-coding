@@ -2,8 +2,10 @@
 // 配布 pt で組めるビルドをすべて列挙する。お題の解を総当たりで確かめるため
 
 import { createAdjacency } from './build.js';
+import { clearsChallenge } from './challenge.js';
 
 /**
+ * @typedef {import('../types.js').Challenge} Challenge
  * @typedef {import('../types.js').NodeId} NodeId
  * @typedef {import('../types.js').SkillTree} SkillTree
  */
@@ -54,4 +56,30 @@ export function* enumerateBuilds(tree, maxPoints) {
   }
 
   yield* extend([origin], [...new Set(adjacency.get(origin))], new Set([origin]));
+}
+
+/**
+ * 配布 pt で組めるビルドを総当たりし、クリアできるビルドの最少 pt を返す。
+ * お題のデータに書いた最少 pt が、ツリーやお題の調整で実際とずれていないかを確かめるため
+ * @param {SkillTree} tree
+ * @param {Challenge} challenge
+ * @returns {number | null} どのビルドでもクリアできなければ null。起点だけでクリアできる 0 pt と区別する
+ */
+export function minimumClearPoints(tree, challenge) {
+  /** @type {number | null} */
+  let minimum = null;
+  for (const ids of enumerateBuilds(tree, challenge.points)) {
+    // 起点は配布 pt に含まない
+    const points = ids.length - 1;
+    if (minimum !== null && points >= minimum) {
+      continue;
+    }
+    // 列挙は取得順に返す。ローテーションは定義順で回るので、ツリーの定義順に並べ直す
+    const owned = new Set(ids);
+    const build = tree.nodes.filter((node) => owned.has(node.id));
+    if (clearsChallenge(build, challenge)) {
+      minimum = points;
+    }
+  }
+  return minimum;
 }

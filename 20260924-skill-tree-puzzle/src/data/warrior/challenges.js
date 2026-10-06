@@ -63,6 +63,7 @@ export const CHALLENGES = [
     enemies: [THORN_GUARD],
     /** 想定解の 10 pt に、寄り道を1つ許す */
     points: 11,
+    minimumPoints: 10,
   },
   {
     id: 'steel-beetle',
@@ -70,6 +71,7 @@ export const CHALLENGES = [
     enemies: [STEEL_BEETLE],
     /** 想定解の 8 pt に、寄り道を1つ許す */
     points: 9,
+    minimumPoints: 8,
   },
   {
     id: 'swamp-lich',
@@ -77,6 +79,7 @@ export const CHALLENGES = [
     enemies: [SWAMP_LICH],
     /** 最少クリアの 7 pt に、寄り道を1つ許す */
     points: 8,
+    minimumPoints: 7,
   },
   {
     id: 'gauntlet',
@@ -94,5 +97,6 @@ export const CHALLENGES = [
       { ...SWAMP_LICH, reward: [{ type: 'regen', amount: 6 }] },
     ],
     points: 11,
+    minimumPoints: 9,
   },
 ];

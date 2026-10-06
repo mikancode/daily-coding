@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CHARACTERS } from '../src/data/characters.js';
 import { collectConnected } from '../src/core/build.js';
+import { minimumClearPoints } from '../src/core/enumerate.js';
 
 const WARRIOR_ID = 'warrior';
 const WARRIOR_NODE_COUNT = 30;
@@ -84,6 +85,12 @@ for (const { id: characterId, tree, challenges } of CHARACTERS) {
           assert.ok(reduction >= 0 && reduction <= 1, `${label}.resistances.${element}`);
         }
       });
+    }
+  });
+
+  test(`${characterId}: お題の最少 pt は、配布 pt で組めるビルドの総当たりの結果と一致する`, () => {
+    for (const challenge of challenges) {
+      assert.equal(challenge.minimumPoints, minimumClearPoints(tree, challenge), `${challenge.id}.minimumPoints`);
     }
   });
 

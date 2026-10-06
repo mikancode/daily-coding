@@ -183,6 +183,8 @@ export interface Challenge {
   readonly enemies: readonly Enemy[];
   /** 配布ポイント。起点は含まない */
   readonly points: number;
+  /** 最少クリア pt。配布 pt で組めるビルドの総当たりと一致することをテストで確かめる */
+  readonly minimumPoints: number;
   /** 開発用のお題。URL に `?debug` を付けたときだけ選べる。省略は公開 */
   readonly debugOnly?: boolean;
 }
@@ -300,6 +302,23 @@ export type RestoredBuild =
   | { readonly status: 'none' }
   | { readonly status: 'restored'; readonly owned: Set<NodeId> }
   | { readonly status: 'invalid' };
+
+/**
+ * 「記録が無い（none）」と「記録はあるが今のお題には使えない（invalid）」を区別する。
+ * best はクリアしたビルドの最少 pt（自己ベスト）
+ */
+export type RestoredRecord =
+  | { readonly status: 'none' }
+  | { readonly status: 'recorded'; readonly best: number }
+  | { readonly status: 'invalid' };
+
+/** キャラのお題の記録。画面に出すときに、保存から読んでまとめる */
+export interface ChallengeRecords {
+  /** お題の ID ごとの自己ベスト。未クリアなら null */
+  readonly bests: ReadonlyMap<string, number | null>;
+  /** 最少 pt を開示したか */
+  readonly revealed: boolean;
+}
 
 /** デバッグ入力のボタンを並べるときの区分 */
 export type AbilityGroup = 'stat' | 'ability' | 'element';

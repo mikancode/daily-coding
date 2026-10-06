@@ -1,6 +1,7 @@
 // @ts-check
-// ブラウザへの保存（localStorage）。保存キーの命名と、選んだキャラ・お題・ビルドの読み書きをまとめる
+// ブラウザへの保存（localStorage）。保存キーの命名と、選んだキャラ・お題・ビルド・クリアの記録の読み書きをまとめる
 
+import { restoreRecord, serializeRecord, updateBest } from './core/clear-record.js';
 import { restoreBuild, serializeBuild } from './core/saved-build.js';
 
 /**
@@ -33,6 +34,15 @@ function selectedChallengeKey(character) {
  */
 function buildStorageKey(character, challenge) {
   return `${STORAGE_KEY_PREFIX}:${character.id}:build:${challenge.id}`;
+}
+
+/**
+ * クリアの記録もキャラとお題ごとに分ける
+ * @param {Character} character
+ * @param {Challenge} challenge
+ */
+function recordStorageKey(character, challenge) {
+  return `${STORAGE_KEY_PREFIX}:${character.id}:record:${challenge.id}`;
 }
 
 /**
@@ -134,4 +144,35 @@ export function loadSavedBuild(character, challenge) {
       return { owned: originOnly, notice: saved ? INVALID_SAVED_BUILD_MESSAGE : STORAGE_UNAVAILABLE_MESSAGE };
     }
   }
+}
+
+/**
+ * 記録が無い・読めない・今の最少 pt と合わないときは null。合わない記録は消さず、次のクリアで上書きする
+ * @param {Character} character
+ * @param {Challenge} challenge
+ * @returns {number | null} 自己ベスト
+ */
+export function loadBest(character, challenge) {
+  const raw = readStorage(recordStorageKey(character, challenge));
+  if (raw === undefined) {
+    return null;
+  }
+  const restored = restoreRecord(raw, challenge.minimumPoints);
+  return restored.status === 'recorded' ? restored.best : null;
+}
+
+/**
+ * クリアしたビルドの pt で、自己ベストを更新する
+ * @param {Character} character
+ * @param {Challenge} challenge
+ * @param {number} usedPoints
+ * @returns {{ improved: boolean, saved: boolean }} saved は保存できたら true。更新しなかったときは書かないので true
+ */
+export function saveClear(character, challenge, usedPoints) {
+  const { best, improved } = updateBest(loadBest(character, challenge), usedPoints);
+  if (!improved) {
+    return { improved, saved: true };
+  }
+  const saved = writeStorage(recordStorageKey(character, challenge), serializeRecord(best, challenge.minimumPoints));
+  return { improved, saved };
 }
