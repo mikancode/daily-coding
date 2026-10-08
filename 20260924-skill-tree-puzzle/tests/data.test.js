@@ -5,7 +5,7 @@ import { collectConnected } from '../src/core/build.js';
 import { minimumClearPoints } from '../src/core/enumerate.js';
 
 const WARRIOR_ID = 'warrior';
-const WARRIOR_NODE_COUNT = 30;
+const WARRIOR_NODE_COUNT = 43;
 const SEQUENCE_ENEMY_COUNT = 3;
 
 /** @param {string} id */
