@@ -57,7 +57,7 @@ export const CHALLENGES = [
     id: 'swamp-lich',
     name: '屍の沼竜',
     enemies: [SWAMP_LICH],
-    /** 反撃・溜め・背水の3路線とも、8 pt で倒せる。寄り道を1つ許す */
+    /** 反撃・溜め・背水の3路線とも、8 pt で倒せる。寄り道を1つ許す。最少の 7 pt は、能力を2つ組み合わせたときに出る */
     points: 9,
     minimumPoints: 7,
   },
