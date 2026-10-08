@@ -15,7 +15,7 @@ import { formatAttack, profileEffects, toBadge } from './ability-names.js';
  * @returns {string}
  */
 export function formatBuildStats(profile) {
-  return [`HP ${profile.maxHp}`, formatAttack(profile), `防御 ${profile.defense}`].join(' / ');
+  return [`HP ${profile.maxHp}`, formatAttack(profile), `DEF ${profile.defense}`].join(' / ');
 }
 
 /**

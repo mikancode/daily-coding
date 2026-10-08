@@ -27,8 +27,8 @@ const formatMultiplier = (multiplier) => `${Number(multiplier.toFixed(MULTIPLIER
 function formatAddenda(tempo, changes) {
   const parts = [
     ...(tempo === undefined ? [] : [`好機で${formatMultiplier(tempo)}`]),
-    ...(changes?.attack === undefined ? [] : [`逆上で攻撃 ${changes.attack}`]),
-    ...(changes?.defense === undefined ? [] : [`破甲で防御 ${changes.defense}`]),
+    ...(changes?.attack === undefined ? [] : [`逆上で ATK ${changes.attack}`]),
+    ...(changes?.defense === undefined ? [] : [`破甲で DEF ${changes.defense}`]),
     ...(changes?.marks === undefined ? [] : [`刻印 ${changes.marks}`]),
   ];
   return parts.length === 0 ? '' : ` ／ ${parts.join('・')}`;

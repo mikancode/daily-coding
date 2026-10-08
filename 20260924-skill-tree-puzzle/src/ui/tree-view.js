@@ -23,7 +23,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
  */
 const CELL_WIDTH = 80;
 const CELL_HEIGHT = 64;
-/** ラベル「攻撃+3」が収まるよう、見た目は円ではなく横長の角丸矩形にする */
+/** ラベル「ATK+3」が収まるよう、見た目は円ではなく横長の角丸矩形にする */
 const NODE_WIDTH = 56;
 const NODE_HEIGHT = 40;
 const NODE_CORNER_RADIUS = 8;

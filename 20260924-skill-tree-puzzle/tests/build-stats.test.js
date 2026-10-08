@@ -15,13 +15,13 @@ const ORIGIN = node('origin', [
 const badgeLabels = (build) => buildStatsBadges(createProfile(build)).map(({ label }) => label);
 
 describe('formatBuildStats', () => {
-  test('1行目は HP・攻撃・防御だけを出す', () => {
-    assert.equal(formatBuildStats(createProfile([ORIGIN])), 'HP 100 / 攻撃 13 / 防御 0');
+  test('1行目は HP・ATK・DEF だけを出す', () => {
+    assert.equal(formatBuildStats(createProfile([ORIGIN])), 'HP 100 / ATK 13 / DEF 0');
   });
 
   test('連撃は、丸めない1発の威力と回数で出す', () => {
     const build = [ORIGIN, node('multi-hit', [{ type: 'multiHit', hits: 2, ratio: 0.5 }])];
-    assert.equal(formatBuildStats(createProfile(build)), 'HP 100 / 攻撃 6.5 × 2回 / 防御 0');
+    assert.equal(formatBuildStats(createProfile(build)), 'HP 100 / ATK 6.5 × 2回 / DEF 0');
   });
 });
 

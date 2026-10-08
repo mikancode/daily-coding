@@ -119,7 +119,7 @@ test('戦士: ノードの表示名と効果は、能力の表から作られる
     { type: 'stat', stat: 'hp', amount: 100 },
     { type: 'stat', stat: 'attack', amount: 10 },
   ]);
-  assert.equal(byId.get('atk-1')?.name, '攻撃+3');
+  assert.equal(byId.get('atk-1')?.name, 'ATK+3');
   assert.equal(byId.get('multi-hit')?.name, '連撃');
   assert.deepEqual(byId.get('multi-hit')?.effects, [{ type: 'multiHit', hits: 2, ratio: 0.5 }]);
 });
