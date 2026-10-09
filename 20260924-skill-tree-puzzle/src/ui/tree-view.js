@@ -31,7 +31,7 @@ const NODE_CORNER_RADIUS = 8;
 /** special は枠を状態の表示に使うため、形（角丸の大きいピル形）で見分ける */
 const SPECIAL_NODE_CORNER_RADIUS = NODE_HEIGHT / 2;
 const LABEL_FONT_SIZE = 13;
-/** 「食いしばり」のような長いラベルは、ノードの枠から左右にこの余白を残して縮める */
+/** 枠に収まらない長いラベルは、ノードの枠から左右にこの余白を残して縮める */
 const LABEL_PADDING = 3;
 const MAX_LABEL_WIDTH = NODE_WIDTH - LABEL_PADDING * 2;
 const EDGE_WIDTH = 4;

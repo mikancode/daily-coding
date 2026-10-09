@@ -69,7 +69,7 @@ function formatAbility(effect) {
     case 'poison':
       return `毒 ${effect.damage}`;
     case 'endure':
-      return '食いしばり';
+      return '根性';
     case 'drain':
       return formatDrain(effect.ratio);
     case 'rage':
@@ -224,7 +224,7 @@ export function formatBadgeLabel(effect) {
     case 'poison':
       return `毒 ${effect.damage}`;
     case 'endure':
-      return '食いしばり';
+      return '根性';
     case 'drain':
       return formatDrain(effect.ratio);
     case 'rage':

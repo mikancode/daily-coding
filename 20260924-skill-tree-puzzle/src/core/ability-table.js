@@ -79,7 +79,7 @@ export const ABILITIES = [
     defaults: [5],
     build: (damage) => ({ type: 'poison', damage }),
   },
-  { name: 'Endure', label: '食いしばり', group: 'ability', defaults: [], build: () => ({ type: 'endure' }) },
+  { name: 'Endure', label: '根性', group: 'ability', defaults: [], build: () => ({ type: 'endure' }) },
   {
     name: 'Drain',
     label: '吸収',

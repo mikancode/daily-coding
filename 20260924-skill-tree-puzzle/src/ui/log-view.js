@@ -87,8 +87,8 @@ function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
         : `${entry.turn}T ボスが再生で ${entry.amount} 回復（${bossHp(entry.hp)}）`;
     case 'endure':
       return byPlayer
-        ? `${entry.turn}T 食いしばりで踏みとどまった（${playerHp(entry.hp)}）`
-        : `${entry.turn}T ボスが食いしばりで踏みとどまった（${bossHp(entry.hp)}）`;
+        ? `${entry.turn}T 根性で踏みとどまった（${playerHp(entry.hp)}）`
+        : `${entry.turn}T ボスが根性で踏みとどまった（${bossHp(entry.hp)}）`;
     case 'turnLimit':
       return `${entry.turn}ターンが過ぎた`;
   }
