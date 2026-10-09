@@ -121,7 +121,7 @@ test('戦士: ノードの表示名と効果は、能力の表から作られる
   ]);
   assert.equal(byId.get('atk-1')?.name, 'ATK+3');
   assert.equal(byId.get('multi-hit')?.name, '連撃');
-  assert.deepEqual(byId.get('multi-hit')?.effects, [{ type: 'multiHit', hits: 2, ratio: 0.5 }]);
+  assert.deepEqual(byId.get('multi-hit')?.effects, [{ type: 'multiHit', hits: 2, ratio: 0.6 }]);
 });
 
 test('戦士: 連戦のお題を持つ', () => {

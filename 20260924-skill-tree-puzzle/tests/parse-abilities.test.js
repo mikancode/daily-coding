@@ -30,7 +30,7 @@ describe('正しい語', () => {
     ['属性', 'Fire', { type: 'element', element: 'fire' }],
     ['引数つき', 'ATK50', { type: 'stat', stat: 'attack', amount: 50 }],
     ['複数の引数は : で区切る', 'Cond0.3:4', { type: 'conditional', hpRatioAtMost: 0.3, damageMultiplier: 4 }],
-    ['後ろの引数だけ省くと規定値', 'Multi3', { type: 'multiHit', hits: 3, ratio: 0.5 }],
+    ['後ろの引数だけ省くと規定値', 'Multi3', { type: 'multiHit', hits: 3, ratio: 0.6 }],
     ['連撃の回数の上限ちょうど', 'Multi100:0.01', { type: 'multiHit', hits: 100, ratio: 0.01 }],
   ];
   for (const [label, word, effect] of validCases) {

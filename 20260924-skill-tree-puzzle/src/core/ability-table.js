@@ -44,7 +44,7 @@ export const ABILITIES = [
     name: 'Multi',
     label: '連撃',
     group: 'ability',
-    defaults: [2, 0.5],
+    defaults: [2, 0.6],
     check: ([hits]) =>
       Number.isInteger(hits) && hits >= 1 && hits <= MAX_MULTI_HITS
         ? null
@@ -149,7 +149,7 @@ export function findAbility(name) {
 }
 
 /**
- * ボタンが追記する、規定値つきの1語。例：`Poison5`、`Multi2:0.5`、`Fire`
+ * ボタンが追記する、規定値つきの1語。例：`Poison5`、`Multi2:0.6`、`Fire`
  * @param {AbilityDefinition} ability
  * @returns {string}
  */
