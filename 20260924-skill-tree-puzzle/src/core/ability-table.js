@@ -38,13 +38,13 @@ const elementAbility = (name, label, element) => ({
  */
 export const ABILITIES = [
   statAbility('HP', 'HP', 'hp', HP_STEP),
-  statAbility('ATK', '攻撃', 'attack', ATTACK_STEP),
-  statAbility('DEF', '防御', 'defense', DEFENSE_STEP),
+  statAbility('ATK', 'ATK', 'attack', ATTACK_STEP),
+  statAbility('DEF', 'DEF', 'defense', DEFENSE_STEP),
   {
     name: 'Multi',
     label: '連撃',
     group: 'ability',
-    defaults: [2, 0.5],
+    defaults: [2, 0.6],
     check: ([hits]) =>
       Number.isInteger(hits) && hits >= 1 && hits <= MAX_MULTI_HITS
         ? null
@@ -79,7 +79,7 @@ export const ABILITIES = [
     defaults: [5],
     build: (damage) => ({ type: 'poison', damage }),
   },
-  { name: 'Endure', label: '食いしばり', group: 'ability', defaults: [], build: () => ({ type: 'endure' }) },
+  { name: 'Endure', label: '根性', group: 'ability', defaults: [], build: () => ({ type: 'endure' }) },
   {
     name: 'Drain',
     label: '吸収',
@@ -149,7 +149,7 @@ export function findAbility(name) {
 }
 
 /**
- * ボタンが追記する、規定値つきの1語。例：`Poison5`、`Multi2:0.5`、`Fire`
+ * ボタンが追記する、規定値つきの1語。例：`Poison5`、`Multi2:0.6`、`Fire`
  * @param {AbilityDefinition} ability
  * @returns {string}
  */
@@ -158,7 +158,7 @@ export function formatDefaultWord(ability) {
 }
 
 /**
- * ノードに出す短い名前。例：`攻撃+3`、`雷属性`、`連撃`、`連撃3`。
+ * ノードに出す短い名前。例：`ATK+3`、`雷属性`、`連撃`、`連撃3`。
  * 能力は規定値と違うときだけ第1引数を添える。ノードの幅に収めるため、第2引数は出さない
  * @param {AbilityDefinition} ability
  * @param {readonly number[]} args 規定値で埋めたあとの引数

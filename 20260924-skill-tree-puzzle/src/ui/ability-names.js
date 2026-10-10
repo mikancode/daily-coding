@@ -22,7 +22,7 @@ const SINGLE_HIT = 1;
  */
 export function formatAttack(profile) {
   const perHit = profile.attack * profile.ratio;
-  return profile.hits === SINGLE_HIT ? `攻撃 ${perHit}` : `攻撃 ${perHit} × ${profile.hits}回`;
+  return profile.hits === SINGLE_HIT ? `ATK ${perHit}` : `ATK ${perHit} × ${profile.hits}回`;
 }
 
 /**
@@ -45,9 +45,9 @@ function formatTempo(tempo) {
 /** @param {number} ratio @returns {string} */
 const formatDrain = (ratio) => `吸収 ${Math.round(ratio * PERCENT)}%`;
 /** @param {number} amount @returns {string} */
-const formatRage = (amount) => `逆上 攻撃+${amount}`;
+const formatRage = (amount) => `逆上 ATK+${amount}`;
 /** @param {number} amount @returns {string} */
-const formatArmorBreak = (amount) => `破甲 防御-${amount}`;
+const formatArmorBreak = (amount) => `破甲 DEF-${amount}`;
 /** @param {number} amount @returns {string} */
 const formatMark = (amount) => `刻印 ${amount}`;
 
@@ -69,7 +69,7 @@ function formatAbility(effect) {
     case 'poison':
       return `毒 ${effect.damage}`;
     case 'endure':
-      return '食いしばり';
+      return '根性';
     case 'drain':
       return formatDrain(effect.ratio);
     case 'rage':
@@ -93,7 +93,7 @@ function formatAbility(effect) {
 }
 
 /** @type {Readonly<Record<'hp' | 'attack' | 'defense', string>>} */
-const STAT_NAMES = { hp: 'HP', attack: '攻撃', defense: '防御' };
+const STAT_NAMES = { hp: 'HP', attack: 'ATK', defense: 'DEF' };
 
 /**
  * 連戦の報酬の一覧に出す。ステータスの加算と連撃も報酬の中身なので省かない
@@ -115,7 +115,7 @@ export function formatReward(effect) {
  * 説明文の主語。英字の後ろだけ助詞の前に空白を入れるので、助詞まで含める
  * @type {Readonly<Record<'hp' | 'attack' | 'defense', string>>}
  */
-const STAT_SUBJECTS = { hp: '最大 HP が', attack: '攻撃が', defense: '防御が' };
+const STAT_SUBJECTS = { hp: '最大 HP が', attack: 'ATK が', defense: 'DEF が' };
 
 /**
  * 能力のバッジ。名前と説明は、ノードとボスで同じ文言を使う
@@ -146,7 +146,7 @@ export function describeEffect(effect) {
     case 'stat':
       return `${STAT_SUBJECTS[effect.stat]} ${effect.amount} 上がる`;
     case 'multiHit':
-      return `通常攻撃が ${effect.hits} 回になる。1発の威力は攻撃の ${effect.ratio} 倍`;
+      return `通常攻撃が ${effect.hits} 回になる。1発の威力は ATK の ${effect.ratio} 倍`;
     case 'conditional':
       return `HP が ${Math.round(effect.hpRatioAtMost * PERCENT)}% 以下のとき、与えるダメージが ${effect.damageMultiplier} 倍`;
     case 'element':
@@ -154,21 +154,21 @@ export function describeEffect(effect) {
         ? '周期スキル。回ってきたターンは物理で攻撃する'
         : `周期スキル。回ってきたターンは${ELEMENT_NAMES[effect.element]}属性で攻撃する`;
     case 'counter':
-      return `攻撃を1発受けるたびに、${effect.damage} − 相手の防御 のダメージを返す`;
+      return `攻撃を1発受けるたびに、${effect.damage} − 相手の DEF のダメージを返す`;
     case 'regen':
       return `ターン開始時に、HP を ${effect.amount} 回復する`;
     case 'poison':
-      return `ターン終了時に、相手の防御を無視して ${effect.damage} のダメージを与える`;
+      return `ターン終了時に、相手の DEF を無視して ${effect.damage} のダメージを与える`;
     case 'endure':
       return '戦闘中に1回だけ、倒れるダメージを受けても HP 1 で踏みとどまる';
     case 'drain':
       return `攻撃を当てるたびに、与えたダメージの ${Math.round(effect.ratio * PERCENT)}% だけ HP を回復する`;
     case 'rage':
-      return `攻撃を受けるたびに、この戦闘中の攻撃が ${effect.amount} 上がる`;
+      return `攻撃を受けるたびに、この戦闘中の ATK が ${effect.amount} 上がる`;
     case 'pierce':
-      return '攻撃で、相手の防御を引かない';
+      return '攻撃で、相手の DEF を引かない';
     case 'armorBreak':
-      return `攻撃を当てるたびに、この戦闘中の相手の防御を ${effect.amount} 下げる`;
+      return `攻撃を当てるたびに、この戦闘中の相手の DEF を ${effect.amount} 下げる`;
     case 'tempo':
       return `${effect.every} の倍数のターンに、与えるダメージが ${effect.damageMultiplier} 倍`;
     case 'charge':
@@ -224,7 +224,7 @@ export function formatBadgeLabel(effect) {
     case 'poison':
       return `毒 ${effect.damage}`;
     case 'endure':
-      return '食いしばり';
+      return '根性';
     case 'drain':
       return formatDrain(effect.ratio);
     case 'rage':

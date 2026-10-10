@@ -52,7 +52,7 @@ function formatRewardSuffix(enemy) {
  */
 function formatEnemy(enemy, profile) {
   return (
-    `${enemy.name}　HP ${profile.maxHp} / ${formatAttack(profile)} / 防御 ${profile.defense}` +
+    `${enemy.name}　HP ${profile.maxHp} / ${formatAttack(profile)} / DEF ${profile.defense}` +
     ` / ${enemy.turnLimit}ターン以内${formatResistances(enemy)}` +
     formatRewardSuffix(enemy)
   );

@@ -23,7 +23,7 @@ const DEFAULT_ELEMENT = 'physical';
 const NO_REDUCTION = 0;
 /** 条件を満たさない、または conditional を取っていなければ倍率は掛からない */
 const NEUTRAL_MULTIPLIER = 1;
-/** 食いしばりで踏みとどまったときの HP */
+/** 根性で踏みとどまったときの HP */
 const ENDURE_HP = 1;
 /**
  * 小数の誤差で、ダメージの floor が1つ下がったり、条件の境界ちょうどで発動しなかったりするのを防ぐ。
@@ -122,10 +122,10 @@ function defenseAgainst(attacker, target) {
 }
 
 /**
- * HP を減らす処理はすべてここを通す。致死時の能力（食いしばり）を1か所で扱うため
+ * HP を減らす処理はすべてここを通す。致死時の能力（根性）を1か所で扱うため
  * @param {Fighter} target
  * @param {number} damage
- * @returns {boolean} 食いしばりで踏みとどまったら true
+ * @returns {boolean} 根性で踏みとどまったら true
  */
 function takeDamage(target, damage) {
   target.hp = Math.max(0, target.hp - damage);

@@ -328,8 +328,24 @@ const treeView = createTreeView(requireElement('#tree', SVGSVGElement), characte
   }
   // render が吹き出しを閉じるので、描き直してから開く。取得・解除できなかったノードの効き方も読めるようにする
   render();
-  popover.open(treeView.nodeBody(nodeId), formatNodeDescription(node), reason ?? undefined);
+  popover.open(treeView.nodeBody(nodeId), formatNodeDescription(node), reason ?? undefined, {
+    preferAbove: isBelowOrigin(character.tree, node),
+  });
 });
+
+/**
+ * 起点より下の行のノード。吹き出しを上に出し、下に続くノードと「挑戦」ボタンを隠さないようにする
+ * @param {import('./types.js').SkillTree} tree
+ * @param {import('./types.js').SkillNode} node
+ */
+function isBelowOrigin(tree, node) {
+  const origin = tree.nodes.find((candidate) => candidate.id === tree.originId);
+  // 起点の ID はツリーのデータが持ち、tests/data.test.js で実在を確かめている
+  if (origin === undefined) {
+    throw new Error(`起点が見つかりません: ${tree.originId}`);
+  }
+  return node.pos.y > origin.pos.y;
+}
 
 function render() {
   popover.close();

@@ -19,17 +19,21 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 
 /**
  * viewBox 上の1マスの大きさ。画面上の大きさは SVG の表示サイズに合わせて伸縮する。
- * 横長にするのは、左右に隣接するノードの隙間を空け、間を通る辺（破線）を見えるようにするため
+ * 7列を幅 360px のスマホに収めたとき、ラベルが 10px 前後で読めるよう、ノードとの隙間を詰めてある。
+ * 隙間を残すのは、左右・上下に隣接するノードの間を通る辺（破線）を見えるようにするため
  */
-const CELL_WIDTH = 80;
-const CELL_HEIGHT = 64;
-/** ラベル「攻撃+3」が収まるよう、見た目は円ではなく横長の角丸矩形にする */
-const NODE_WIDTH = 56;
+const CELL_WIDTH = 64;
+const CELL_HEIGHT = 56;
+/** ラベル「ATK+3」が収まるよう、見た目は円ではなく横長の角丸矩形にする */
+const NODE_WIDTH = 48;
 const NODE_HEIGHT = 40;
 const NODE_CORNER_RADIUS = 8;
 /** special は枠を状態の表示に使うため、形（角丸の大きいピル形）で見分ける */
 const SPECIAL_NODE_CORNER_RADIUS = NODE_HEIGHT / 2;
 const LABEL_FONT_SIZE = 13;
+/** 枠に収まらない長いラベルは、ノードの枠から左右にこの余白を残して縮める */
+const LABEL_PADDING = 3;
+const MAX_LABEL_WIDTH = NODE_WIDTH - LABEL_PADDING * 2;
 const EDGE_WIDTH = 4;
 /**
  * タップ領域はマス全体にする。隣のマスと重ならない範囲で最も広いため。
@@ -153,6 +157,11 @@ export function createTreeView(svg, tree, onTap) {
       label.textContent = node.name;
       group.append(label);
       svg.append(group);
+      // 文字の幅はフォントで変わるので、描画してから測る。収まるラベルは縮めない
+      if (/** @type {SVGTextElement} */ (label).getComputedTextLength() > MAX_LABEL_WIDTH) {
+        label.setAttribute('textLength', String(MAX_LABEL_WIDTH));
+        label.setAttribute('lengthAdjust', 'spacingAndGlyphs');
+      }
       nodeElements.set(node.id, group);
     }
   }

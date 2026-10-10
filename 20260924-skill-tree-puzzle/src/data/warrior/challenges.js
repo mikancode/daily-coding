@@ -1,5 +1,5 @@
 // @ts-check
-// 戦士のお題（敵の組と配布 pt）。敵ごとのコメントに想定解を書く
+// 戦士のお題（敵の組と配布 pt）。易しい順（最少 pt の小さい順）に並べ、敵ごとのコメントに路線を書く
 
 /**
  * @typedef {import('../../types.js').Challenge} Challenge
@@ -7,47 +7,13 @@
  */
 
 /**
- * カウンター型。多段で仕掛けると反撃で削り切られ、守りを固めるだけではターン上限に届かない。
- * 右側の HP・防御で耐えながら左上の背水まで繋ぎ、被弾で HP を半分まで減らして火力を上げる形を想定解にしている。
- * 想定解は 10 pt
- * @type {Enemy}
- */
-const THORN_GUARD = {
-  name: '棘の番人',
-  hp: 300,
-  attack: 24,
-  defense: 0,
-  abilities: [{ type: 'counter', damage: 10 }],
-  resistances: {},
-  turnLimit: 10,
-};
-
-/**
- * 耐性型。雷以外を 60% 軽減するので、右端の雷まで経路を伸ばさせる。反撃はしない代わりに、1撃が重い。
- * 右側の HP・防御の道を雷まで繋ぎ、その先の攻撃+3・+5 を取る形を想定解にしている。背水は使わない。
- * 想定解は HP 170・防御 4・1発 18 で、8ターン目に倒し切り、HP 16 が残る。
- * ターン上限には2ターンの余裕を持たせ、耐え切れるかを問う。
- * 想定解は 8 pt
- * @type {Enemy}
- */
-const STEEL_BEETLE = {
-  name: '鋼殻の甲虫',
-  hp: 140,
-  attack: 26,
-  defense: 0,
-  abilities: [],
-  resistances: { physical: 0.6, fire: 0.6, ice: 0.6 },
-  turnLimit: 10,
-};
-
-/**
- * ターン開始（再生）・ターン終了（毒）・致死時（食いしばり）の能力を確かめるための敵。
- * 数値は仮で、倒しやすくしてある。想定解はまだ決めておらず、難度はあとで調整する
+ * 再生・毒・根性の型。ステータスだけでは再生を上回れず、ターン上限に届かない。
+ * 反撃・溜め・背水のどれか1つを取れば倒せる。いちばん易しいお題にする
  * @type {Enemy}
  */
 const SWAMP_LICH = {
   name: '屍の沼竜',
-  hp: 120,
+  hp: 160,
   attack: 16,
   defense: 0,
   abilities: [{ type: 'regen', amount: 8 }, { type: 'poison', damage: 5 }, { type: 'endure' }],
@@ -55,31 +21,61 @@ const SWAMP_LICH = {
   turnLimit: 10,
 };
 
+/**
+ * 耐性型。物理を半分に軽減し、防御も高い。
+ * 炎で軽減を避けるか、貫通で防御を無視して反撃を重ねるか、溜めと背水で軽減ごと押し切る
+ * @type {Enemy}
+ */
+const STEEL_BEETLE = {
+  name: '鋼殻の甲虫',
+  hp: 120,
+  attack: 22,
+  defense: 6,
+  abilities: [],
+  resistances: { physical: 0.5 },
+  turnLimit: 10,
+};
+
+/**
+ * カウンター型。多段で仕掛けると反撃で削り切られ、守りを固めるだけではターン上限に届かない。
+ * 背水か溜めで火力を上げ、吸収や逆上で反撃に耐える。いちばん難しいお題にする
+ * @type {Enemy}
+ */
+const THORN_GUARD = {
+  name: '棘の番人',
+  hp: 300,
+  attack: 28,
+  defense: 0,
+  abilities: [{ type: 'counter', damage: 10 }],
+  resistances: {},
+  turnLimit: 10,
+};
+
 /** @type {readonly Challenge[]} */
 export const CHALLENGES = [
   {
-    id: 'thorn-guard',
-    name: '棘の番人',
-    enemies: [THORN_GUARD],
-    /** 想定解の 10 pt に、寄り道を1つ許す */
-    points: 11,
-    minimumPoints: 10,
+    id: 'swamp-lich',
+    name: '屍の沼竜',
+    enemies: [SWAMP_LICH],
+    /** 反撃・溜め・背水の3路線とも、8 pt で倒せる。寄り道を1つ許す。最少の 7 pt は、能力を2つ組み合わせたときに出る */
+    points: 9,
+    minimumPoints: 7,
   },
   {
     id: 'steel-beetle',
     name: '鋼殻の甲虫',
     enemies: [STEEL_BEETLE],
-    /** 想定解の 8 pt に、寄り道を1つ許す */
-    points: 9,
+    /** 貫通と反撃は 8 pt、炎と、溜めと背水は 9 pt で倒せる。どの路線にも寄り道を1つ許す */
+    points: 10,
     minimumPoints: 8,
   },
   {
-    id: 'swamp-lich',
-    name: '屍の沼竜',
-    enemies: [SWAMP_LICH],
-    /** 最少クリアの 7 pt に、寄り道を1つ許す */
-    points: 8,
-    minimumPoints: 7,
+    id: 'thorn-guard',
+    name: '棘の番人',
+    enemies: [THORN_GUARD],
+    /** 吸収と背水は 9 pt、溜めと吸収、逆上と吸収は 10 pt で倒せる。寄り道を1〜2つ許す */
+    points: 11,
+    minimumPoints: 9,
   },
   {
     id: 'gauntlet',
