@@ -32,14 +32,14 @@ function toSkillNode({ id, pos, abilities }) {
 
 /**
  * 7列 × 7行のグリッドに置き（x: 0〜6 が左→右、y: 0〜6 が上→下）、起点を中心にする。
- * 能力は外周と、起点の斜め2か所に置き、能力どうしは縦横の距離で3マス以上離す。
+ * 能力は外周と、その1つ内側の斜めの4か所、起点の斜め2か所に置き、能力どうしは縦横に隣り合わせない。
+ * 四隅は空け、角に当たる能力は斜め内側に置く。破甲・根性は外周のノードとだけ繋ぎ、外周を回り込まないと取れないようにする。
  * 上は攻め（連撃）、右は受け（反撃）、下は背水、左は溜めに寄せ、その中間に破甲・貫通・根性・吸収・炎・逆上を置く。
- * 起点から上下左右に2マス先の (3,1)・(3,5) は空け、その先の能力へは回り込ませる。
+ * 起点から上下に2マス先の (3,1)・(3,5) は空け、その先の能力へは回り込ませる。
  * 辺は縦横の隣どうしに疎に張る。全マスを繋ぐと、総当たりの件数が増えすぎるため
  * @type {readonly NodeDefinition[]}
  */
 const NODE_DEFINITIONS = [
-  { id: 'armor-break', pos: { x: 0, y: 0 }, abilities: [['Break']] },
   { id: 'hp-1', pos: { x: 1, y: 0 }, abilities: [['HP', 20]] },
   { id: 'atk-1', pos: { x: 2, y: 0 }, abilities: [['ATK', 3]] },
   { id: 'multi-hit', pos: { x: 3, y: 0 }, abilities: [['Multi']] },
@@ -47,6 +47,7 @@ const NODE_DEFINITIONS = [
   { id: 'atk-2', pos: { x: 5, y: 0 }, abilities: [['ATK', 3]] },
 
   { id: 'atk-3', pos: { x: 0, y: 1 }, abilities: [['ATK', 3]] },
+  { id: 'armor-break', pos: { x: 1, y: 1 }, abilities: [['Break']] },
   { id: 'hp-2', pos: { x: 2, y: 1 }, abilities: [['HP', 20]] },
   { id: 'hp-3', pos: { x: 4, y: 1 }, abilities: [['HP', 20]] },
   { id: 'pierce', pos: { x: 5, y: 1 }, abilities: [['Pierce']] },
@@ -80,6 +81,7 @@ const NODE_DEFINITIONS = [
   { id: 'drain', pos: { x: 1, y: 5 }, abilities: [['Drain']] },
   { id: 'atk-12', pos: { x: 2, y: 5 }, abilities: [['ATK', 3]] },
   { id: 'def-7', pos: { x: 4, y: 5 }, abilities: [['DEF', 2]] },
+  { id: 'endure', pos: { x: 5, y: 5 }, abilities: [['Endure']] },
   { id: 'atk-13', pos: { x: 6, y: 5 }, abilities: [['ATK', 3]] },
 
   { id: 'hp-9', pos: { x: 1, y: 6 }, abilities: [['HP', 20]] },
@@ -87,7 +89,6 @@ const NODE_DEFINITIONS = [
   { id: 'last-stand', pos: { x: 3, y: 6 }, abilities: [['Cond']] },
   { id: 'atk-14', pos: { x: 4, y: 6 }, abilities: [['ATK', 3]] },
   { id: 'hp-10', pos: { x: 5, y: 6 }, abilities: [['HP', 20]] },
-  { id: 'endure', pos: { x: 6, y: 6 }, abilities: [['Endure']] },
 ];
 
 /** @type {SkillTree} */
