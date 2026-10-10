@@ -31,12 +31,14 @@ export function createDescriptionPopover(root, popover) {
   /**
    * 横幅は root の内側いっぱいに固定し、三角だけを指す要素の中心に合わせる。
    * 横の位置を毎回求めずに済み、画面の端の要素でもはみ出さないため。
-   * 下に出すと画面からはみ出すときだけ、上に出す
+   * 既定は下に出し、下に出すと画面からはみ出すときだけ上に出す。
+   * preferAbove なら逆に上に出し、上にはみ出すときだけ下に出す
    * @param {Element} anchor 吹き出しが指す要素
    * @param {string} text
    * @param {string} [note] 説明と分けて出す補足。ノードを取得・解除できなかった理由に使う
+   * @param {{ preferAbove?: boolean }} [options]
    */
-  function open(anchor, text, note) {
+  function open(anchor, text, note, { preferAbove = false } = {}) {
     close();
     openAnchor = anchor;
     const body = document.createElement('div');
@@ -48,16 +50,22 @@ export function createDescriptionPopover(root, popover) {
       noteElement.textContent = note;
       popover.append(noteElement);
     }
-    popover.classList.remove('is-above');
     popover.hidden = false;
     const rootRect = root.getBoundingClientRect();
     const anchorRect = anchor.getBoundingClientRect();
-    popover.style.top = `${anchorRect.bottom + ANCHOR_GAP_PX - rootRect.top}px`;
-    let popoverRect = popover.getBoundingClientRect();
-    if (popoverRect.bottom > window.innerHeight) {
-      popover.style.top = `${anchorRect.top - ANCHOR_GAP_PX - popoverRect.height - rootRect.top}px`;
-      popover.classList.add('is-above');
-      popoverRect = popover.getBoundingClientRect();
+    /** @param {boolean} above */
+    const place = (above) => {
+      popover.classList.toggle('is-above', above);
+      const top = above
+        ? anchorRect.top - ANCHOR_GAP_PX - popover.getBoundingClientRect().height
+        : anchorRect.bottom + ANCHOR_GAP_PX;
+      popover.style.top = `${top - rootRect.top}px`;
+      return popover.getBoundingClientRect();
+    };
+    let popoverRect = place(preferAbove);
+    const overflows = preferAbove ? popoverRect.top < 0 : popoverRect.bottom > window.innerHeight;
+    if (overflows) {
+      popoverRect = place(!preferAbove);
     }
     popover.style.setProperty('--arrow-x', `${anchorRect.left + anchorRect.width / 2 - popoverRect.left}px`);
   }
