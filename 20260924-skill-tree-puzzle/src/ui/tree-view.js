@@ -25,7 +25,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const CELL_WIDTH = 64;
 const CELL_HEIGHT = 56;
 /** ラベル「ATK+3」が収まるよう、見た目は円ではなく横長の角丸矩形にする */
-const NODE_WIDTH = 56;
+const NODE_WIDTH = 48;
 const NODE_HEIGHT = 40;
 const NODE_CORNER_RADIUS = 8;
 /** special は枠を状態の表示に使うため、形（角丸の大きいピル形）で見分ける */
