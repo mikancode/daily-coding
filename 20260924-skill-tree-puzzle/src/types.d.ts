@@ -185,6 +185,11 @@ export interface Challenge {
   readonly points: number;
   /** 最少クリア pt。配布 pt で組めるビルドの総当たりと一致することをテストで確かめる */
   readonly minimumPoints: number;
+  /**
+   * 最速ターン。クリアできるビルドでの、敵ごとのターン数の合計の最少。総当たりと一致することをテストで確かめる。
+   * 連戦は持たない（最良の順番が1つに決まり、好きな順に挑めなくなるため）。独立戦は持つ
+   */
+  readonly minimumTurns?: number;
   /** 開発用のお題。URL に `?debug` を付けたときだけ選べる。省略は公開 */
   readonly debugOnly?: boolean;
 }
@@ -304,19 +309,38 @@ export type RestoredBuild =
   | { readonly status: 'invalid' };
 
 /**
- * 「記録が無い（none）」と「記録はあるが今のお題には使えない（invalid）」を区別する。
- * best はクリアしたビルドの最少 pt（自己ベスト）
+ * お題のクリアの記録。軸ごとに持ち、古くなった軸だけを捨てる。
+ * 自己ベストの pt があればクリア済みとみなす。クリアするたびに書くため
  */
+export interface ClearRecord {
+  /** 自己ベストの pt。未クリアか、記録した時点の最少 pt が今と違えば null */
+  readonly best: number | null;
+  /** 自己ベストのターン（独立戦だけ）。未クリアか、記録した時点の最速ターンが今と違えば null */
+  readonly turns: number | null;
+  /** クリアに使った能力ノード ID の組。能力を共有しない2組がそろったら、それ以上は足さない */
+  readonly abilitySets: readonly (readonly NodeId[])[];
+}
+
+/** 「記録が無い（none）」と「記録はあるが読めない（invalid）」を区別する */
 export type RestoredRecord =
   | { readonly status: 'none' }
-  | { readonly status: 'recorded'; readonly best: number }
+  | { readonly status: 'recorded'; readonly record: ClearRecord }
   | { readonly status: 'invalid' };
+
+/** クリアした1回の内容 */
+export interface ClearResult {
+  readonly points: number;
+  /** 敵ごとのターン数の合計。連戦は null */
+  readonly turns: number | null;
+  /** ビルドの能力ノード ID。ツリーの定義順 */
+  readonly abilitySet: readonly NodeId[];
+}
 
 /** キャラのお題の記録。画面に出すときに、保存から読んでまとめる */
 export interface ChallengeRecords {
-  /** お題の ID ごとの自己ベスト。未クリアなら null */
-  readonly bests: ReadonlyMap<string, number | null>;
-  /** 最少 pt を開示したか */
+  /** お題の ID ごとの記録。記録が無いお題も、空の記録で持つ */
+  readonly records: ReadonlyMap<string, ClearRecord>;
+  /** 最少 pt と最速ターンを開示したか */
   readonly revealed: boolean;
 }
 

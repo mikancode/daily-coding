@@ -1,12 +1,15 @@
 // @ts-check
 // ブラウザへの保存（localStorage）。保存キーの命名と、選んだキャラ・お題・ビルド・クリアの記録の読み書きをまとめる
 
-import { restoreRecord, serializeRecord, updateBest } from './core/clear-record.js';
+import { isAbilityNode } from './core/build.js';
+import { EMPTY_RECORD, applyClear, restoreRecord, serializeRecord } from './core/clear-record.js';
 import { restoreBuild, serializeBuild } from './core/saved-build.js';
 
 /**
  * @typedef {import('./types.js').Challenge} Challenge
  * @typedef {import('./types.js').Character} Character
+ * @typedef {import('./types.js').ClearRecord} ClearRecord
+ * @typedef {import('./types.js').ClearResult} ClearResult
  * @typedef {import('./types.js').NodeId} NodeId
  */
 
@@ -147,32 +150,31 @@ export function loadSavedBuild(character, challenge) {
 }
 
 /**
- * 記録が無い・読めない・今の最少 pt と合わないときは null。合わない記録は消さず、次のクリアで上書きする
+ * 記録が無い・読めないときは空の記録。今のお題に合わない軸は消さず、次のクリアで上書きする
  * @param {Character} character
  * @param {Challenge} challenge
- * @returns {number | null} 自己ベスト
+ * @returns {ClearRecord}
  */
-export function loadBest(character, challenge) {
+export function loadRecord(character, challenge) {
   const raw = readStorage(recordStorageKey(character, challenge));
   if (raw === undefined) {
-    return null;
+    return EMPTY_RECORD;
   }
-  const restored = restoreRecord(raw, challenge.minimumPoints);
-  return restored.status === 'recorded' ? restored.best : null;
+  const abilityNodeIds = new Set(character.tree.nodes.filter(isAbilityNode).map((node) => node.id));
+  const restored = restoreRecord(raw, challenge, abilityNodeIds);
+  return restored.status === 'recorded' ? restored.record : EMPTY_RECORD;
 }
 
 /**
- * クリアしたビルドの pt で、自己ベストを更新する
+ * クリアした1回で、軸ごとの記録を更新する
  * @param {Character} character
  * @param {Challenge} challenge
- * @param {number} usedPoints
- * @returns {{ improved: boolean, saved: boolean }} saved は保存できたら true。更新しなかったときは書かないので true
+ * @param {ClearResult} clear
+ * @returns {{ record: ClearRecord, improvedPoints: boolean, improvedTurns: boolean, saved: boolean }} saved は保存できたら true
  */
-export function saveClear(character, challenge, usedPoints) {
-  const { best, improved } = updateBest(loadBest(character, challenge), usedPoints);
-  if (!improved) {
-    return { improved, saved: true };
-  }
-  const saved = writeStorage(recordStorageKey(character, challenge), serializeRecord(best, challenge.minimumPoints));
-  return { improved, saved };
+export function saveClear(character, challenge, clear) {
+  const updated = applyClear(loadRecord(character, challenge), clear);
+  // 更新が無くても書く。今のお題に合わず捨てた軸を、今回の値で上書きするため
+  const saved = writeStorage(recordStorageKey(character, challenge), serializeRecord(updated.record, challenge));
+  return { ...updated, saved };
 }

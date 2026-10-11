@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CHARACTERS } from '../src/data/characters.js';
-import { collectConnected } from '../src/core/build.js';
-import { minimumClearPoints } from '../src/core/enumerate.js';
+import { collectConnected, isAbilityNode } from '../src/core/build.js';
+import { clearsChallenge } from '../src/core/challenge.js';
+import { ALTERNATIVE_SET_COUNT, alternativeProgress } from '../src/core/clear-record.js';
+import { enumerateBuilds, minimumClearPoints, minimumClearTurns } from '../src/core/enumerate.js';
 
 const WARRIOR_ID = 'warrior';
 const WARRIOR_NODE_COUNT = 43;
@@ -91,6 +93,29 @@ for (const { id: characterId, tree, challenges } of CHARACTERS) {
   test(`${characterId}: お題の最少 pt は、配布 pt で組めるビルドの総当たりの結果と一致する`, () => {
     for (const challenge of challenges) {
       assert.equal(challenge.minimumPoints, minimumClearPoints(tree, challenge), `${challenge.id}.minimumPoints`);
+    }
+  });
+
+  test(`${characterId}: 独立戦のお題の最速ターンは、総当たりの結果と一致する。連戦は最速ターンを持たない`, () => {
+    for (const challenge of challenges) {
+      const expected = challenge.mode === 'sequence' ? undefined : minimumClearTurns(tree, challenge);
+      assert.equal(challenge.minimumTurns, expected, `${challenge.id}.minimumTurns`);
+    }
+  });
+
+  test(`${characterId}: どのお題も、能力を共有しない2つのビルドでクリアでき、別解の★を取れる`, () => {
+    for (const challenge of challenges) {
+      /** @type {Map<string, string[]>} 能力ノードの組（ID を , で繋いだもの）ごとに1つ */
+      const abilitySets = new Map();
+      for (const ids of enumerateBuilds(tree, challenge.points)) {
+        const owned = new Set(ids);
+        const build = tree.nodes.filter((node) => owned.has(node.id));
+        if (clearsChallenge(build, challenge)) {
+          const abilitySet = build.filter(isAbilityNode).map((node) => node.id);
+          abilitySets.set(abilitySet.join(','), abilitySet);
+        }
+      }
+      assert.equal(alternativeProgress([...abilitySets.values()]), ALTERNATIVE_SET_COUNT, challenge.id);
     }
   });
 

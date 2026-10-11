@@ -1,10 +1,12 @@
 // @ts-check
-// 配布 pt で組めるビルドをすべて列挙する。お題の解を総当たりで確かめるため
+// 配布 pt で組めるビルドをすべて列挙する。お題の解（最少 pt・最速ターン）を総当たりで確かめるため
 
 import { createAdjacency } from './build.js';
-import { clearsChallenge } from './challenge.js';
+import { clearsChallenge, simulateChallenge } from './challenge.js';
+import { clearsByResults, totalTurns } from './clear-record.js';
 
 /**
+ * @typedef {import('../types.js').Build} Build
  * @typedef {import('../types.js').Challenge} Challenge
  * @typedef {import('../types.js').NodeId} NodeId
  * @typedef {import('../types.js').SkillTree} SkillTree
@@ -74,12 +76,47 @@ export function minimumClearPoints(tree, challenge) {
     if (minimum !== null && points >= minimum) {
       continue;
     }
-    // 列挙は取得順に返す。ローテーションは定義順で回るので、ツリーの定義順に並べ直す
-    const owned = new Set(ids);
-    const build = tree.nodes.filter((node) => owned.has(node.id));
-    if (clearsChallenge(build, challenge)) {
+    if (clearsChallenge(inTreeOrder(tree, ids), challenge)) {
       minimum = points;
     }
   }
   return minimum;
+}
+
+/**
+ * 配布 pt で組めるビルドを総当たりし、クリアできるビルドでの、敵ごとのターン数の合計の最少を返す。
+ * 独立戦では戦う順番が結果に効かないので、合計は順番によらない
+ * @param {SkillTree} tree
+ * @param {Challenge} challenge 独立戦のお題
+ * @returns {number | null} どのビルドでもクリアできなければ null
+ */
+export function minimumClearTurns(tree, challenge) {
+  // 連戦は順番で報酬が変わり、最良の順番が1つに決まってしまうので、最速ターンを持たない
+  if (challenge.mode === 'sequence') {
+    throw new Error(`連戦のお題は最速ターンを持ちません: ${challenge.id}`);
+  }
+  /** @type {number | null} */
+  let minimum = null;
+  for (const ids of enumerateBuilds(tree, challenge.points)) {
+    const results = simulateChallenge(inTreeOrder(tree, ids), challenge);
+    if (!clearsByResults(results)) {
+      continue;
+    }
+    const turns = totalTurns(results);
+    if (minimum === null || turns < minimum) {
+      minimum = turns;
+    }
+  }
+  return minimum;
+}
+
+/**
+ * 列挙は取得順に返す。ローテーションは定義順で回るので、ツリーの定義順に並べ直す
+ * @param {SkillTree} tree
+ * @param {readonly NodeId[]} ids
+ * @returns {Build}
+ */
+function inTreeOrder(tree, ids) {
+  const owned = new Set(ids);
+  return tree.nodes.filter((node) => owned.has(node.id));
 }

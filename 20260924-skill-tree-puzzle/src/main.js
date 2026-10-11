@@ -1,15 +1,23 @@
 // @ts-check
 // 入口。選んだキャラ・お題・取得済みノード・連戦の進行を状態として持ち、判定（core）と描画（ui）を繋ぐ。クリアしたら記録する
 
-import { canAcquire, canRelease } from './core/build.js';
+import { canAcquire, canRelease, isAbilityNode } from './core/build.js';
 import { simulateChallenge } from './core/challenge.js';
-import { clearsByResults, clearsBySequence, isMinimumRevealed } from './core/clear-record.js';
+import {
+  EMPTY_RECORD,
+  clearsByResults,
+  clearsBySequence,
+  earnedAlternativeStar,
+  isCleared,
+  isMinimumRevealed,
+  totalTurns,
+} from './core/clear-record.js';
 import { createProfile } from './core/profile.js';
 import { simulate } from './core/simulate.js';
 import { CHARACTERS } from './data/characters.js';
 import {
   STORAGE_UNAVAILABLE_MESSAGE,
-  loadBest,
+  loadRecord,
   loadSavedBuild,
   loadSelectedChallenge,
   loadSelectedCharacter,
@@ -67,7 +75,7 @@ const characters = DEBUG_MODE
 
 const BUILD_LOCKED_MESSAGE = '連戦中はビルドを変えられません。変えるなら「1体目からやり直す」を押してください';
 const RECORD_UNAVAILABLE_MESSAGE = '記録を保存できない環境です';
-const MINIMUM_REVEALED_MESSAGE = '全お題クリア！ 最少 pt を開示しました';
+const MINIMUM_REVEALED_MESSAGE = '全お題クリア！ 最少 pt と最速ターンを開示しました';
 
 let character = loadSelectedCharacter(characters);
 let challenge = loadSelectedChallenge(character);
@@ -121,31 +129,46 @@ function currentBuild() {
  * @returns {ChallengeRecords}
  */
 function loadRecords() {
-  const bests = new Map(character.challenges.map((candidate) => [candidate.id, loadBest(character, candidate)]));
-  return { bests, revealed: isMinimumRevealed(character.challenges, (candidate) => bests.get(candidate.id) !== null) };
+  const records = new Map(character.challenges.map((candidate) => [candidate.id, loadRecord(character, candidate)]));
+  return {
+    records,
+    revealed: isMinimumRevealed(character.challenges, (candidate) => isCleared(records.get(candidate.id) ?? EMPTY_RECORD)),
+  };
 }
 
 /**
  * 今のビルドでクリアしたことを記録し、知らせる文言を返す
  * @param {string} clearedMessage 先頭に付ける、クリアの知らせ
+ * @param {number | null} turns 敵ごとのターン数の合計。連戦は null
  * @returns {string}
  */
-function recordClear(clearedMessage) {
+function recordClear(clearedMessage, turns) {
   const wasRevealed = loadRecords().revealed;
-  const previousBest = loadBest(character, challenge);
-  const usedPoints = owned.size - 1;
-  const { improved, saved } = saveClear(character, challenge, usedPoints);
+  const previous = loadRecord(character, challenge);
+  const points = owned.size - 1;
+  const abilitySet = currentBuild()
+    .filter(isAbilityNode)
+    .map((node) => node.id);
+  const { record, improvedPoints, improvedTurns, saved } = saveClear(character, challenge, { points, turns, abilitySet });
   if (!saved) {
     return `${clearedMessage} ${RECORD_UNAVAILABLE_MESSAGE}`;
   }
   if (!wasRevealed && loadRecords().revealed) {
     return MINIMUM_REVEALED_MESSAGE;
   }
-  const used = `${clearedMessage} 使った pt ${usedPoints}`;
-  if (previousBest === null) {
+  const used = `${clearedMessage} ${points}pt${turns === null ? '' : `・${turns}T`}`;
+  if (!isCleared(previous)) {
     return used;
   }
-  return improved ? `${used}（自己ベスト更新）` : `${used}（自己ベスト ${previousBest} pt）`;
+  const improved = [...(improvedPoints ? ['pt'] : []), ...(improvedTurns ? ['ターン'] : [])];
+  const notes = [
+    ...(improved.length > 0 ? [`自己ベスト更新：${improved.join('・')}`] : []),
+    ...(!earnedAlternativeStar(previous) && earnedAlternativeStar(record) ? ['別解を発見'] : []),
+  ];
+  if (notes.length === 0) {
+    notes.push(`自己ベスト ${record.best}pt${record.turns === null ? '' : `・${record.turns}T`}`);
+  }
+  return `${used}（${notes.join('、')}）`;
 }
 
 /**
@@ -242,7 +265,7 @@ const panel = createPanel(
     onChallenge() {
       const results = simulateChallenge(currentBuild(), challenge);
       // 前の挑戦のクリアの知らせを、負けた結果と並べて残さない
-      noticeElement.textContent = clearsByResults(results) ? recordClear('クリア！') : '';
+      noticeElement.textContent = clearsByResults(results) ? recordClear('クリア！', totalTurns(results)) : '';
       logView.render(results, challenge);
       render();
     },
@@ -263,7 +286,7 @@ const panel = createPanel(
       if (!won) {
         noticeElement.textContent = `${enemy.name}に負けました。次の相手を選び直すか、1体目からやり直してください`;
       } else if (clearsBySequence(challenge, progress)) {
-        noticeElement.textContent = recordClear('連戦クリア！');
+        noticeElement.textContent = recordClear('連戦クリア！', null);
       } else {
         noticeElement.textContent = `${enemy.name}を倒して報酬を得ました。次の相手を選んでください`;
       }
