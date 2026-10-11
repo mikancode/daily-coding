@@ -215,10 +215,11 @@ export function earnedTurnsStar(challenge, record, revealed) {
 }
 
 /**
- * 最良値を漏らさないので、開示の前から付ける
+ * 最少 pt・最速ターンとそろえ、開示するまで付けない。記録は開示の前から取るので、開示した時点でそれまでのクリアが数えられる
  * @param {ClearRecord} record
+ * @param {boolean} revealed
  * @returns {boolean}
  */
-export function earnedAlternativeStar(record) {
-  return alternativeProgress(record.abilitySets) === ALTERNATIVE_SET_COUNT;
+export function earnedAlternativeStar(record, revealed) {
+  return revealed && alternativeProgress(record.abilitySets) === ALTERNATIVE_SET_COUNT;
 }

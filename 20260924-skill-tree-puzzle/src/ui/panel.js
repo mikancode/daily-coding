@@ -2,7 +2,6 @@
 // キャラとお題の選択・お題の記録（自己ベスト・最少 pt・★）・お題の情報とボスの能力のバッジ・残り pt・挑戦とリセットのボタン、連戦の相手選び
 
 import {
-  ALTERNATIVE_SET_COUNT,
   EMPTY_RECORD,
   alternativeProgress,
   earnedAlternativeStar,
@@ -84,7 +83,7 @@ const starOf = (earned) => (earned ? '★' : '☆');
 
 /**
  * 残り pt と同じ行に並べるので、軸ごとに短く書く。最良値は開示するまで ? にし、★も付けない（★の有無で最良値が分かるため）。
- * 別解の★は最良値を漏らさないので、開示の前から付ける
+ * 別解は、全お題をクリアした後のやり込みとして、開示した後だけ出す
  * @param {Challenge} challenge
  * @param {ChallengeRecords} records
  * @returns {string}
@@ -104,14 +103,15 @@ function formatRecord(challenge, records) {
   if (challenge.minimumTurns !== undefined) {
     axes.push(formatAxis(record.turns, challenge.minimumTurns, 'T', earnedTurnsStar(challenge, record, revealed)));
   }
-  axes.push(
-    `${starOf(earnedAlternativeStar(record))} 別解 ${alternativeProgress(record.abilitySets)}/${ALTERNATIVE_SET_COUNT}`,
-  );
+  if (revealed) {
+    axes.push(`${starOf(earnedAlternativeStar(record, revealed))} 別解 ${alternativeProgress(record.abilitySets)}`);
+  }
   return axes.join(RECORD_SEPARATOR);
 }
 
 /**
- * 選択肢では、名前の頭をそろえて読みやすくするため、★を名前の後ろに付ける。未クリアなら名前だけにする
+ * 選択肢では、名前の頭をそろえて読みやすくするため、印を名前の後ろに付ける。
+ * 未クリアなら名前だけ、開示する前は ✓、開示した後は軸ごとの★にする
  * @param {Challenge} challenge
  * @param {ChallengeRecords} records
  * @returns {string}
@@ -121,11 +121,14 @@ function formatChallengeOption(challenge, records) {
   if (!isCleared(record)) {
     return challenge.name;
   }
+  if (!records.revealed) {
+    return `${challenge.name} ✓`;
+  }
   const stars = [earnedPointsStar(challenge, record, records.revealed)];
   if (challenge.minimumTurns !== undefined) {
     stars.push(earnedTurnsStar(challenge, record, records.revealed));
   }
-  stars.push(earnedAlternativeStar(record));
+  stars.push(earnedAlternativeStar(record, records.revealed));
   return `${challenge.name} ${stars.map(starOf).join('')}`;
 }
 

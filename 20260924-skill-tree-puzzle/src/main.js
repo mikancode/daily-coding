@@ -75,7 +75,7 @@ const characters = DEBUG_MODE
 
 const BUILD_LOCKED_MESSAGE = '連戦中はビルドを変えられません。変えるなら「1体目からやり直す」を押してください';
 const RECORD_UNAVAILABLE_MESSAGE = '記録を保存できない環境です';
-const MINIMUM_REVEALED_MESSAGE = '全お題クリア！ 最少 pt と最速ターンを開示しました';
+const MINIMUM_REVEALED_MESSAGE = '全お題クリア！ 最少 pt・最速ターン・別解を開示しました';
 
 let character = loadSelectedCharacter(characters);
 let challenge = loadSelectedChallenge(character);
@@ -153,7 +153,8 @@ function recordClear(clearedMessage, turns) {
   if (!saved) {
     return `${clearedMessage} ${RECORD_UNAVAILABLE_MESSAGE}`;
   }
-  if (!wasRevealed && loadRecords().revealed) {
+  const revealed = loadRecords().revealed;
+  if (!wasRevealed && revealed) {
     return MINIMUM_REVEALED_MESSAGE;
   }
   const used = `${clearedMessage} ${points}pt${turns === null ? '' : `・${turns}T`}`;
@@ -163,7 +164,7 @@ function recordClear(clearedMessage, turns) {
   const improved = [...(improvedPoints ? ['pt'] : []), ...(improvedTurns ? ['ターン'] : [])];
   const notes = [
     ...(improved.length > 0 ? [`自己ベスト更新：${improved.join('・')}`] : []),
-    ...(!earnedAlternativeStar(previous) && earnedAlternativeStar(record) ? ['別解を発見'] : []),
+    ...(!earnedAlternativeStar(previous, revealed) && earnedAlternativeStar(record, revealed) ? ['別解を発見'] : []),
   ];
   if (notes.length === 0) {
     notes.push(`自己ベスト ${record.best}pt${record.turns === null ? '' : `・${record.turns}T`}`);

@@ -284,8 +284,14 @@ describe('earnedTurnsStar', () => {
 });
 
 describe('earnedAlternativeStar', () => {
-  test('能力を共有しない2組でクリアしたら★', () => {
-    assert.equal(earnedAlternativeStar({ ...EMPTY_RECORD, abilitySets: [['counter', 'rage'], ['charge']] }), true);
-    assert.equal(earnedAlternativeStar({ ...EMPTY_RECORD, abilitySets: [['counter', 'rage'], ['rage']] }), false);
+  const disjoint = { ...EMPTY_RECORD, abilitySets: [['counter', 'rage'], ['charge']] };
+
+  test('開示した後、能力を共有しない2組でクリアしていれば★', () => {
+    assert.equal(earnedAlternativeStar(disjoint, true), true);
+    assert.equal(earnedAlternativeStar({ ...EMPTY_RECORD, abilitySets: [['counter', 'rage'], ['rage']] }, true), false);
+  });
+
+  test('開示する前は、能力を共有しない2組でも★を付けない', () => {
+    assert.equal(earnedAlternativeStar(disjoint, false), false);
   });
 });
