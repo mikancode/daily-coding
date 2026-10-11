@@ -164,6 +164,13 @@ body {
   color: var(--color-danger);
 }
 
+/* 説明の無い（ステータスだけの）ノードでは、理由だけを出すので、説明との区切りを付けない */
+.ability-popover-note:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
 /* 指す要素の上に出したときは、三角を下側に回す */
 .ability-popover.is-above::before {
   top: auto;
