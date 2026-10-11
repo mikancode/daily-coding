@@ -328,7 +328,12 @@ const treeView = createTreeView(requireElement('#tree', SVGSVGElement), characte
   }
   // render が吹き出しを閉じるので、描き直してから開く。取得・解除できなかったノードの効き方も読めるようにする
   render();
-  popover.open(treeView.nodeBody(nodeId), formatNodeDescription(node), reason ?? undefined, {
+  // ステータスだけのノードは、説明がラベルの繰り返しになるので、取得・解除できなかった理由だけを出す
+  const description = node.effects.some((effect) => effect.type !== 'stat') ? formatNodeDescription(node) : null;
+  if (description === null && reason === null) {
+    return;
+  }
+  popover.open(treeView.nodeBody(nodeId), description, reason ?? undefined, {
     preferAbove: isBelowOrigin(character.tree, node),
   });
 });
