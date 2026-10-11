@@ -1,7 +1,14 @@
 // @ts-check
 // キャラとお題の選択・お題の記録（自己ベスト・最少 pt・★）・お題の情報とボスの能力のバッジ・残り pt・挑戦とリセットのボタン、連戦の相手選び
 
-import { earnedStar } from '../core/clear-record.js';
+import {
+  EMPTY_RECORD,
+  alternativeProgress,
+  earnedAlternativeStar,
+  earnedPointsStar,
+  earnedTurnsStar,
+  isCleared,
+} from '../core/clear-record.js';
 import { createEnemyProfile } from '../core/profile.js';
 import { formatAttack, formatReward, profileEffects, toBadge } from './ability-names.js';
 import { ELEMENT_NAMES } from './element-names.js';
@@ -68,35 +75,61 @@ function formatSequenceStatus(challenge, progress) {
   return `連戦 ${progress.defeated.length} / ${challenge.enemies.length}体撃破\n獲得した報酬：${rewards}`;
 }
 
+/** 記録の軸の区切り。半角の空白を重ねると HTML で1つに潰れるため、全角の空白にする */
+const RECORD_SEPARATOR = '\u3000';
+
+/** @param {boolean} earned */
+const starOf = (earned) => (earned ? '★' : '☆');
+
 /**
- * 残り pt と同じ行に収まるよう、BEST（自己ベスト）・MIN（最少 pt）と短く書く。
- * 自己ベストが無いお題は、開示した後も最少 pt だけを出す（開発用のお題は、開示の条件に入らないため未クリアのことがある）
+ * 残り pt と同じ行に並べるので、軸ごとに短く書く。最良値は開示するまで ? にし、★も付けない（★の有無で最良値が分かるため）。
+ * 別解は、全お題をクリアした後のやり込みとして、開示した後だけ出す
  * @param {Challenge} challenge
  * @param {ChallengeRecords} records
  * @returns {string}
  */
 function formatRecord(challenge, records) {
-  const best = records.bests.get(challenge.id) ?? null;
-  const minimum = records.revealed ? `MIN ${challenge.minimumPoints}pt` : 'MIN ?pt (全クリアで表示)';
-  if (best === null) {
-    return minimum;
+  const record = records.records.get(challenge.id) ?? EMPTY_RECORD;
+  const { revealed } = records;
+  /**
+   * @param {number | null} best
+   * @param {number} minimum
+   * @param {string} unit
+   * @param {boolean} earned
+   */
+  const formatAxis = (best, minimum, unit, earned) =>
+    `${revealed ? `${starOf(earned)} ` : ''}${best ?? '-'}${unit} (MIN ${revealed ? minimum : '?'})`;
+  const axes = [formatAxis(record.best, challenge.minimumPoints, 'pt', earnedPointsStar(challenge, record, revealed))];
+  if (challenge.minimumTurns !== undefined) {
+    axes.push(formatAxis(record.turns, challenge.minimumTurns, 'T', earnedTurnsStar(challenge, record, revealed)));
   }
-  const star = earnedStar(challenge, best, records.revealed) ? '★ ' : '';
-  return `${star}BEST ${best}pt / ${minimum}`;
+  if (revealed) {
+    axes.push(`${starOf(earnedAlternativeStar(record, revealed))} 別解 ${alternativeProgress(record.abilitySets)}`);
+  }
+  return axes.join(RECORD_SEPARATOR);
 }
 
 /**
- * 選択肢では、名前の頭をそろえて読みやすくするため、印を名前の後ろに付ける
+ * 選択肢では、名前の頭をそろえて読みやすくするため、印を名前の後ろに付ける。
+ * 未クリアなら名前だけ、開示する前は ✓、開示した後は軸ごとの★にする
  * @param {Challenge} challenge
  * @param {ChallengeRecords} records
  * @returns {string}
  */
 function formatChallengeOption(challenge, records) {
-  const best = records.bests.get(challenge.id) ?? null;
-  if (best === null) {
+  const record = records.records.get(challenge.id) ?? EMPTY_RECORD;
+  if (!isCleared(record)) {
     return challenge.name;
   }
-  return `${challenge.name} ${earnedStar(challenge, best, records.revealed) ? '★' : '✓'}`;
+  if (!records.revealed) {
+    return `${challenge.name} ✓`;
+  }
+  const stars = [earnedPointsStar(challenge, record, records.revealed)];
+  if (challenge.minimumTurns !== undefined) {
+    stars.push(earnedTurnsStar(challenge, record, records.revealed));
+  }
+  stars.push(earnedAlternativeStar(record, records.revealed));
+  return `${challenge.name} ${stars.map(starOf).join('')}`;
 }
 
 /**

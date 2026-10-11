@@ -1,5 +1,5 @@
 // @ts-check
-// 戦士のお題（敵の組と配布 pt）。易しい順（最少 pt の小さい順）に並べ、敵ごとのコメントに路線を書く
+// 戦士のお題（敵の組と配布 pt・最少 pt・最速ターン）。易しい順（最少 pt の小さい順）に並べ、敵ごとのコメントに路線を書く
 
 /**
  * @typedef {import('../../types.js').Challenge} Challenge
@@ -60,6 +60,7 @@ export const CHALLENGES = [
     /** 反撃・溜め・背水の3路線とも、8 pt で倒せる。寄り道を1つ許す。最少の 7 pt は、能力を2つ組み合わせたときに出る */
     points: 9,
     minimumPoints: 7,
+    minimumTurns: 6,
   },
   {
     id: 'steel-beetle',
@@ -68,6 +69,7 @@ export const CHALLENGES = [
     /** 貫通と反撃は 8 pt、炎と、溜めと背水は 9 pt で倒せる。どの路線にも寄り道を1つ許す */
     points: 10,
     minimumPoints: 8,
+    minimumTurns: 5,
   },
   {
     id: 'thorn-guard',
@@ -76,6 +78,7 @@ export const CHALLENGES = [
     /** 吸収と背水は 9 pt、溜めと吸収、逆上と吸収は 10 pt で倒せる。寄り道を1〜2つ許す */
     points: 11,
     minimumPoints: 9,
+    minimumTurns: 5,
   },
   {
     id: 'gauntlet',

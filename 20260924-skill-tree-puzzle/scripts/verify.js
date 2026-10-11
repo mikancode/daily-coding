@@ -3,7 +3,9 @@
 
 import { CHARACTERS } from '../src/data/characters.js';
 import { enumerateBuilds } from '../src/core/enumerate.js';
-import { clearsChallenge, winningOrders } from '../src/core/challenge.js';
+import { isAbilityNode } from '../src/core/build.js';
+import { clearsChallenge, simulateChallenge, winningOrders } from '../src/core/challenge.js';
+import { totalTurns } from '../src/core/clear-record.js';
 
 /** 各お題は、複数の路線（能力の組）でクリアできるようにする */
 const MIN_ROUTES = 2;
@@ -43,14 +45,6 @@ function verifySequence(tree, challenge, minimumSolutions, builds) {
     );
     console.log(`  - ${solution.join(', ')}: ${orders.join(' / ')}`);
   }
-}
-
-/**
- * ステータス以外の効果を持つノード。路線は、取った能力ノードの組で分ける
- * @param {import('../src/types.js').SkillNode} node
- */
-function isAbilityNode(node) {
-  return node.effects.some((effect) => effect.type !== 'stat');
 }
 
 /**
@@ -105,6 +99,9 @@ function verify(tree, challenge) {
   let minimumPoints = Infinity;
   /** @type {string[][]} 最少 pt の解。起点を除いたノード ID */
   let minimumSolutions = [];
+  /** 最速ターンと、その件数。連戦は最速ターンを持たないので数えない */
+  let minimumTurns = Infinity;
+  let minimumTurnsCount = 0;
   /** @type {Map<string, AbilitySet>} 能力ノードの組（ID を , で繋いだもの）ごとの集計 */
   const abilitySets = new Map();
   for (const ids of enumerateBuilds(tree, challenge.points)) {
@@ -119,6 +116,16 @@ function verify(tree, challenge) {
       continue;
     }
     cleared++;
+    if (challenge.mode !== 'sequence') {
+      const turns = totalTurns(simulateChallenge(build, challenge));
+      if (turns < minimumTurns) {
+        minimumTurns = turns;
+        minimumTurnsCount = 0;
+      }
+      if (turns === minimumTurns) {
+        minimumTurnsCount++;
+      }
+    }
     const acquired = ids.slice(1);
     const abilityIds = build.filter(isAbilityNode).map((node) => node.id);
     const key = abilityIds.join(',');
@@ -158,6 +165,9 @@ function verify(tree, challenge) {
   console.log(`最少 pt での解: ${minimumSolutions.length} 件`);
   for (const solution of minimumSolutions) {
     console.log(`- ${solution.length === 0 ? '（起点のみ）' : solution.join(', ')}`);
+  }
+  if (challenge.mode !== 'sequence') {
+    console.log(`最速ターン（敵ごとの合計）: ${minimumTurns}（${minimumTurnsCount} 件）`);
   }
   reportRoutes(tree, abilitySets);
   if (challenge.mode === 'sequence') {

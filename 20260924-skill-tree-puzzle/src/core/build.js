@@ -1,8 +1,9 @@
 // @ts-check
-// ツリーの隣接と、ノードを取得・解除できるかの判定
+// ツリーの隣接と、ノードを取得・解除できるかの判定、能力ノードの見分け
 
 /**
  * @typedef {import('../types.js').NodeId} NodeId
+ * @typedef {import('../types.js').SkillNode} SkillNode
  * @typedef {import('../types.js').SkillTree} SkillTree
  */
 
@@ -89,4 +90,13 @@ export function canRelease(tree, owned, nodeId) {
   const remaining = new Set(owned);
   remaining.delete(nodeId);
   return collectConnected(tree, remaining).size === remaining.size;
+}
+
+/**
+ * ステータス以外の効果を持つノード。路線と別解は、取った能力ノードの組で分ける
+ * @param {SkillNode} node
+ * @returns {boolean}
+ */
+export function isAbilityNode(node) {
+  return node.effects.some((effect) => effect.type !== 'stat');
 }
