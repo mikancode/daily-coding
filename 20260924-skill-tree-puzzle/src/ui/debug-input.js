@@ -87,12 +87,17 @@ function addKeepingDecimalPlaces(a, b) {
 /**
  * 能力のボタンを押したあとの欄の文字列。
  * ステータスは、最後にある同じステータスの語の値に足して書き換える。押すたびに語が増えると、今の値が読み取りにくくなるため。
- * 同じステータスの語が無いときと、ステータス以外の能力は、規定値つきの1語を末尾に足す
+ * 同じステータスの語が無いときと、ステータス以外の能力は、規定値つきの1語を末尾に足す。
+ * 期間のボタンで期間の語だけを書いたあと（`HP100,From3/`）は、ステータスも含めて、その期間で包む能力として後ろに書く
  * @param {string} text
  * @param {AbilityDefinition} ability
  * @returns {string}
  */
 export function addAbilityWord(text, ability) {
+  const trimmed = text.trimEnd();
+  if (trimmed.endsWith(PERIOD_SEPARATOR)) {
+    return `${trimmed}${formatDefaultWord(ability)}`;
+  }
   const effect = ability.build(...ability.defaults);
   if (effect.type === 'stat') {
     const words = text.split(WORD_SEPARATOR);

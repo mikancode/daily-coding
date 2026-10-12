@@ -30,6 +30,8 @@ describe('addAbilityWord', () => {
     ['ステータス以外は、同じ能力の語があっても末尾に足す', 'Poison5', ['Poison'], 'Poison5,Poison5'],
     ['空の欄には1語だけ書く', '', ['HP'], 'HP10'],
     ['末尾のカンマの後ろの空の語は書き換えない', 'HP100,', ['HP'], 'HP110,'],
+    ['期間の語だけの語には、その期間で包む能力として書く', 'HP100,From3/', ['Poison'], 'HP100,From3/Poison5'],
+    ['期間の語だけの語には、ステータスも既存の語に足さず包む', 'ATK10,First3/', ['ATK'], 'ATK10,First3/ATK1'],
   ];
   for (const [label, text, names, expected] of cases) {
     test(`${label}：${JSON.stringify(text)} → ${JSON.stringify(expected)}`, () => {
