@@ -1,8 +1,8 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ABILITIES, resolveAbility } from '../src/core/ability-table.js';
+import { ABILITIES, resolveAbility, timed } from '../src/core/ability-table.js';
 import { createEnemyProfile } from '../src/core/profile.js';
-import { describeEffect, formatBadgeLabel, formatNodeDescription, profileEffects } from '../src/ui/ability-names.js';
+import { describeEffect, formatBadgeLabel, formatNodeDescription, formatReward, profileEffects } from '../src/ui/ability-names.js';
 
 describe('describeEffect', () => {
   for (const ability of ABILITIES) {
@@ -63,5 +63,47 @@ describe('profileEffects', () => {
 
   test('能力が無いボスは、バッジを出さない', () => {
     assert.deepEqual(profileEffects(createEnemyProfile({ ...enemy, abilities: [] })), []);
+  });
+});
+
+describe('時限能力の表示', () => {
+  const POISON = { type: 'poison', damage: 5 };
+  const cases = [
+    ['最初の x ターン', { kind: 'first', turns: 3 }, '毒 5（〜3T）', '最初の 3 ターンだけ効く。'],
+    ['x ターン目から', { kind: 'from', turn: 4 }, '毒 5（4T〜）', '4 ターン目から効く。'],
+    ['x ターン目だけ', { kind: 'at', turn: 2 }, '毒 5（2T）', '2 ターン目にだけ効く。'],
+    ['ローテーション', { kind: 'rotation', turns: 2 }, '毒 5（周期2T）', 'そのターンから 2 ターン効く'],
+  ];
+  for (const [label, period, badge, fragment] of cases) {
+    test(`${label}：バッジ名に期間を添え、説明は期間の文に中身の説明を続ける`, () => {
+      const effect = timed(period, POISON);
+      assert.equal(formatBadgeLabel(effect), badge);
+      const description = describeEffect(effect);
+      assert.ok(description.includes(fragment), `${description} に ${fragment} が無い`);
+      assert.ok(description.endsWith(describeEffect(POISON)), description);
+    });
+  }
+
+  test('報酬の一覧では、中身の名前に期間を添える', () => {
+    const effect = timed({ kind: 'first', turns: 3 }, { type: 'stat', stat: 'attack', amount: 5 });
+    assert.equal(formatReward(effect), 'ATK +5（〜3T）');
+  });
+
+  test('ボスの時限能力は、ステータスの加算を包んでいてもバッジにする', () => {
+    const effects = profileEffects(
+      createEnemyProfile({
+        name: 'テスト',
+        hp: 100,
+        attack: 10,
+        defense: 0,
+        resistances: {},
+        turnLimit: 10,
+        abilities: [
+          timed({ kind: 'from', turn: 4 }, { type: 'stat', stat: 'attack', amount: 5 }),
+          timed({ kind: 'rotation', turns: 2 }, { type: 'counter', damage: 10 }),
+        ],
+      }),
+    );
+    assert.deepEqual(effects.map(formatBadgeLabel), ['反撃 10（周期2T）', 'ATK +5（4T〜）']);
   });
 });

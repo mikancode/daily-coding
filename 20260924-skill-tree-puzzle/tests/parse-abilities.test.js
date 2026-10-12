@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ABILITIES, formatDefaultWord } from '../src/core/ability-table.js';
+import { ABILITIES, PERIODS, formatDefaultPeriodWord, formatDefaultWord } from '../src/core/ability-table.js';
 import { parseAbilities } from '../src/core/parse-abilities.js';
 import { createProfile } from '../src/core/profile.js';
 
@@ -105,4 +105,52 @@ describe('不正な語', () => {
       ['Foo', 'Bar'],
     );
   });
+});
+
+describe('期間で包む語', () => {
+  const POISON = { type: 'poison', damage: 5 };
+  const validCases = [
+    ['最初の x ターン', 'First3/Poison5', { kind: 'first', turns: 3 }],
+    ['x ターン目から', 'From4/Poison5', { kind: 'from', turn: 4 }],
+    ['x ターン目だけ', 'At2/Poison5', { kind: 'at', turn: 2 }],
+    ['ローテーション', 'Cycle2/Poison5', { kind: 'rotation', turns: 2 }],
+    ['期間の引数を省くと規定値', 'first/Poison5', { kind: 'first', turns: 3 }],
+    ['区切りの前後の空白は区別しない', 'First3 / Poison5', { kind: 'first', turns: 3 }],
+  ];
+  for (const [label, word, period] of validCases) {
+    test(`${label}：${word}`, () => {
+      assert.deepEqual(effectsOf(word), [{ type: 'timed', period, effect: POISON }]);
+    });
+  }
+
+  test('ローテーションの時限能力は、書いた順でローテーションに入る', () => {
+    const { rotation, timed } = profileOf(effectsOf('Fire,Cycle2/Regen,First3/Poison5'));
+    assert.deepEqual(rotation.map((skill) => skill.type), ['element', 'timed']);
+    assert.deepEqual(timed.map((effect) => effect.period.kind), ['first']);
+  });
+
+  test('期間の表の全行で、ボタンが付ける規定値つきの期間の語がパーサーを通る', () => {
+    for (const period of PERIODS) {
+      const word = `${formatDefaultPeriodWord(period)}/Poison5`;
+      assert.equal(parseAbilities(word).ok, true, word);
+    }
+  });
+
+  const invalidCases = [
+    ['HP の加算', 'First3/HP10'],
+    ['根性', 'First3/Endure'],
+    ['周期スキル', 'Cycle2/Fire'],
+    ['入れ子', 'First3/At2/Poison5'],
+    ['ターン数が0', 'At0/Poison5'],
+    ['ターン数が整数でない', 'First1.5/Poison5'],
+    ['未知の期間', 'Foo3/Poison5'],
+    ['期間の引数が数値でない', 'First3:2/Poison5'],
+    ['包む能力が無い', 'First3/'],
+    ['包む能力が不正', 'First3/Foo'],
+  ];
+  for (const [label, word] of invalidCases) {
+    test(`${label}はエラーにし、その語を返す：${word}`, () => {
+      assert.deepEqual(errorsOf(word).map((error) => error.word), [word]);
+    });
+  }
 });

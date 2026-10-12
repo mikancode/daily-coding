@@ -1,7 +1,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { findAbility } from '../src/core/ability-table.js';
-import { addAbilityWord } from '../src/ui/debug-input.js';
+import { findAbility, findPeriod } from '../src/core/ability-table.js';
+import { addAbilityWord, wrapLastWord } from '../src/ui/debug-input.js';
 
 /** @param {string} name */
 const abilityOf = (name) => {
@@ -34,6 +34,22 @@ describe('addAbilityWord', () => {
   for (const [label, text, names, expected] of cases) {
     test(`${label}：${JSON.stringify(text)} → ${JSON.stringify(expected)}`, () => {
       assert.equal(press(text, names), expected);
+    });
+  }
+});
+
+describe('wrapLastWord', () => {
+  const cases = [
+    ['最後の語を包む', 'HP100,Poison5', 'First', 'HP100,First3/Poison5'],
+    ['最後の語の前後の空白は保つ', 'HP100, Poison5 ', 'At', 'HP100, At3/Poison5 '],
+    ['空の欄には期間の語だけを書く', '', 'Cycle', 'Cycle2/'],
+    ['末尾のカンマの後ろには期間の語だけを足す', 'HP100,', 'From', 'HP100,From3/'],
+  ];
+  for (const [label, text, name, expected] of cases) {
+    test(`${label}：${JSON.stringify(text)} → ${JSON.stringify(expected)}`, () => {
+      const period = findPeriod(name);
+      assert.notEqual(period, undefined, name);
+      assert.equal(wrapLastWord(text, period), expected);
     });
   }
 });

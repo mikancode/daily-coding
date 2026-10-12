@@ -1,6 +1,7 @@
 // @ts-check
 // 戦闘ログと結果の表示。敵が複数なら敵ごとのタブで切り替える
 
+import { formatBadgeLabel } from './ability-names.js';
 import { ELEMENT_NAMES } from './element-names.js';
 
 /**
@@ -33,6 +34,9 @@ function formatAddenda(tempo, changes) {
   ];
   return parts.length === 0 ? '' : ` ／ ${parts.join('・')}`;
 }
+
+/** @type {Readonly<Record<'start' | 'renew' | 'end', string>>} */
+const TIMED_STATES = { start: '効き始めた', renew: '張り直された', end: '切れた' };
 
 /** @type {Readonly<Record<LoseReason, string>>} */
 const LOSE_REASONS = {
@@ -89,6 +93,10 @@ function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
       return byPlayer
         ? `${entry.turn}T 根性で踏みとどまった（${playerHp(entry.hp)}）`
         : `${entry.turn}T ボスが根性で踏みとどまった（${bossHp(entry.hp)}）`;
+    case 'timed':
+      return byPlayer
+        ? `${entry.turn}T ${formatBadgeLabel(entry.effect)}が${TIMED_STATES[entry.state]}`
+        : `${entry.turn}T ボスの${formatBadgeLabel(entry.effect)}が${TIMED_STATES[entry.state]}`;
     case 'turnLimit':
       return `${entry.turn}ターンが過ぎた`;
   }

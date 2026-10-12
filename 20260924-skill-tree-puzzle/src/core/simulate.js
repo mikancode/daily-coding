@@ -2,7 +2,7 @@
 // ビルドと敵1体の戦闘を1ターンずつ進め、ログと勝敗を返す。
 // 戦闘中に変わる状態（Fighter）はこのファイルの中に閉じる
 
-import { createEnemyProfile, createProfile } from './profile.js';
+import { createEnemyProfile, createProfile, withEffects } from './profile.js';
 
 /**
  * @typedef {import('../types.js').Build} Build
@@ -15,6 +15,9 @@ import { createEnemyProfile, createProfile } from './profile.js';
  * @typedef {import('../types.js').TargetChanges} TargetChanges
  * @typedef {import('../types.js').Effect} Effect
  * @typedef {import('../types.js').SimulationResult} SimulationResult
+ * @typedef {import('../types.js').TimedEffect} TimedEffect
+ * @typedef {import('../types.js').TimedPeriod} TimedPeriod
+ * @typedef {import('../types.js').RotationSkill} RotationSkill
  */
 
 /** ローテーションに周期スキルが無いときに使う属性 */
@@ -72,15 +75,29 @@ function damageTaken(value, defense) {
 }
 
 /**
- * 戦闘中に変わる状態。profile は総当たりで使い回せるよう、戦闘中に書き換えない
+ * 時限能力1つぶんの、戦闘中の記録。
+ * 同じ定義の時限能力を2つ持っても別々に数えるよう、集計の中の位置ごとに持つ
+ * @typedef {{
+ *   effect: TimedEffect,
+ *   rotationIndex: number | null,
+ *   activatedAt: number | null,
+ *   active: boolean,
+ * }} TimedSlot
+ */
+
+/**
+ * 戦闘中に変わる状態。base は総当たりで使い回せるよう、戦闘中に書き換えない。
+ * profile は、base にそのターンに効いている時限能力の中身を足したもの。時限能力が無ければ base そのもの
  * @typedef {{
  *   actor: Actor,
+ *   base: CombatantProfile,
  *   profile: CombatantProfile,
  *   hp: number,
  *   endured: boolean,
  *   attackBonus: number,
  *   defenseDown: number,
  *   marks: number,
+ *   timedSlots: TimedSlot[],
  * }} Fighter
  */
 
@@ -90,7 +107,86 @@ function damageTaken(value, defense) {
  * @returns {Fighter}
  */
 function createFighter(actor, profile) {
-  return { actor, profile, hp: profile.maxHp, endured: false, attackBonus: 0, defenseDown: 0, marks: 0 };
+  /** @type {TimedSlot[]} */
+  const timedSlots = profile.timed.map((effect) => ({ effect, rotationIndex: null, activatedAt: null, active: false }));
+  profile.rotation.forEach((skill, rotationIndex) => {
+    if (skill.type === 'timed') {
+      timedSlots.push({ effect: skill, rotationIndex, activatedAt: null, active: false });
+    }
+  });
+  return {
+    actor,
+    base: profile,
+    profile,
+    hp: profile.maxHp,
+    endured: false,
+    attackBonus: 0,
+    defenseDown: 0,
+    marks: 0,
+    timedSlots,
+  };
+}
+
+/**
+ * @param {readonly RotationSkill[]} rotation
+ * @param {number} turn
+ * @returns {number | null} ローテーションが空なら null
+ */
+function rotationIndexAt(rotation, turn) {
+  return rotation.length === 0 ? null : (turn - 1) % rotation.length;
+}
+
+/**
+ * @param {TimedPeriod} period
+ * @param {number} turn
+ * @param {number | null} activatedAt ローテーションで最後に回ってきたターン。rotation の期間でだけ使う
+ * @returns {boolean}
+ */
+function isTimedActive(period, turn, activatedAt) {
+  switch (period.kind) {
+    case 'first':
+      return turn <= period.turns;
+    case 'from':
+      return turn >= period.turn;
+    case 'at':
+      return turn === period.turn;
+    case 'rotation':
+      return activatedAt !== null && turn < activatedAt + period.turns;
+  }
+}
+
+/**
+ * ターン開始時に、時限能力が効いているかを決め直す。
+ * ローテーションの時限能力は、回ってきたターンから効く。効いている間に再び回ってきたら、そのターンから数え直す。
+ * 効き方が変わったときだけ、そのターンの集計を作り直す
+ * @param {Fighter} fighter
+ * @param {number} turn
+ * @param {LogEntry[]} log
+ */
+function updateTimed(fighter, turn, log) {
+  if (fighter.timedSlots.length === 0) {
+    return;
+  }
+  const rotationIndex = rotationIndexAt(fighter.base.rotation, turn);
+  let changed = false;
+  for (const slot of fighter.timedSlots) {
+    const triggered = slot.rotationIndex !== null && slot.rotationIndex === rotationIndex;
+    if (triggered) {
+      slot.activatedAt = turn;
+    }
+    const active = isTimedActive(slot.effect.period, turn, slot.activatedAt);
+    if (active !== slot.active) {
+      slot.active = active;
+      changed = true;
+      log.push({ type: 'timed', actor: fighter.actor, turn, effect: slot.effect, state: active ? 'start' : 'end' });
+    } else if (triggered) {
+      log.push({ type: 'timed', actor: fighter.actor, turn, effect: slot.effect, state: 'renew' });
+    }
+  }
+  if (changed) {
+    const effects = fighter.timedSlots.filter((slot) => slot.active).map((slot) => slot.effect.effect);
+    fighter.profile = withEffects(fighter.base, effects);
+  }
 }
 
 /**
@@ -213,7 +309,7 @@ function strike(attacker, target, damage, turn, log, toEntry) {
 
 /**
  * ローテーションで今のターンの周期スキルを発動し、この行動の属性と倍率を決める。
- * 溜めと解放のターンは物理で殴る
+ * 溜め・解放・時限能力のターンは物理で殴る。時限能力が効き始めるのはターン開始（updateTimed）で扱う
  * @param {Fighter} attacker
  * @param {Fighter} defender
  * @param {number} turn
@@ -221,11 +317,12 @@ function strike(attacker, target, damage, turn, log, toEntry) {
  * @returns {{ element: ElementId, multiplier: number }}
  */
 function useRotationSkill(attacker, defender, turn, log) {
-  const { rotation } = attacker.profile;
-  if (rotation.length === 0) {
+  const { rotation } = attacker.base;
+  const index = rotationIndexAt(rotation, turn);
+  if (index === null) {
     return { element: DEFAULT_ELEMENT, multiplier: NEUTRAL_MULTIPLIER };
   }
-  const skill = rotation[(turn - 1) % rotation.length];
+  const skill = rotation[index];
   switch (skill.type) {
     case 'element':
       return { element: skill.element, multiplier: NEUTRAL_MULTIPLIER };
@@ -243,6 +340,8 @@ function useRotationSkill(attacker, defender, turn, log) {
       log.push({ type: 'burst', actor: attacker.actor, turn, marks, multiplier });
       return { element: DEFAULT_ELEMENT, multiplier };
     }
+    case 'timed':
+      return { element: DEFAULT_ELEMENT, multiplier: NEUTRAL_MULTIPLIER };
   }
 }
 
@@ -331,7 +430,7 @@ function poison(source, target, turn, log) {
 
 /**
  * ビルドと敵1体から勝敗を決める。乱数を使わないので、同じ入力なら必ず同じ結果になる。
- * 1ターンは ターン開始（再生）→ 味方の行動 → 敵の行動 → ターン終了（毒）の順で、どれも味方が先
+ * 1ターンは ターン開始（時限能力の切り替え・再生）→ 味方の行動 → 敵の行動 → ターン終了（毒）の順で、どれも味方が先
  * @param {Build} build 取得済みノード。起点を含み、ツリーの定義順に並べる
  * @param {Enemy} enemy
  * @param {readonly Effect[]} [rewards] 連戦で獲得済みの報酬
@@ -366,6 +465,8 @@ export function simulate(build, enemy, rewards = []) {
   };
 
   for (let turn = 1; turn <= enemy.turnLimit; turn++) {
+    updateTimed(player, turn, log);
+    updateTimed(boss, turn, log);
     regenerate(player, turn, log);
     regenerate(boss, turn, log);
     if (act(player, boss, turn, log) || act(boss, player, turn, log)) {
