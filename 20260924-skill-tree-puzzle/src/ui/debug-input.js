@@ -1,19 +1,21 @@
 // @ts-check
 // デバッグ入力の欄とボタン。ツリーを介さず、文字列で指定した能力で戦闘を試す
 
-import { ABILITIES, formatDefaultWord } from '../core/ability-table.js';
+import { ABILITIES, PERIODS, formatDefaultPeriodWord, formatDefaultWord } from '../core/ability-table.js';
 import { parseAbilities } from '../core/parse-abilities.js';
 
 /**
  * @typedef {import('../types.js').AbilityDefinition} AbilityDefinition
  * @typedef {import('../types.js').AbilityError} AbilityError
  * @typedef {import('../types.js').Effect} Effect
+ * @typedef {import('../types.js').PeriodDefinition} PeriodDefinition
  * @typedef {import('../types.js').StatId} StatId
  */
 
 /** ツリーの起点ノードの基礎ステータスと同じ値。ここから増減して試せるようにする */
 const INITIAL_TEXT = 'HP100,ATK10';
 const WORD_SEPARATOR = ',';
+const PERIOD_SEPARATOR = '/';
 
 /**
  * 能力のボタンに出す文字。ステータスは、押すと増える量が分かるようにする
@@ -85,12 +87,17 @@ function addKeepingDecimalPlaces(a, b) {
 /**
  * 能力のボタンを押したあとの欄の文字列。
  * ステータスは、最後にある同じステータスの語の値に足して書き換える。押すたびに語が増えると、今の値が読み取りにくくなるため。
- * 同じステータスの語が無いときと、ステータス以外の能力は、規定値つきの1語を末尾に足す
+ * 同じステータスの語が無いときと、ステータス以外の能力は、規定値つきの1語を末尾に足す。
+ * 期間のボタンで期間の語だけを書いたあと（`HP100,From3/`）は、ステータスも含めて、その期間で包む能力として後ろに書く
  * @param {string} text
  * @param {AbilityDefinition} ability
  * @returns {string}
  */
 export function addAbilityWord(text, ability) {
+  const trimmed = text.trimEnd();
+  if (trimmed.endsWith(PERIOD_SEPARATOR)) {
+    return `${trimmed}${formatDefaultWord(ability)}`;
+  }
   const effect = ability.build(...ability.defaults);
   if (effect.type === 'stat') {
     const words = text.split(WORD_SEPARATOR);
@@ -103,6 +110,38 @@ export function addAbilityWord(text, ability) {
     }
   }
   return appendWord(text, formatDefaultWord(ability));
+}
+
+/**
+ * 期間のボタンを押したあとの欄の文字列。最後の語の前に、規定値つきの期間の語を付けて包む（`Poison5` → `First3/Poison5`）。
+ * 最後の語が空なら、期間の語だけを足して、続けて能力を書けるようにする
+ * @param {string} text
+ * @param {PeriodDefinition} period
+ * @returns {string}
+ */
+export function wrapLastWord(text, period) {
+  const prefix = `${formatDefaultPeriodWord(period)}${PERIOD_SEPARATOR}`;
+  const words = text.split(WORD_SEPARATOR);
+  const last = words[words.length - 1];
+  if (last.trim() === '') {
+    return appendWord(text, prefix);
+  }
+  words[words.length - 1] = last.replace(last.trim(), `${prefix}${last.trim()}`);
+  return words.join(WORD_SEPARATOR);
+}
+
+/**
+ * @param {string} label
+ * @param {() => void} onClick
+ * @returns {HTMLButtonElement}
+ */
+function createButton(label, onClick) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'button';
+  button.textContent = label;
+  button.addEventListener('click', onClick);
+  return button;
 }
 
 /**
@@ -125,14 +164,18 @@ export function createDebugInput(elements, handlers) {
   }
 
   for (const ability of ABILITIES) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'button';
-    button.textContent = formatButtonLabel(ability);
-    button.addEventListener('click', () => {
-      elements.text.value = addAbilityWord(elements.text.value, ability);
-    });
-    elements.buttons.append(button);
+    elements.buttons.append(
+      createButton(formatButtonLabel(ability), () => {
+        elements.text.value = addAbilityWord(elements.text.value, ability);
+      }),
+    );
+  }
+  for (const period of PERIODS) {
+    elements.buttons.append(
+      createButton(period.label, () => {
+        elements.text.value = wrapLastWord(elements.text.value, period);
+      }),
+    );
   }
 
   elements.resetButton.addEventListener('click', reset);

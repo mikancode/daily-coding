@@ -26,6 +26,7 @@ function emptyProfile(resistances) {
     ratio: FULL_RATIO,
     conditionals: [],
     tempos: [],
+    timed: [],
     rotation: [],
     counter: 0,
     regen: 0,
@@ -95,7 +96,35 @@ function applyEffect(profile, effect) {
     case 'mark':
       profile.mark += effect.amount;
       break;
+    case 'timed':
+      if (effect.period.kind === 'rotation') {
+        profile.rotation.push(effect);
+      } else {
+        profile.timed.push(effect);
+      }
+      break;
   }
+}
+
+/**
+ * base に effects を足した集計を、新しく作って返す。base は書き換えない。
+ * 戦闘中に、そのターンに効いている時限能力の中身を足すのに使う
+ * @param {CombatantProfile} base
+ * @param {readonly Effect[]} effects
+ * @returns {CombatantProfile}
+ */
+export function withEffects(base, effects) {
+  const profile = {
+    ...base,
+    conditionals: [...base.conditionals],
+    tempos: [...base.tempos],
+    timed: [...base.timed],
+    rotation: [...base.rotation],
+  };
+  for (const effect of effects) {
+    applyEffect(profile, effect);
+  }
+  return profile;
 }
 
 /**

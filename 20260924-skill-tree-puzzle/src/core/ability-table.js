@@ -4,6 +4,9 @@
 /**
  * @typedef {import('../types.js').AbilityDefinition} AbilityDefinition
  * @typedef {import('../types.js').Effect} Effect
+ * @typedef {import('../types.js').PeriodDefinition} PeriodDefinition
+ * @typedef {import('../types.js').TimedEffect} TimedEffect
+ * @typedef {import('../types.js').TimedPeriod} TimedPeriod
  */
 
 /** ステータスの規定値は、ボタン1回ぶんの増分でもある */
@@ -212,4 +215,97 @@ export function resolveAbility(name, args = []) {
     throw new Error(filled.reason);
   }
   return { effect: ability.build(...filled.args), label: formatLabel(ability, filled.args) };
+}
+
+/**
+ * 時限能力の期間の表。デバッグ入力の語・ボタンの規定値は、ここから作る。ボタンはこの並び順に出る
+ * @type {readonly PeriodDefinition[]}
+ */
+export const PERIODS = [
+  { name: 'First', label: '最初のxT', defaultTurns: 3, build: (turns) => ({ kind: 'first', turns }) },
+  { name: 'From', label: 'xT目から', defaultTurns: 3, build: (turn) => ({ kind: 'from', turn }) },
+  { name: 'At', label: 'xT目だけ', defaultTurns: 3, build: (turn) => ({ kind: 'at', turn }) },
+  { name: 'Cycle', label: '周期でxT', defaultTurns: 2, build: (turns) => ({ kind: 'rotation', turns }) },
+];
+
+/**
+ * @param {string} name 大文字小文字は区別しない
+ * @returns {PeriodDefinition | undefined}
+ */
+export function findPeriod(name) {
+  const lower = name.toLowerCase();
+  return PERIODS.find((period) => period.name.toLowerCase() === lower);
+}
+
+/**
+ * ボタンが能力の語の前に付ける、規定値つきの期間の語。例：`First3`
+ * @param {PeriodDefinition} period
+ * @returns {string}
+ */
+export function formatDefaultPeriodWord(period) {
+  return `${period.name}${period.defaultTurns}`;
+}
+
+/**
+ * @param {TimedPeriod} period
+ * @returns {number}
+ */
+function periodTurns(period) {
+  return period.kind === 'first' || period.kind === 'rotation' ? period.turns : period.turn;
+}
+
+/**
+ * 能力を期間で包む。包めない能力と、ターン数が1以上の整数でない期間は理由を返す。
+ * 包めるのは、途中で増減しても意味が通る能力だけ。
+ * 最大 HP が途中で変わると今の HP との関係が決まらないので HP の加算を、
+ * 1回だけ・ローテーションの順で決まる能力の意味が崩れるので根性と周期スキルを、それぞれ包まない
+ * @param {TimedPeriod} period
+ * @param {Effect} effect
+ * @returns {{ effect: TimedEffect } | { reason: string }}
+ */
+export function wrapTimed(period, effect) {
+  const turns = periodTurns(period);
+  if (!Number.isInteger(turns) || turns < 1) {
+    return { reason: '期間のターン数は1以上の整数にしてください' };
+  }
+  switch (effect.type) {
+    case 'stat':
+      return effect.stat === 'hp'
+        ? { reason: 'HP の加算は期間で包めません' }
+        : { effect: { type: 'timed', period, effect } };
+    case 'endure':
+      return { reason: '根性は期間で包めません' };
+    case 'element':
+    case 'charge':
+    case 'burst':
+      return { reason: '周期スキルは期間で包めません' };
+    case 'timed':
+      return { reason: '期間を入れ子にはできません' };
+    case 'multiHit':
+    case 'conditional':
+    case 'tempo':
+    case 'counter':
+    case 'regen':
+    case 'poison':
+    case 'drain':
+    case 'rage':
+    case 'pierce':
+    case 'armorBreak':
+    case 'mark':
+      return { effect: { type: 'timed', period, effect } };
+  }
+}
+
+/**
+ * 敵の定義から呼ぶ。不正な指定は読み込み時に気付けるよう例外にする
+ * @param {TimedPeriod} period
+ * @param {Effect} effect
+ * @returns {TimedEffect}
+ */
+export function timed(period, effect) {
+  const wrapped = wrapTimed(period, effect);
+  if ('reason' in wrapped) {
+    throw new Error(wrapped.reason);
+  }
+  return wrapped.effect;
 }

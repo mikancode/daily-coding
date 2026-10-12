@@ -1,7 +1,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { findAbility } from '../src/core/ability-table.js';
-import { addAbilityWord } from '../src/ui/debug-input.js';
+import { findAbility, findPeriod } from '../src/core/ability-table.js';
+import { addAbilityWord, wrapLastWord } from '../src/ui/debug-input.js';
 
 /** @param {string} name */
 const abilityOf = (name) => {
@@ -30,10 +30,28 @@ describe('addAbilityWord', () => {
     ['ステータス以外は、同じ能力の語があっても末尾に足す', 'Poison5', ['Poison'], 'Poison5,Poison5'],
     ['空の欄には1語だけ書く', '', ['HP'], 'HP10'],
     ['末尾のカンマの後ろの空の語は書き換えない', 'HP100,', ['HP'], 'HP110,'],
+    ['期間の語だけの語には、その期間で包む能力として書く', 'HP100,From3/', ['Poison'], 'HP100,From3/Poison5'],
+    ['期間の語だけの語には、ステータスも既存の語に足さず包む', 'ATK10,First3/', ['ATK'], 'ATK10,First3/ATK1'],
   ];
   for (const [label, text, names, expected] of cases) {
     test(`${label}：${JSON.stringify(text)} → ${JSON.stringify(expected)}`, () => {
       assert.equal(press(text, names), expected);
+    });
+  }
+});
+
+describe('wrapLastWord', () => {
+  const cases = [
+    ['最後の語を包む', 'HP100,Poison5', 'First', 'HP100,First3/Poison5'],
+    ['最後の語の前後の空白は保つ', 'HP100, Poison5 ', 'At', 'HP100, At3/Poison5 '],
+    ['空の欄には期間の語だけを書く', '', 'Cycle', 'Cycle2/'],
+    ['末尾のカンマの後ろには期間の語だけを足す', 'HP100,', 'From', 'HP100,From3/'],
+  ];
+  for (const [label, text, name, expected] of cases) {
+    test(`${label}：${JSON.stringify(text)} → ${JSON.stringify(expected)}`, () => {
+      const period = findPeriod(name);
+      assert.notEqual(period, undefined, name);
+      assert.equal(wrapLastWord(text, period), expected);
     });
   }
 });

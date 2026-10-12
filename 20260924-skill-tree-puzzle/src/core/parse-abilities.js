@@ -1,7 +1,7 @@
 // @ts-check
 // デバッグ入力の文字列を、能力の表に沿って Effect の配列にする
 
-import { fillArguments, findAbility } from './ability-table.js';
+import { fillArguments, findAbility, findPeriod, wrapTimed } from './ability-table.js';
 
 /**
  * @typedef {import('../types.js').AbilityError} AbilityError
@@ -10,15 +10,17 @@ import { fillArguments, findAbility } from './ability-table.js';
 
 const WORD_SEPARATOR = ',';
 const ARGUMENT_SEPARATOR = ':';
+/** 期間の語と、包む能力の語の区切り。例：`First3/Poison5` */
+const PERIOD_SEPARATOR = '/';
 const WORD_PATTERN = /^([A-Za-z]+)(.*)$/;
 const NUMBER_PATTERN = /^\d+(\.\d+)?$/;
 
 /**
- * 1語を Effect にする。書式が不正なら理由を返す
+ * 期間で包まない1語を Effect にする。書式が不正なら理由を返す
  * @param {string} word
  * @returns {{ effect: import('../types.js').Effect } | { reason: string }}
  */
-function parseWord(word) {
+function parseAbilityWord(word) {
   const match = WORD_PATTERN.exec(word);
   if (match === null) {
     return { reason: '能力の名前から始めてください' };
@@ -35,6 +37,48 @@ function parseWord(word) {
   }
   const filled = fillArguments(ability, texts.map(Number));
   return 'reason' in filled ? filled : { effect: ability.build(...filled.args) };
+}
+
+/**
+ * 期間の語を TimedPeriod にする。引数を省くと規定値になる。範囲の検査は wrapTimed が行う
+ * @param {string} word
+ * @returns {{ period: import('../types.js').TimedPeriod } | { reason: string }}
+ */
+function parsePeriodWord(word) {
+  const match = WORD_PATTERN.exec(word);
+  if (match === null) {
+    return { reason: '期間の名前から始めてください' };
+  }
+  const [, name, rest] = match;
+  const period = findPeriod(name);
+  if (period === undefined) {
+    return { reason: '知らない期間です' };
+  }
+  if (rest !== '' && !NUMBER_PATTERN.test(rest)) {
+    return { reason: `期間の引数「${rest}」は数値ではありません` };
+  }
+  return { period: period.build(rest === '' ? period.defaultTurns : Number(rest)) };
+}
+
+/**
+ * 1語を Effect にする。`期間/能力` の形なら、能力を期間で包む。書式が不正なら理由を返す
+ * @param {string} word
+ * @returns {{ effect: import('../types.js').Effect } | { reason: string }}
+ */
+function parseWord(word) {
+  const separator = word.indexOf(PERIOD_SEPARATOR);
+  if (separator === -1) {
+    return parseAbilityWord(word);
+  }
+  const period = parsePeriodWord(word.slice(0, separator).trim());
+  if ('reason' in period) {
+    return period;
+  }
+  const inner = parseWord(word.slice(separator + 1).trim());
+  if ('reason' in inner) {
+    return inner;
+  }
+  return wrapTimed(period.period, inner.effect);
 }
 
 /**

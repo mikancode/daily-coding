@@ -1,5 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { timed } from '../src/core/ability-table.js';
 import { createProfile } from '../src/core/profile.js';
 import { buildStatsBadges, formatBuildStats } from '../src/ui/build-stats.js';
 
@@ -54,5 +55,23 @@ describe('buildStatsBadges', () => {
       node('counter-2', [{ type: 'counter', damage: 10 }]),
     ];
     assert.deepEqual(badgeLabels(build), ['物理', '反撃 20']);
+  });
+});
+
+describe('時限能力のバッジ', () => {
+  test('時限能力は中身を合計せず1つずつ並べ、ステータスの1行目には足さない', () => {
+    const attack = { type: 'stat', stat: 'attack', amount: 5 };
+    const build = [
+      ORIGIN,
+      node('timed-1', [timed({ kind: 'first', turns: 2 }, attack)]),
+      node('timed-2', [timed({ kind: 'at', turn: 3 }, attack)]),
+    ];
+    assert.deepEqual(badgeLabels(build), ['物理', 'ATK +5（〜2T）', 'ATK +5（3T）']);
+    assert.equal(formatBuildStats(createProfile(build)), 'HP 100 / ATK 13 / DEF 0');
+  });
+
+  test('ローテーションの時限能力は周期スキルなので、物理のバッジを出さない', () => {
+    const build = [ORIGIN, node('timed', [timed({ kind: 'rotation', turns: 2 }, { type: 'regen', amount: 8 })])];
+    assert.deepEqual(badgeLabels(build), ['再生 8（周期2T）']);
   });
 });

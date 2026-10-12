@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveAbility } from '../src/core/ability-table.js';
+import { resolveAbility, timed } from '../src/core/ability-table.js';
 
 describe('resolveAbility', () => {
   const labelCases = [
@@ -19,4 +19,27 @@ describe('resolveAbility', () => {
     assert.throws(() => resolveAbility('Unknown'));
     assert.throws(() => resolveAbility('Multi', [0]));
   });
+});
+
+describe('timed', () => {
+  const FIRST = { kind: 'first', turns: 3 };
+  test('包める能力は TimedEffect にする', () => {
+    const poison = { type: 'poison', damage: 5 };
+    assert.deepEqual(timed(FIRST, poison), { type: 'timed', period: FIRST, effect: poison });
+    assert.equal(timed(FIRST, { type: 'stat', stat: 'attack', amount: 5 }).type, 'timed');
+  });
+
+  const invalidCases = [
+    ['HP の加算', FIRST, { type: 'stat', stat: 'hp', amount: 10 }],
+    ['根性', FIRST, { type: 'endure' }],
+    ['周期スキル', FIRST, { type: 'charge', perTurn: 0.5 }],
+    ['入れ子', FIRST, { type: 'timed', period: FIRST, effect: { type: 'poison', damage: 5 } }],
+    ['ターン数が0', { kind: 'at', turn: 0 }, { type: 'poison', damage: 5 }],
+    ['ターン数が整数でない', { kind: 'rotation', turns: 1.5 }, { type: 'poison', damage: 5 }],
+  ];
+  for (const [label, period, effect] of invalidCases) {
+    test(`包めないものは読み込み時の例外にする：${label}`, () => {
+      assert.throws(() => timed(period, effect));
+    });
+  }
 });

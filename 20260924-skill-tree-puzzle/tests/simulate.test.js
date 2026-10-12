@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { clearsChallenge, simulateChallenge, simulateSequence, winningOrders } from '../src/core/challenge.js';
 import { createProfile } from '../src/core/profile.js';
 import { simulate } from '../src/core/simulate.js';
+import { timed } from '../src/core/ability-table.js';
 
 // 数値は実データ（#54 で調整する）に依存させず、テスト内で固定する
 
@@ -648,5 +649,83 @@ describe('連戦のお題', () => {
   test('ある順番で全員に勝てればクリア。独立に戦えば負ける組でも通る', () => {
     assert.equal(clearsChallenge([ORIGIN], sequence([weak, strong])), true);
     assert.equal(clearsChallenge([ORIGIN], group([weak, strong])), false);
+  });
+});
+
+describe('時限能力', () => {
+  const POISON = { type: 'poison', damage: 5 };
+  /** 殴り合いで決着しないよう、ボスは攻撃せず HP を多めにする */
+  const sandbag = (overrides = {}) => challenge({ hp: 1000, attack: 0, turnLimit: 5, ...overrides });
+
+  /** @param {readonly object[]} log @param {string} type @param {string} actor */
+  const turnsOf = (log, type, actor = 'player') =>
+    log.filter((entry) => entry.type === type && entry.actor === actor).map((entry) => entry.turn);
+
+  /** @param {readonly object[]} log */
+  const timedLog = (log) => log.filter((entry) => entry.type === 'timed').map(({ turn, state }) => [turn, state]);
+
+  const periodCases = [
+    ['最初の x ターンだけ効く', { kind: 'first', turns: 2 }, [1, 2], [[1, 'start'], [3, 'end']]],
+    ['x ターン目から効く', { kind: 'from', turn: 3 }, [3, 4, 5], [[3, 'start']]],
+    ['x ターン目にだけ効く', { kind: 'at', turn: 2 }, [2], [[2, 'start'], [3, 'end']]],
+  ];
+  for (const [label, period, poisonTurns, expectedLog] of periodCases) {
+    test(label, () => {
+      const { log } = simulate([ORIGIN, node('timed', [timed(period, POISON)])], sandbag());
+      assert.deepEqual(turnsOf(log, 'poison'), poisonTurns);
+      assert.deepEqual(timedLog(log), expectedLog);
+    });
+  }
+
+  test('ローテーションで回ってきたターンから x ターン効き、そのターンは物理で殴る', () => {
+    const build = [
+      ORIGIN,
+      node('fire', [{ type: 'element', element: 'fire' }]),
+      node('timed', [timed({ kind: 'rotation', turns: 1 }, POISON)]),
+    ];
+    const { log } = simulate(build, sandbag());
+    assert.deepEqual(turnsOf(log, 'poison'), [2, 4]);
+    assert.deepEqual(timedLog(log), [[2, 'start'], [3, 'end'], [4, 'start'], [5, 'end']]);
+    const elements = log.filter((entry) => entry.type === 'hit' && entry.actor === 'player').map((entry) => entry.element);
+    assert.deepEqual(elements, ['fire', 'physical', 'fire', 'physical', 'fire']);
+  });
+
+  test('ローテーションの時限能力は、効いている間に再び回ってきたら張り直す', () => {
+    const build = [
+      ORIGIN,
+      node('fire', [{ type: 'element', element: 'fire' }]),
+      node('timed', [timed({ kind: 'rotation', turns: 3 }, POISON)]),
+    ];
+    const { log } = simulate(build, sandbag());
+    // 2 ターン目から 3 ターン（2〜4）効き、4 ターン目に回ってきて 4〜6 に延びる
+    assert.deepEqual(turnsOf(log, 'poison'), [2, 3, 4, 5]);
+    assert.deepEqual(timedLog(log), [[2, 'start'], [4, 'renew']]);
+  });
+
+  test('ステータスの加算は、効いているターンのダメージにだけ乗る', () => {
+    const build = [ORIGIN, node('timed', [timed({ kind: 'from', turn: 2 }, { type: 'stat', stat: 'attack', amount: 5 })])];
+    const { log } = simulate(build, sandbag({ turnLimit: 3 }));
+    const damages = log.filter((entry) => entry.type === 'hit' && entry.actor === 'player').map((entry) => entry.damage);
+    assert.deepEqual(damages, [10, 15, 15]);
+  });
+
+  test('逆上で積んだ攻撃は、時限能力が切れても戻らず、切れたあとは積まない', () => {
+    const boss = challenge({
+      hp: 1000,
+      attack: 10,
+      abilities: [timed({ kind: 'first', turns: 1 }, { type: 'rage', amount: 5 })],
+      turnLimit: 3,
+    });
+    const { log } = simulate([ORIGIN], boss);
+    const damages = log.filter((entry) => entry.type === 'hit' && entry.actor === 'boss').map((entry) => entry.damage);
+    assert.deepEqual(damages, [15, 15, 15]);
+    assert.deepEqual(timedLog(log), [[1, 'start'], [2, 'end']]);
+  });
+
+  test('敵と味方の両方の時限能力を、それぞれの actor でログに出す', () => {
+    const boss = sandbag({ abilities: [timed({ kind: 'at', turn: 1 }, POISON)], turnLimit: 2 });
+    const { log } = simulate([ORIGIN, node('timed', [timed({ kind: 'at', turn: 1 }, POISON)])], boss);
+    assert.deepEqual(turnsOf(log, 'timed', 'player'), [1, 2]);
+    assert.deepEqual(turnsOf(log, 'timed', 'boss'), [1, 2]);
   });
 });

@@ -108,8 +108,44 @@ export interface BurstEffect {
   readonly perMark: number;
 }
 
-/** ローテーションに入る能力 */
-export type RotationSkill = ElementEffect | ChargeEffect | BurstEffect;
+/**
+ * 時限能力の期間。ターン数は1から数える。
+ * first：1〜turns ターン目。from：turn ターン目以降。at：turn ターン目だけ。
+ * rotation：周期スキルとしてローテーションに入り、回ってきたターンから turns ターン。効いている間に再び回ってきたら張り直す
+ */
+export type TimedPeriod =
+  | { readonly kind: 'first'; readonly turns: number }
+  | { readonly kind: 'from'; readonly turn: number }
+  | { readonly kind: 'at'; readonly turn: number }
+  | { readonly kind: 'rotation'; readonly turns: number };
+
+/**
+ * 時限能力で包める能力。途中で増減しても意味が通るものに絞る。
+ * HP の加算は最大 HP が途中で変わってしまうので、型では許すが wrapTimed で弾く
+ */
+export type TimedInnerEffect =
+  | StatEffect
+  | MultiHitEffect
+  | ConditionalEffect
+  | TempoEffect
+  | CounterEffect
+  | RegenEffect
+  | PoisonEffect
+  | DrainEffect
+  | RageEffect
+  | PierceEffect
+  | ArmorBreakEffect
+  | MarkEffect;
+
+/** 期間の間だけ effect が効く。作るときは wrapTimed / timed を通す */
+export interface TimedEffect {
+  readonly type: 'timed';
+  readonly period: TimedPeriod;
+  readonly effect: TimedInnerEffect;
+}
+
+/** ローテーションに入る能力。時限能力は rotation の期間のものだけが入る */
+export type RotationSkill = ElementEffect | ChargeEffect | BurstEffect | TimedEffect;
 
 /** 能力。ツリーのノードと敵の両方が同じ定義で持つ */
 export type Effect =
@@ -128,7 +164,8 @@ export type Effect =
   | TempoEffect
   | ChargeEffect
   | MarkEffect
-  | BurstEffect;
+  | BurstEffect
+  | TimedEffect;
 
 /** 表示位置。単位はグリッドのマス目で、画面上の大きさへの換算は描画側で行う */
 export interface GridPosition {
@@ -212,6 +249,8 @@ export interface CombatantProfile {
   ratio: number;
   conditionals: ConditionalEffect[];
   tempos: TempoEffect[];
+  /** rotation 以外の期間の時限能力。効いているかは戦闘中にターン数で決める */
+  timed: TimedEffect[];
   /** 周期スキルを、ローテーションの順に並べたもの。空なら毎ターン物理 */
   rotation: RotationSkill[];
   /** 反撃のダメージの合計。0 なら反撃しない */
@@ -271,6 +310,14 @@ export type LogEntry =
   | { readonly type: 'poison'; readonly actor: Actor; readonly turn: number; readonly damage: number; readonly targetHp: number }
   | { readonly type: 'regen'; readonly actor: Actor; readonly turn: number; readonly amount: number; readonly hp: number }
   | { readonly type: 'endure'; readonly actor: Actor; readonly turn: number; readonly hp: number }
+  | {
+      readonly type: 'timed';
+      readonly actor: Actor;
+      readonly turn: number;
+      readonly effect: TimedEffect;
+      /** start：効き始めた。renew：効いている間に再び回ってきて張り直した。end：このターンから切れた */
+      readonly state: 'start' | 'renew' | 'end';
+    }
   | { readonly type: 'turnLimit'; readonly turn: number };
 
 export type LoseReason = 'defeated' | 'turnLimit';
@@ -363,6 +410,16 @@ export interface AbilityDefinition {
 export interface AbilityError {
   readonly word: string;
   readonly reason: string;
+}
+
+/** デバッグ入力で指定できる期間1つぶん。期間の表の1行 */
+export interface PeriodDefinition {
+  /** 入力に書く語。英語名で、大文字小文字は区別しない */
+  readonly name: string;
+  readonly label: string;
+  /** 引数（ターン数）の規定値 */
+  readonly defaultTurns: number;
+  readonly build: (turns: number) => TimedPeriod;
 }
 
 export type ParsedAbilities =

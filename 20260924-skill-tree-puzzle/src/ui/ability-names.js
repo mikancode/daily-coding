@@ -9,6 +9,7 @@ import { ELEMENT_NAMES } from './element-names.js';
  * @typedef {import('../types.js').Effect} Effect
  * @typedef {import('../types.js').SkillNode} SkillNode
  * @typedef {import('../types.js').TempoEffect} TempoEffect
+ * @typedef {import('../types.js').TimedPeriod} TimedPeriod
  */
 
 const PERCENT = 100;
@@ -40,6 +41,42 @@ function formatConditional(conditional) {
  */
 function formatTempo(tempo) {
   return `${tempo.every}の倍数のターンに与ダメージ${tempo.damageMultiplier}倍`;
+}
+
+/**
+ * 名前の後ろに添える、期間の短い表記。例：`〜3T`、`4T〜`、`3T`、`周期2T`
+ * @param {TimedPeriod} period
+ * @returns {string}
+ */
+function formatPeriod(period) {
+  switch (period.kind) {
+    case 'first':
+      return `〜${period.turns}T`;
+    case 'from':
+      return `${period.turn}T〜`;
+    case 'at':
+      return `${period.turn}T`;
+    case 'rotation':
+      return `周期${period.turns}T`;
+  }
+}
+
+/**
+ * 説明の先頭に置く、期間の文
+ * @param {TimedPeriod} period
+ * @returns {string}
+ */
+function describePeriod(period) {
+  switch (period.kind) {
+    case 'first':
+      return `最初の ${period.turns} ターンだけ効く。`;
+    case 'from':
+      return `${period.turn} ターン目から効く。`;
+    case 'at':
+      return `${period.turn} ターン目にだけ効く。`;
+    case 'rotation':
+      return `周期スキル。回ってきたターンは物理で攻撃し、そのターンから ${period.turns} ターン効く。効いている間に再び回ってきたら、そこから数え直す。`;
+  }
 }
 
 /** @param {number} ratio @returns {string} */
@@ -86,6 +123,8 @@ function formatAbility(effect) {
       return formatMark(effect.amount);
     case 'burst':
       return `解放（刻印1つにつき+${effect.perMark}倍）`;
+    case 'timed':
+      return `${formatReward(effect.effect)}（${formatPeriod(effect.period)}）`;
     case 'stat':
     case 'multiHit':
       return null;
@@ -177,19 +216,21 @@ export function describeEffect(effect) {
       return `攻撃を当てるたびに、相手に刻印を ${effect.amount} 付ける`;
     case 'burst':
       return `周期スキル。回ってきたターンは物理で攻撃し、相手の刻印を全部使って、1つにつき与えるダメージ +${effect.perMark} 倍`;
+    case 'timed':
+      return `${describePeriod(effect.period)}${describeEffect(effect.effect)}`;
   }
 }
 
 /**
  * 集計した能力を、バッジに並べる Effect の形に戻す。ステータスと連撃は1行目に出すので含めない。
  * 合計した値で戻すので、反撃を2つ取れば反撃1つぶんの合計値になる。
- * ローテーションはその順に先頭へ並べる
+ * ローテーションはその順に先頭へ並べる。時限能力は、中身を合計せず1つずつ並べる
  * @param {CombatantProfile} profile
  * @returns {Effect[]}
  */
 export function profileEffects(profile) {
   /** @type {Effect[]} */
-  const effects = [...profile.rotation, ...profile.conditionals, ...profile.tempos];
+  const effects = [...profile.rotation, ...profile.conditionals, ...profile.tempos, ...profile.timed];
   if (profile.counter > 0) effects.push({ type: 'counter', damage: profile.counter });
   if (profile.regen > 0) effects.push({ type: 'regen', amount: profile.regen });
   if (profile.poison > 0) effects.push({ type: 'poison', damage: profile.poison });
@@ -241,5 +282,7 @@ export function formatBadgeLabel(effect) {
       return formatMark(effect.amount);
     case 'burst':
       return '解放';
+    case 'timed':
+      return `${formatBadgeLabel(effect.effect)}（${formatPeriod(effect.period)}）`;
   }
 }
