@@ -26,8 +26,6 @@ const DEFAULT_ELEMENT = 'physical';
 const NO_REDUCTION = 0;
 /** 条件を満たさない、または conditional を取っていなければ倍率は掛からない */
 const NEUTRAL_MULTIPLIER = 1;
-/** 根性で踏みとどまったときの HP */
-const ENDURE_HP = 1;
 /**
  * 小数の誤差で、ダメージの floor が1つ下がったり、条件の境界ちょうどで発動しなかったりするのを防ぐ。
  * 例：100 × (1 − 0.9) は 9.999… になり floor すると 9 に、100 × 0.57 は 56.999… になり HP 57 で発動しない
@@ -139,7 +137,8 @@ function rotationIndexAt(rotation, turn) {
 /**
  * @param {TimedPeriod} period
  * @param {number} turn
- * @param {number | null} activatedAt ローテーションで最後に回ってきたターン。rotation の期間でだけ使う
+ * @param {number | null} activatedAt rotation：ローテーションで最後に回ってきたターン。
+ *   hpAtMost・revived：条件を満たしたターン。ほかの期間では使わない
  * @returns {boolean}
  */
 function isTimedActive(period, turn, activatedAt) {
@@ -152,7 +151,19 @@ function isTimedActive(period, turn, activatedAt) {
       return turn === period.turn;
     case 'rotation':
       return activatedAt !== null && turn < activatedAt + period.turns;
+    case 'hpAtMost':
+    case 'revived':
+      return activatedAt !== null;
   }
+}
+
+/**
+ * 効いている時限能力の中身を base に足して、集計を作り直す
+ * @param {Fighter} fighter
+ */
+function refreshProfile(fighter) {
+  const effects = fighter.timedSlots.filter((slot) => slot.active).map((slot) => slot.effect.effect);
+  fighter.profile = withEffects(fighter.base, effects);
 }
 
 /**
@@ -184,8 +195,7 @@ function updateTimed(fighter, turn, log) {
     }
   }
   if (changed) {
-    const effects = fighter.timedSlots.filter((slot) => slot.active).map((slot) => slot.effect.effect);
-    fighter.profile = withEffects(fighter.base, effects);
+    refreshProfile(fighter);
   }
 }
 
@@ -218,15 +228,15 @@ function defenseAgainst(attacker, target) {
 }
 
 /**
- * HP を減らす処理はすべてここを通す。致死時の能力（根性）を1か所で扱うため
+ * HP を減らす処理はすべてここを通す。致死時の能力（根性・復活）を1か所で扱うため
  * @param {Fighter} target
  * @param {number} damage
- * @returns {boolean} 根性で踏みとどまったら true
+ * @returns {boolean} 根性・復活で踏みとどまったら true
  */
 function takeDamage(target, damage) {
   target.hp = Math.max(0, target.hp - damage);
-  if (target.hp === 0 && target.profile.endure && !target.endured) {
-    target.hp = ENDURE_HP;
+  if (target.hp === 0 && target.profile.endureHp > 0 && !target.endured) {
+    target.hp = Math.min(target.profile.endureHp, target.profile.maxHp);
     target.endured = true;
     return true;
   }
@@ -245,14 +255,49 @@ function heal(fighter, amount) {
 }
 
 /**
+ * @param {TimedPeriod} period
+ * @param {Fighter} fighter
+ * @param {boolean} endured
+ * @returns {boolean} ダメージの直後に満たす開始条件なら、満たしたかどうか。ほかの期間は false
+ */
+function meetsDamageCondition(period, fighter, endured) {
+  switch (period.kind) {
+    case 'hpAtMost':
+      return fighter.hp <= fighter.profile.maxHp * period.ratio + FLOAT_TOLERANCE;
+    case 'revived':
+      return endured;
+    default:
+      return false;
+  }
+}
+
+/**
+ * ダメージを受けた直後の処理。根性・復活をログに出し、HP・復活の条件を満たした時限能力を効かせ始める。
+ * 効き始めた能力は、同じターンの次の1発から効く。一度効き始めたら、回復しても切れない。
+ * HP が0で戦闘が終わるときは何もしない
  * @param {LogEntry[]} log
  * @param {Fighter} target
  * @param {number} turn
  * @param {boolean} endured
  */
-function logEndure(log, target, turn, endured) {
+function afterDamage(log, target, turn, endured) {
   if (endured) {
     log.push({ type: 'endure', actor: target.actor, turn, hp: target.hp });
+  }
+  if (target.hp === 0) {
+    return;
+  }
+  let changed = false;
+  for (const slot of target.timedSlots) {
+    if (slot.activatedAt === null && meetsDamageCondition(slot.effect.period, target, endured)) {
+      slot.activatedAt = turn;
+      slot.active = true;
+      changed = true;
+      log.push({ type: 'timed', actor: target.actor, turn, effect: slot.effect, state: 'start' });
+    }
+  }
+  if (changed) {
+    refreshProfile(target);
   }
 }
 
@@ -296,7 +341,7 @@ function strike(attacker, target, damage, turn, log, toEntry) {
   const endured = takeDamage(target, damage);
   const changes = target.hp === 0 ? undefined : applyStrikeEffects(attacker, target);
   log.push(toEntry(target.hp, changes));
-  logEndure(log, target, turn, endured);
+  afterDamage(log, target, turn, endured);
   if (target.hp === 0) {
     return true;
   }
@@ -309,7 +354,7 @@ function strike(attacker, target, damage, turn, log, toEntry) {
 
 /**
  * ローテーションで今のターンの周期スキルを発動し、この行動の属性と倍率を決める。
- * 溜め・解放・時限能力のターンは物理で殴る。時限能力が効き始めるのはターン開始（updateTimed）で扱う
+ * 溜め・解放・時限能力のターンは物理で殴る。ローテーションの時限能力が効き始めるのはターン開始（updateTimed）で扱う
  * @param {Fighter} attacker
  * @param {Fighter} defender
  * @param {number} turn
@@ -346,7 +391,9 @@ function useRotationSkill(attacker, defender, turn, log) {
 }
 
 /**
- * 周期スキルを発動してから、連撃の回数だけ通常攻撃する。1発ごとに相手の反撃を受ける
+ * 周期スキルを発動してから、連撃の回数だけ通常攻撃する。1発ごとに相手の反撃を受ける。
+ * 連撃の回数は行動の最初に決め、途中で時限能力が効き始めても変えない。
+ * 威力・防御・反撃は1発ごとに今の集計を読むので、効き始めた能力は次の1発から効く
  * @param {Fighter} attacker
  * @param {Fighter} defender
  * @param {number} turn
@@ -356,9 +403,10 @@ function useRotationSkill(attacker, defender, turn, log) {
 function act(attacker, defender, turn, log) {
   const { element, multiplier: skillMultiplier } = useRotationSkill(attacker, defender, turn, log);
   const reduction = defender.profile.resistances[element] ?? NO_REDUCTION;
-  const tempo = tempoMultiplier(attacker.profile, turn);
+  const { hits } = attacker.profile;
 
-  for (let hit = 0; hit < attacker.profile.hits; hit++) {
+  for (let hit = 0; hit < hits; hit++) {
+    const tempo = tempoMultiplier(attacker.profile, turn);
     const raw =
       currentAttack(attacker) *
       attacker.profile.ratio *
@@ -424,7 +472,7 @@ function poison(source, target, turn, log) {
   }
   const endured = takeDamage(target, source.profile.poison);
   log.push({ type: 'poison', actor: source.actor, turn, damage: source.profile.poison, targetHp: target.hp });
-  logEndure(log, target, turn, endured);
+  afterDamage(log, target, turn, endured);
   return target.hp === 0;
 }
 

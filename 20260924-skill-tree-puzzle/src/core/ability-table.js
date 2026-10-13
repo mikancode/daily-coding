@@ -15,6 +15,8 @@ const ATTACK_STEP = 1;
 const DEFENSE_STEP = 1;
 /** 連撃の回数はターンごとにログを積むので、大きすぎる値で画面が固まらないよう上限を置く */
 const MAX_MULTI_HITS = 100;
+/** 根性で踏みとどまったときの HP。復活は、これより大きい HP に戻す。表示で根性と復活を呼び分けるのにも使う */
+export const ENDURE_HP = 1;
 
 /** @param {string} name @param {string} label @param {'hp' | 'attack' | 'defense'} stat @param {number} step @returns {AbilityDefinition} */
 const statAbility = (name, label, stat, step) => ({
@@ -82,7 +84,15 @@ export const ABILITIES = [
     defaults: [5],
     build: (damage) => ({ type: 'poison', damage }),
   },
-  { name: 'Endure', label: '根性', group: 'ability', defaults: [], build: () => ({ type: 'endure' }) },
+  { name: 'Endure', label: '根性', group: 'ability', defaults: [], build: () => ({ type: 'endure', hp: ENDURE_HP }) },
+  {
+    name: 'Revive',
+    label: '復活',
+    group: 'ability',
+    defaults: [50],
+    check: ([hp]) => (Number.isInteger(hp) && hp >= 1 ? null : '復活で戻す HP は1以上の整数にしてください'),
+    build: (hp) => ({ type: 'endure', hp }),
+  },
   {
     name: 'Drain',
     label: '吸収',
@@ -222,10 +232,12 @@ export function resolveAbility(name, args = []) {
  * @type {readonly PeriodDefinition[]}
  */
 export const PERIODS = [
-  { name: 'First', label: '最初のxT', defaultTurns: 3, build: (turns) => ({ kind: 'first', turns }) },
-  { name: 'From', label: 'xT目から', defaultTurns: 3, build: (turn) => ({ kind: 'from', turn }) },
-  { name: 'At', label: 'xT目だけ', defaultTurns: 3, build: (turn) => ({ kind: 'at', turn }) },
-  { name: 'Cycle', label: '周期でxT', defaultTurns: 2, build: (turns) => ({ kind: 'rotation', turns }) },
+  { name: 'First', label: '最初のxT', defaults: [3], build: (turns) => ({ kind: 'first', turns }) },
+  { name: 'From', label: 'xT目から', defaults: [3], build: (turn) => ({ kind: 'from', turn }) },
+  { name: 'At', label: 'xT目だけ', defaults: [3], build: (turn) => ({ kind: 'at', turn }) },
+  { name: 'Cycle', label: '周期でxT', defaults: [2], build: (turns) => ({ kind: 'rotation', turns }) },
+  { name: 'Below', label: 'HPx%以下', defaults: [0.5], build: (ratio) => ({ kind: 'hpAtMost', ratio }) },
+  { name: 'Revived', label: '復活後', defaults: [], build: () => ({ kind: 'revived' }) },
 ];
 
 /**
@@ -238,35 +250,47 @@ export function findPeriod(name) {
 }
 
 /**
- * ボタンが能力の語の前に付ける、規定値つきの期間の語。例：`First3`
+ * ボタンが能力の語の前に付ける、規定値つきの期間の語。例：`First3`・`Revived`
  * @param {PeriodDefinition} period
  * @returns {string}
  */
 export function formatDefaultPeriodWord(period) {
-  return `${period.name}${period.defaultTurns}`;
+  return `${period.name}${period.defaults.join(':')}`;
 }
 
 /**
+ * 期間の引数を検査する
  * @param {TimedPeriod} period
- * @returns {number}
+ * @returns {string | null} 不正なら理由
  */
-function periodTurns(period) {
-  return period.kind === 'first' || period.kind === 'rotation' ? period.turns : period.turn;
+function checkPeriod(period) {
+  switch (period.kind) {
+    case 'first':
+    case 'rotation':
+      return Number.isInteger(period.turns) && period.turns >= 1 ? null : '期間のターン数は1以上の整数にしてください';
+    case 'from':
+    case 'at':
+      return Number.isInteger(period.turn) && period.turn >= 1 ? null : '期間のターン数は1以上の整数にしてください';
+    case 'hpAtMost':
+      return period.ratio > 0 && period.ratio < 1 ? null : '期間の HP の割合は0より大きく1より小さくしてください';
+    case 'revived':
+      return null;
+  }
 }
 
 /**
- * 能力を期間で包む。包めない能力と、ターン数が1以上の整数でない期間は理由を返す。
+ * 能力を期間で包む。包めない能力と、引数が範囲外の期間は理由を返す。
  * 包めるのは、途中で増減しても意味が通る能力だけ。
  * 最大 HP が途中で変わると今の HP との関係が決まらないので HP の加算を、
- * 1回だけ・ローテーションの順で決まる能力の意味が崩れるので根性と周期スキルを、それぞれ包まない
+ * 1回だけ・ローテーションの順で決まる能力の意味が崩れるので根性・復活と周期スキルを、それぞれ包まない
  * @param {TimedPeriod} period
  * @param {Effect} effect
  * @returns {{ effect: TimedEffect } | { reason: string }}
  */
 export function wrapTimed(period, effect) {
-  const turns = periodTurns(period);
-  if (!Number.isInteger(turns) || turns < 1) {
-    return { reason: '期間のターン数は1以上の整数にしてください' };
+  const problem = checkPeriod(period);
+  if (problem !== null) {
+    return { reason: problem };
   }
   switch (effect.type) {
     case 'stat':
@@ -274,7 +298,7 @@ export function wrapTimed(period, effect) {
         ? { reason: 'HP の加算は期間で包めません' }
         : { effect: { type: 'timed', period, effect } };
     case 'endure':
-      return { reason: '根性は期間で包めません' };
+      return { reason: '根性・復活は期間で包めません' };
     case 'element':
     case 'charge':
     case 'burst':

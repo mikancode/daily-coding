@@ -16,7 +16,7 @@ const SWAMP_LICH = {
   hp: 160,
   attack: 16,
   defense: 0,
-  abilities: [{ type: 'regen', amount: 8 }, { type: 'poison', damage: 5 }, { type: 'endure' }],
+  abilities: [{ type: 'regen', amount: 8 }, { type: 'poison', damage: 5 }, { type: 'endure', hp: 1 }],
   resistances: {},
   turnLimit: 10,
 };

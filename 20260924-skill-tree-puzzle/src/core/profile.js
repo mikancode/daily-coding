@@ -31,7 +31,7 @@ function emptyProfile(resistances) {
     counter: 0,
     regen: 0,
     poison: 0,
-    endure: false,
+    endureHp: 0,
     drain: 0,
     rage: 0,
     pierce: false,
@@ -79,7 +79,8 @@ function applyEffect(profile, effect) {
       profile.poison += effect.damage;
       break;
     case 'endure':
-      profile.endure = true;
+      // 根性と復活は合わせて1回しか使えないので、戻す HP の大きいほうだけが効く
+      profile.endureHp = Math.max(profile.endureHp, effect.hp);
       break;
     case 'drain':
       profile.drain += effect.ratio;

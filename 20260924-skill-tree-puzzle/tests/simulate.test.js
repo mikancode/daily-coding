@@ -295,7 +295,7 @@ describe('能力を味方が持つ場合と敵が持つ場合', () => {
   });
 
   test('endure：味方は1回だけ HP 1 で踏みとどまる', () => {
-    const guts = node('guts', [{ type: 'endure' }]);
+    const guts = node('guts', [{ type: 'endure', hp: 1 }]);
     const outcome = simulate([ORIGIN, guts], challenge({ hp: 1000, attack: 150 }));
 
     assert.deepEqual(entriesOf(outcome, 'player', 'endure'), [{ type: 'endure', actor: 'player', turn: 1, hp: 1 }]);
@@ -303,8 +303,26 @@ describe('能力を味方が持つ場合と敵が持つ場合', () => {
     assert.equal(outcome.summary.turns, 2);
   });
 
+  test('endure：復活は HP を y に戻し、最大 HP で頭打ちにする', () => {
+    const revive = (hp) => simulate([ORIGIN, node('revive', [{ type: 'endure', hp }])], challenge({ hp: 1000, attack: 150 }));
+
+    assert.deepEqual(entriesOf(revive(30), 'player', 'endure'), [{ type: 'endure', actor: 'player', turn: 1, hp: 30 }]);
+    assert.deepEqual(entriesOf(revive(500), 'player', 'endure'), [{ type: 'endure', actor: 'player', turn: 1, hp: 100 }]);
+  });
+
+  test('endure：根性と復活を両方持っても使えるのは1回で、戻す HP は大きいほう', () => {
+    const both = node('both', [
+      { type: 'endure', hp: 1 },
+      { type: 'endure', hp: 30 },
+    ]);
+    const outcome = simulate([ORIGIN, both], challenge({ hp: 1000, attack: 150 }));
+
+    assert.deepEqual(entriesOf(outcome, 'player', 'endure'), [{ type: 'endure', actor: 'player', turn: 1, hp: 30 }]);
+    assert.equal(outcome.summary.turns, 2);
+  });
+
   test('endure：敵も1回だけ踏みとどまり、2回目で倒れる', () => {
-    const outcome = simulate([ORIGIN], challenge({ hp: 10, attack: 0, abilities: [{ type: 'endure' }] }));
+    const outcome = simulate([ORIGIN], challenge({ hp: 10, attack: 0, abilities: [{ type: 'endure', hp: 1 }] }));
 
     assert.deepEqual(entriesOf(outcome, 'boss', 'endure'), [{ type: 'endure', actor: 'boss', turn: 1, hp: 1 }]);
     assert.equal(outcome.result, 'win');
@@ -720,6 +738,64 @@ describe('時限能力', () => {
     const damages = log.filter((entry) => entry.type === 'hit' && entry.actor === 'boss').map((entry) => entry.damage);
     assert.deepEqual(damages, [15, 15, 15]);
     assert.deepEqual(timedLog(log), [[1, 'start'], [2, 'end']]);
+  });
+
+  const ATTACK_UP = { type: 'stat', stat: 'attack', amount: 10 };
+  const BELOW_HALF = { kind: 'hpAtMost', ratio: 0.5 };
+  /** @param {readonly object[]} log @param {string} actor */
+  const hitDamages = (log, actor) => log.filter((entry) => entry.type === 'hit' && entry.actor === actor).map((entry) => entry.damage);
+
+  test('HP の条件は、ダメージの直後に満たしたら同じターンの次の1発から効く', () => {
+    const build = [
+      ORIGIN,
+      node('multi', [{ type: 'multiHit', hits: 2, ratio: 1 }]),
+      node('timed', [timed(BELOW_HALF, ATTACK_UP)]),
+    ];
+    const { log } = simulate(build, sandbag({ abilities: [{ type: 'counter', damage: 50 }], turnLimit: 1 }));
+    assert.deepEqual(hitDamages(log, 'player'), [10, 20]);
+    assert.deepEqual(
+      log.map((entry) => entry.type),
+      ['hit', 'counter', 'timed', 'hit', 'counter'],
+    );
+  });
+
+  test('HP の条件は、一度満たしたら回復して HP が戻っても切れない', () => {
+    const build = [ORIGIN, node('regen', [{ type: 'regen', amount: 60 }]), node('timed', [timed(BELOW_HALF, POISON)])];
+    const { log } = simulate(build, sandbag({ attack: 60, turnLimit: 3 }));
+    assert.deepEqual(turnsOf(log, 'regen'), [2, 3]);
+    assert.deepEqual(turnsOf(log, 'poison'), [1, 2, 3]);
+    assert.deepEqual(timedLog(log), [[1, 'start']]);
+  });
+
+  test('連撃の回数は行動の最初に決め、途中で効き始めた連撃は次の行動から効く', () => {
+    const build = [
+      ORIGIN,
+      node('regen', [{ type: 'regen', amount: 60 }]),
+      node('timed', [timed(BELOW_HALF, { type: 'multiHit', hits: 2, ratio: 1 })]),
+    ];
+    const { log } = simulate(build, sandbag({ abilities: [{ type: 'counter', damage: 60 }], turnLimit: 2 }));
+    assert.deepEqual(turnsOf(log, 'hit'), [1, 2, 2]);
+  });
+
+  test('復活後の能力は、根性・復活で踏みとどまった直後から効く', () => {
+    const boss = challenge({
+      hp: 10,
+      attack: 0,
+      abilities: [{ type: 'endure', hp: 1 }, timed({ kind: 'revived' }, { type: 'stat', stat: 'attack', amount: 20 })],
+      turnLimit: 1,
+    });
+    const { log } = simulate([ORIGIN], boss);
+    assert.deepEqual(
+      log.map((entry) => entry.type),
+      ['hit', 'endure', 'timed', 'hit', 'turnLimit'],
+    );
+    assert.deepEqual(hitDamages(log, 'boss'), [20]);
+  });
+
+  test('HP の条件・復活後の能力は、倒れた1発では効き始めない', () => {
+    const boss = challenge({ hp: 10, attack: 0, abilities: [timed(BELOW_HALF, POISON), timed({ kind: 'revived' }, POISON)] });
+    const { log } = simulate([ORIGIN], boss);
+    assert.deepEqual(timedLog(log), []);
   });
 
   test('敵と味方の両方の時限能力を、それぞれの actor でログに出す', () => {

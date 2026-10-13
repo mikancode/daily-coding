@@ -66,6 +66,31 @@ describe('profileEffects', () => {
   });
 });
 
+describe('根性・復活の表示', () => {
+  const enemy = { name: 'テスト', hp: 100, attack: 10, defense: 0, resistances: {}, turnLimit: 10 };
+
+  test('戻す HP が1なら根性、それより大きければ復活と呼ぶ', () => {
+    assert.equal(formatBadgeLabel({ type: 'endure', hp: 1 }), '根性');
+    assert.equal(formatReward({ type: 'endure', hp: 1 }), '根性');
+    assert.equal(formatBadgeLabel({ type: 'endure', hp: 50 }), '復活 50');
+    assert.equal(formatReward({ type: 'endure', hp: 50 }), '復活 50');
+    assert.ok(describeEffect({ type: 'endure', hp: 50 }).includes('HP を 50 に戻す'));
+  });
+
+  test('根性と復活を両方持つボスは、戻す HP の大きいほうを1つだけバッジにする', () => {
+    const effects = profileEffects(
+      createEnemyProfile({
+        ...enemy,
+        abilities: [
+          { type: 'endure', hp: 1 },
+          { type: 'endure', hp: 30 },
+        ],
+      }),
+    );
+    assert.deepEqual(effects.map(formatBadgeLabel), ['復活 30']);
+  });
+});
+
 describe('時限能力の表示', () => {
   const POISON = { type: 'poison', damage: 5 };
   const cases = [
@@ -73,6 +98,8 @@ describe('時限能力の表示', () => {
     ['x ターン目から', { kind: 'from', turn: 4 }, '毒 5（4T〜）', '4 ターン目から効く。'],
     ['x ターン目だけ', { kind: 'at', turn: 2 }, '毒 5（2T）', '2 ターン目にだけ効く。'],
     ['ローテーション', { kind: 'rotation', turns: 2 }, '毒 5（周期2T）', 'そのターンから 2 ターン効く'],
+    ['HP の割合以下', { kind: 'hpAtMost', ratio: 0.5 }, '毒 5（HP50%以下）', '50% 以下になったら効き始め、回復しても切れない。'],
+    ['復活後', { kind: 'revived' }, '毒 5（復活後）', '根性・復活で踏みとどまったら効き始める。'],
   ];
   for (const [label, period, badge, fragment] of cases) {
     test(`${label}：バッジ名に期間を添え、説明は期間の文に中身の説明を続ける`, () => {

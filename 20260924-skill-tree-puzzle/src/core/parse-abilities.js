@@ -40,7 +40,8 @@ function parseAbilityWord(word) {
 }
 
 /**
- * 期間の語を TimedPeriod にする。引数を省くと規定値になる。範囲の検査は wrapTimed が行う
+ * 期間の語を TimedPeriod にする。引数を省くと規定値になる。範囲の検査は wrapTimed が行う。
+ * 期間の引数は多くて1つなので、`:` で区切らない
  * @param {string} word
  * @returns {{ period: import('../types.js').TimedPeriod } | { reason: string }}
  */
@@ -54,10 +55,16 @@ function parsePeriodWord(word) {
   if (period === undefined) {
     return { reason: '知らない期間です' };
   }
-  if (rest !== '' && !NUMBER_PATTERN.test(rest)) {
+  if (rest === '') {
+    return { period: period.build(...period.defaults) };
+  }
+  if (period.defaults.length === 0) {
+    return { reason: `${period.name} は引数を取りません` };
+  }
+  if (!NUMBER_PATTERN.test(rest)) {
     return { reason: `期間の引数「${rest}」は数値ではありません` };
   }
-  return { period: period.build(rest === '' ? period.defaultTurns : Number(rest)) };
+  return { period: period.build(Number(rest)) };
 }
 
 /**

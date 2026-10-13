@@ -1,6 +1,7 @@
 // @ts-check
 // 能力・攻撃・報酬の表示用の文言と、能力のバッジ名・説明
 
+import { ENDURE_HP } from '../core/ability-table.js';
 import { ELEMENT_NAMES } from './element-names.js';
 
 /**
@@ -44,7 +45,16 @@ function formatTempo(tempo) {
 }
 
 /**
- * 名前の後ろに添える、期間の短い表記。例：`〜3T`、`4T〜`、`3T`、`周期2T`
+ * 根性・復活の名前。例：`根性`、`復活 50`
+ * @param {number} hp
+ * @returns {string}
+ */
+function formatEndure(hp) {
+  return hp === ENDURE_HP ? '根性' : `復活 ${hp}`;
+}
+
+/**
+ * 名前の後ろに添える、期間の短い表記。例：`〜3T`、`4T〜`、`3T`、`周期2T`、`HP50%以下`、`復活後`
  * @param {TimedPeriod} period
  * @returns {string}
  */
@@ -58,6 +68,10 @@ function formatPeriod(period) {
       return `${period.turn}T`;
     case 'rotation':
       return `周期${period.turns}T`;
+    case 'hpAtMost':
+      return `HP${Math.round(period.ratio * PERCENT)}%以下`;
+    case 'revived':
+      return '復活後';
   }
 }
 
@@ -76,6 +90,10 @@ function describePeriod(period) {
       return `${period.turn} ターン目にだけ効く。`;
     case 'rotation':
       return `周期スキル。回ってきたターンは物理で攻撃し、そのターンから ${period.turns} ターン効く。効いている間に再び回ってきたら、そこから数え直す。`;
+    case 'hpAtMost':
+      return `HP が最大 HP の ${Math.round(period.ratio * PERCENT)}% 以下になったら効き始め、回復しても切れない。`;
+    case 'revived':
+      return '根性・復活で踏みとどまったら効き始める。';
   }
 }
 
@@ -106,7 +124,7 @@ function formatAbility(effect) {
     case 'poison':
       return `毒 ${effect.damage}`;
     case 'endure':
-      return '根性';
+      return formatEndure(effect.hp);
     case 'drain':
       return formatDrain(effect.ratio);
     case 'rage':
@@ -199,7 +217,9 @@ export function describeEffect(effect) {
     case 'poison':
       return `ターン終了時に、相手の DEF を無視して ${effect.damage} のダメージを与える`;
     case 'endure':
-      return '戦闘中に1回だけ、倒れるダメージを受けても HP 1 で踏みとどまる';
+      return effect.hp === ENDURE_HP
+        ? '戦闘中に1回だけ、倒れるダメージを受けても HP 1 で踏みとどまる'
+        : `戦闘中に1回だけ、HP が0になったら HP を ${effect.hp} に戻す`;
     case 'drain':
       return `攻撃を当てるたびに、与えたダメージの ${Math.round(effect.ratio * PERCENT)}% だけ HP を回復する`;
     case 'rage':
@@ -234,7 +254,7 @@ export function profileEffects(profile) {
   if (profile.counter > 0) effects.push({ type: 'counter', damage: profile.counter });
   if (profile.regen > 0) effects.push({ type: 'regen', amount: profile.regen });
   if (profile.poison > 0) effects.push({ type: 'poison', damage: profile.poison });
-  if (profile.endure) effects.push({ type: 'endure' });
+  if (profile.endureHp > 0) effects.push({ type: 'endure', hp: profile.endureHp });
   if (profile.drain > 0) effects.push({ type: 'drain', ratio: profile.drain });
   if (profile.rage > 0) effects.push({ type: 'rage', amount: profile.rage });
   if (profile.pierce) effects.push({ type: 'pierce' });
@@ -265,7 +285,7 @@ export function formatBadgeLabel(effect) {
     case 'poison':
       return `毒 ${effect.damage}`;
     case 'endure':
-      return '根性';
+      return formatEndure(effect.hp);
     case 'drain':
       return formatDrain(effect.ratio);
     case 'rage':
