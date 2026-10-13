@@ -26,7 +26,9 @@ describe('正しい語', () => {
   const validCases = [
     ['引数を省くと規定値', 'Poison', { type: 'poison', damage: 5 }],
     ['ステータスも規定値', 'HP', { type: 'stat', stat: 'hp', amount: 10 }],
-    ['引数のない能力', 'Endure', { type: 'endure' }],
+    ['引数のない能力', 'Endure', { type: 'endure', hp: 1 }],
+    ['復活は根性と同じ型で、戻す HP を持つ', 'Revive30', { type: 'endure', hp: 30 }],
+    ['復活の引数を省くと規定値', 'Revive', { type: 'endure', hp: 50 }],
     ['属性', 'Fire', { type: 'element', element: 'fire' }],
     ['引数つき', 'ATK50', { type: 'stat', stat: 'attack', amount: 50 }],
     ['複数の引数は : で区切る', 'Cond0.3:4', { type: 'conditional', hpRatioAtMost: 0.3, damageMultiplier: 4 }],
@@ -80,6 +82,7 @@ describe('不正な語', () => {
     ['引数が多すぎる', ['Poison1:2']],
     ['連撃の回数が整数でない', ['Multi0:0.5', 'Multi1.5:0.5']],
     ['連撃の回数が大きすぎる', ['Multi101:0.01', 'Multi99999999:1']],
+    ['復活で戻す HP が1以上の整数でない', ['Revive0', 'Revive1.5']],
     ['負の数', ['HP-100', 'Poison-5']],
   ];
   for (const [label, words] of invalidCases) {
@@ -114,6 +117,9 @@ describe('期間で包む語', () => {
     ['x ターン目から', 'From4/Poison5', { kind: 'from', turn: 4 }],
     ['x ターン目だけ', 'At2/Poison5', { kind: 'at', turn: 2 }],
     ['ローテーション', 'Cycle2/Poison5', { kind: 'rotation', turns: 2 }],
+    ['HP の割合以下', 'Below0.3/Poison5', { kind: 'hpAtMost', ratio: 0.3 }],
+    ['HP の割合の引数を省くと規定値', 'Below/Poison5', { kind: 'hpAtMost', ratio: 0.5 }],
+    ['復活後', 'Revived/Poison5', { kind: 'revived' }],
     ['期間の引数を省くと規定値', 'first/Poison5', { kind: 'first', turns: 3 }],
     ['区切りの前後の空白は区別しない', 'First3 / Poison5', { kind: 'first', turns: 3 }],
   ];
@@ -139,6 +145,10 @@ describe('期間で包む語', () => {
   const invalidCases = [
     ['HP の加算', 'First3/HP10'],
     ['根性', 'First3/Endure'],
+    ['復活', 'Below0.5/Revive50'],
+    ['引数を取らない期間に引数', 'Revived3/Poison5'],
+    ['HP の割合が1以上', 'Below1/Poison5'],
+    ['HP の割合が0', 'Below0/Poison5'],
     ['周期スキル', 'Cycle2/Fire'],
     ['入れ子', 'First3/At2/Poison5'],
     ['ターン数が0', 'At0/Poison5'],

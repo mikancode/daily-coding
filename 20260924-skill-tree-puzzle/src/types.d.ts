@@ -52,9 +52,13 @@ export interface PoisonEffect {
   readonly damage: number;
 }
 
-/** 致死時。戦闘中に1回だけ、HP が0になるダメージを受けても HP 1 で踏みとどまる */
+/**
+ * 致死時。戦闘中に1回だけ、HP が0になるダメージを受けても HP を hp に戻す（最大 HP で頭打ち）。
+ * 根性は hp が 1、復活はそれより大きい。複数持っても使えるのは合わせて1回で、戻す HP は大きいほうになる
+ */
 export interface EndureEffect {
   readonly type: 'endure';
+  readonly hp: number;
 }
 
 /** 攻撃（通常攻撃の1発・反撃）を当てた直後。与えたダメージ × ratio を切り捨てて回復する。最大 HP は超えない */
@@ -111,13 +115,17 @@ export interface BurstEffect {
 /**
  * 時限能力の期間。ターン数は1から数える。
  * first：1〜turns ターン目。from：turn ターン目以降。at：turn ターン目だけ。
- * rotation：周期スキルとしてローテーションに入り、回ってきたターンから turns ターン。効いている間に再び回ってきたら張り直す
+ * rotation：周期スキルとしてローテーションに入り、回ってきたターンから turns ターン。効いている間に再び回ってきたら張り直す。
+ * hpAtMost：ダメージを受けた直後に HP が 最大 HP × ratio 以下になったら、それ以降ずっと。回復しても切れない。
+ * revived：根性・復活で踏みとどまったら、それ以降ずっと
  */
 export type TimedPeriod =
   | { readonly kind: 'first'; readonly turns: number }
   | { readonly kind: 'from'; readonly turn: number }
   | { readonly kind: 'at'; readonly turn: number }
-  | { readonly kind: 'rotation'; readonly turns: number };
+  | { readonly kind: 'rotation'; readonly turns: number }
+  | { readonly kind: 'hpAtMost'; readonly ratio: number }
+  | { readonly kind: 'revived' };
 
 /**
  * 時限能力で包める能力。途中で増減しても意味が通るものに絞る。
@@ -249,7 +257,7 @@ export interface CombatantProfile {
   ratio: number;
   conditionals: ConditionalEffect[];
   tempos: TempoEffect[];
-  /** rotation 以外の期間の時限能力。効いているかは戦闘中にターン数で決める */
+  /** rotation 以外の期間の時限能力。効いているかは戦闘中にターン数・HP・根性の発動で決める */
   timed: TimedEffect[];
   /** 周期スキルを、ローテーションの順に並べたもの。空なら毎ターン物理 */
   rotation: RotationSkill[];
@@ -257,7 +265,8 @@ export interface CombatantProfile {
   counter: number;
   regen: number;
   poison: number;
-  endure: boolean;
+  /** 根性・復活で戻す HP。0 なら持たない */
+  endureHp: number;
   /** 吸収の割合の合計。0 なら吸収しない */
   drain: number;
   rage: number;
@@ -283,7 +292,7 @@ export interface TargetChanges {
   readonly marks?: number;
 }
 
-/** actor は行動した側。HP は行動を受けた側（regen・endure・drain は自分）の残り */
+/** actor は行動した側。HP は行動を受けた側（regen・endure・drain は自分）の残り。endure の hp は戻したあとの HP */
 export type LogEntry =
   | {
       readonly type: 'hit';
@@ -417,9 +426,9 @@ export interface PeriodDefinition {
   /** 入力に書く語。英語名で、大文字小文字は区別しない */
   readonly name: string;
   readonly label: string;
-  /** 引数（ターン数）の規定値 */
-  readonly defaultTurns: number;
-  readonly build: (turns: number) => TimedPeriod;
+  /** 引数の並びと規定値。引数を取らない期間は空 */
+  readonly defaults: readonly number[];
+  readonly build: (...args: number[]) => TimedPeriod;
 }
 
 export type ParsedAbilities =

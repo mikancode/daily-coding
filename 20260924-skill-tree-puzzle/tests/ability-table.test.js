@@ -29,13 +29,22 @@ describe('timed', () => {
     assert.equal(timed(FIRST, { type: 'stat', stat: 'attack', amount: 5 }).type, 'timed');
   });
 
+  test('HP の条件・復活の期間でも包める', () => {
+    const poison = { type: 'poison', damage: 5 };
+    assert.equal(timed({ kind: 'hpAtMost', ratio: 0.5 }, poison).type, 'timed');
+    assert.equal(timed({ kind: 'revived' }, poison).type, 'timed');
+  });
+
   const invalidCases = [
     ['HP の加算', FIRST, { type: 'stat', stat: 'hp', amount: 10 }],
-    ['根性', FIRST, { type: 'endure' }],
+    ['根性', FIRST, { type: 'endure', hp: 1 }],
+    ['復活', FIRST, { type: 'endure', hp: 50 }],
     ['周期スキル', FIRST, { type: 'charge', perTurn: 0.5 }],
     ['入れ子', FIRST, { type: 'timed', period: FIRST, effect: { type: 'poison', damage: 5 } }],
     ['ターン数が0', { kind: 'at', turn: 0 }, { type: 'poison', damage: 5 }],
     ['ターン数が整数でない', { kind: 'rotation', turns: 1.5 }, { type: 'poison', damage: 5 }],
+    ['HP の割合が0', { kind: 'hpAtMost', ratio: 0 }, { type: 'poison', damage: 5 }],
+    ['HP の割合が1', { kind: 'hpAtMost', ratio: 1 }, { type: 'poison', damage: 5 }],
   ];
   for (const [label, period, effect] of invalidCases) {
     test(`包めないものは読み込み時の例外にする：${label}`, () => {

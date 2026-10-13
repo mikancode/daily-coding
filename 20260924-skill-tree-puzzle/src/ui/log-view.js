@@ -1,6 +1,7 @@
 // @ts-check
 // 戦闘ログと結果の表示。敵が複数なら敵ごとのタブで切り替える
 
+import { ENDURE_HP } from '../core/ability-table.js';
 import { formatBadgeLabel } from './ability-names.js';
 import { ELEMENT_NAMES } from './element-names.js';
 
@@ -89,10 +90,13 @@ function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
       return byPlayer
         ? `${entry.turn}T 再生で ${entry.amount} 回復（${playerHp(entry.hp)}）`
         : `${entry.turn}T ボスが再生で ${entry.amount} 回復（${bossHp(entry.hp)}）`;
-    case 'endure':
+    case 'endure': {
+      // 戻したあとの HP で呼び分ける。最大 HP の頭打ちで1に戻った復活も、働きは根性と同じなので根性と出す
+      const action = entry.hp === ENDURE_HP ? '根性で踏みとどまった' : '復活した';
       return byPlayer
-        ? `${entry.turn}T 根性で踏みとどまった（${playerHp(entry.hp)}）`
-        : `${entry.turn}T ボスが根性で踏みとどまった（${bossHp(entry.hp)}）`;
+        ? `${entry.turn}T ${action}（${playerHp(entry.hp)}）`
+        : `${entry.turn}T ボスが${action}（${bossHp(entry.hp)}）`;
+    }
     case 'timed':
       return byPlayer
         ? `${entry.turn}T ${formatBadgeLabel(entry.effect)}が${TIMED_STATES[entry.state]}`
