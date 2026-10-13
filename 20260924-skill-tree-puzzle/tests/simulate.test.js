@@ -759,6 +759,16 @@ describe('時限能力', () => {
     );
   });
 
+  test('HP の条件で効き始めた反撃は、条件を満たした1発には返さず、次の1発から返す', () => {
+    const build = [ORIGIN, node('multi', [{ type: 'multiHit', hits: 2, ratio: 1 }])];
+    const boss = sandbag({ hp: 20, abilities: [timed({ kind: 'hpAtMost', ratio: 0.5 }, { type: 'counter', damage: 7 })] });
+    const { log } = simulate(build, boss);
+    assert.deepEqual(
+      log.map((entry) => entry.type),
+      ['hit', 'timed', 'hit'],
+    );
+  });
+
   test('HP の条件は、一度満たしたら回復して HP が戻っても切れない', () => {
     const build = [ORIGIN, node('regen', [{ type: 'regen', amount: 60 }]), node('timed', [timed(BELOW_HALF, POISON)])];
     const { log } = simulate(build, sandbag({ attack: 60, turnLimit: 3 }));

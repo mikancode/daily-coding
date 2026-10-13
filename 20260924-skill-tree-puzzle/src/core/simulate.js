@@ -415,6 +415,8 @@ function act(attacker, defender, turn, log) {
       tempo *
       skillMultiplier;
     const damage = damageTaken(Math.floor(raw + FLOAT_TOLERANCE), defenseAgainst(attacker, defender));
+    // 反撃はこの1発への応答なので、この1発で効き始めた反撃は返さない（逆上と同じく、次の1発から効く）
+    const { counter } = defender.profile;
     const defeated = strike(attacker, defender, damage, turn, log, (targetHp, changes) => ({
       type: 'hit',
       actor: attacker.actor,
@@ -429,8 +431,8 @@ function act(attacker, defender, turn, log) {
       return true;
     }
 
-    if (defender.profile.counter > 0) {
-      const counterDamage = damageTaken(defender.profile.counter, defenseAgainst(defender, attacker));
+    if (counter > 0) {
+      const counterDamage = damageTaken(counter, defenseAgainst(defender, attacker));
       const counterDefeated = strike(defender, attacker, counterDamage, turn, log, (targetHp, changes) => ({
         type: 'counter',
         actor: defender.actor,
