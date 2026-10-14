@@ -128,8 +128,7 @@ README に「→ `app-project-name` に移行」の1行を残して辿れるよ�
 
 ## Issue
 
-節構成・各節の書き方はテンプレート（`.github/ISSUE_TEMPLATE/issue.md`）に従うが、
-個別リポジトリの運用に合わせたテンプレート変更は妨げない
+節構成・各節の書き方はテンプレート（`.github/ISSUE_TEMPLATE/issue.md`）に従う。
 
 ## 実装
 
@@ -160,10 +159,7 @@ README に「→ `app-project-name` に移行」の1行を残して辿れるよ�
 
 ## Pull Request
 
-節構成・各節の書き方はテンプレート（`.github/pull_request_template.md`）に従うが、
-個別リポジトリの運用に合わせたテンプレート変更は妨げない
-
-完了条件は Issue 側を原本とし、PR 本文へ転記しない。
+節構成・各節の書き方はテンプレート（`.github/pull_request_template.md`）に従う。
 
 ## レビューとマージ
 
