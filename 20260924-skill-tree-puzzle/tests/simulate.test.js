@@ -310,7 +310,7 @@ describe('能力を味方が持つ場合と敵が持つ場合', () => {
     assert.deepEqual(entriesOf(revive(500), 'player', 'endure'), [{ type: 'endure', actor: 'player', turn: 1, hp: 100 }]);
   });
 
-  test('endure：根性と復活を両方持っても使えるのは1回で、戻す HP は大きいほう', () => {
+  test('endure：根性と復活を両方持っても発動するのは1回で、戻す HP は大きいほう', () => {
     const both = node('both', [
       { type: 'endure', hp: 1 },
       { type: 'endure', hp: 30 },
@@ -683,9 +683,9 @@ describe('時限能力', () => {
   const timedLog = (log) => log.filter((entry) => entry.type === 'timed').map(({ turn, state }) => [turn, state]);
 
   const periodCases = [
-    ['最初の x ターンだけ効く', { kind: 'first', turns: 2 }, [1, 2], [[1, 'start'], [3, 'end']]],
-    ['x ターン目から効く', { kind: 'from', turn: 3 }, [3, 4, 5], [[3, 'start']]],
-    ['x ターン目にだけ効く', { kind: 'at', turn: 2 }, [2], [[2, 'start'], [3, 'end']]],
+    ['最初の x ターンだけ有効', { kind: 'first', turns: 2 }, [1, 2], [[1, 'start'], [3, 'end']]],
+    ['x ターン目から有効', { kind: 'from', turn: 3 }, [3, 4, 5], [[3, 'start']]],
+    ['x ターン目だけ有効', { kind: 'at', turn: 2 }, [2], [[2, 'start'], [3, 'end']]],
   ];
   for (const [label, period, poisonTurns, expectedLog] of periodCases) {
     test(label, () => {
@@ -695,7 +695,7 @@ describe('時限能力', () => {
     });
   }
 
-  test('ローテーションで回ってきたターンから x ターン効き、そのターンは物理で殴る', () => {
+  test('ローテーションで回ってきたターンから x ターン有効になり、そのターンは物理で殴る', () => {
     const build = [
       ORIGIN,
       node('fire', [{ type: 'element', element: 'fire' }]),
