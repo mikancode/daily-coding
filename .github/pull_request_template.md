@@ -1,4 +1,4 @@
-<!-- タイトルは `<type>: <概要>` の Conventional Commits 形式にする（主要 type: feat, fix, docs, style, refactor, test, chore） -->
+<!-- タイトルはコミットと同じ形式にする（`.github/CONTRIBUTING.md`「コミット」節） -->
 
 ## 概要
 
