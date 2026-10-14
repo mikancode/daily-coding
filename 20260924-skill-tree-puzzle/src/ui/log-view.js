@@ -21,7 +21,7 @@ const MULTIPLIER_DIGITS = 2;
 const formatMultiplier = (multiplier) => `${Number(multiplier.toFixed(MULTIPLIER_DIGITS))}倍`;
 
 /**
- * 攻撃の行に、掛かった好機の倍率と、受けた側の変わった状態を添える
+ * 攻撃の行に、有効だった好機の倍率と、受けた側の変わった状態を添える
  * @param {number | undefined} tempo
  * @param {TargetChanges | undefined} changes
  * @returns {string}

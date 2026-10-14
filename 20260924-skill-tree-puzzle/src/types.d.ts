@@ -301,7 +301,7 @@ export type LogEntry =
       readonly element: ElementId;
       readonly damage: number;
       readonly targetHp: number;
-      /** 好機の倍率。掛からなかったターンは持たない */
+      /** 好機の倍率。好機が有効でなかったターンは持たない */
       readonly tempo?: number;
       readonly changes?: TargetChanges;
     }

@@ -24,11 +24,11 @@ import { createEnemyProfile, createProfile, withEffects } from './profile.js';
 const DEFAULT_ELEMENT = 'physical';
 /** 軽減率を書いていない属性は軽減しない */
 const NO_REDUCTION = 0;
-/** 条件を満たさない、または conditional を取っていなければ倍率は掛からない */
+/** 背水が有効でなければ、乗算する倍率は 1 */
 const NEUTRAL_MULTIPLIER = 1;
 /**
- * 小数の誤差で、ダメージの floor が1つ下がったり、条件の境界ちょうどで倍率が掛からなかったりするのを防ぐ。
- * 例：100 × (1 − 0.9) は 9.999… になり floor すると 9 に、100 × 0.57 は 56.999… になり HP 57 で掛からない
+ * 小数の誤差で、ダメージの floor が1つ下がったり、条件の境界ちょうどで背水が有効にならなかったりするのを防ぐ。
+ * 例：100 × (1 − 0.9) は 9.999… になり floor すると 9 に、100 × 0.57 は 56.999… になり HP 57 で有効にならない
  */
 const FLOAT_TOLERANCE = 1e-9;
 

@@ -91,7 +91,7 @@ describe('ターンの流れ', () => {
     assert.deepEqual(types, ['hit', 'counter', 'hit', 'counter', 'hit', 'turnLimit']);
   });
 
-  test('multiHit を重ねると、回数と係数がそれぞれ掛け合わさる', () => {
+  test('multiHit を重ねると、回数と係数がそれぞれ乗算される', () => {
     const second = node('multi-hit-2', [{ type: 'multiHit', hits: 2, ratio: 0.5 }]);
     const outcome = simulate([ORIGIN, MULTI_HIT, second], challenge({ hp: 100, attack: 0, turnLimit: 1 }));
     const hits = outcome.log.filter((entry) => entry.type === 'hit' && entry.actor === 'player');
@@ -458,7 +458,7 @@ describe('攻撃を当てた・受けたときの能力', () => {
     );
   });
 
-  test('mark・burst：味方は刻印を付け、解放で全部消費して倍率を掛ける', () => {
+  test('mark・burst：味方は刻印を付け、解放で全部消費して倍率を乗算する', () => {
     const mark = node('mark', [{ type: 'mark', amount: 1 }]);
     const burst = node('burst', [{ type: 'burst', perMark: 0.5 }]);
     const outcome = simulate([ORIGIN, mark, ICE, burst], challenge({ hp: 1000, attack: 0, turnLimit: 4 }));
@@ -510,7 +510,7 @@ describe('攻撃を当てた・受けたときの能力', () => {
 });
 
 describe('倍率の能力', () => {
-  test('tempo：味方は倍数のターンだけ倍率が掛かる', () => {
+  test('tempo：味方は倍数のターンだけ有効になる', () => {
     const tempo = node('tempo', [{ type: 'tempo', every: 2, damageMultiplier: 3 }]);
     const outcome = simulate([ORIGIN, tempo], challenge({ hp: 1000, attack: 0, turnLimit: 4 }));
 
@@ -525,7 +525,7 @@ describe('倍率の能力', () => {
     );
   });
 
-  test('tempo：敵も倍数のターンだけ倍率が掛かり、反撃には掛からない', () => {
+  test('tempo：敵も倍数のターンだけ有効で、反撃には倍率を乗算しない', () => {
     const outcome = simulate(
       [ORIGIN],
       challenge({

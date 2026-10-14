@@ -17,7 +17,7 @@ const PERCENT = 100;
 const SINGLE_HIT = 1;
 
 /**
- * 1発の威力は丸めずに出す。判定の floor は軽減と条件の倍率を掛けたあとに行うので、
+ * 1発の威力は丸めずに出す。判定の floor は軽減と条件の倍率を乗算したあとに行うので、
  * ここで丸めるとログのダメージと合わなくなる
  * @param {CombatantProfile} profile
  * @returns {string}
