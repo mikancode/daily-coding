@@ -27,8 +27,8 @@ const NO_REDUCTION = 0;
 /** 条件を満たさない、または conditional を取っていなければ倍率は掛からない */
 const NEUTRAL_MULTIPLIER = 1;
 /**
- * 小数の誤差で、ダメージの floor が1つ下がったり、条件の境界ちょうどで発動しなかったりするのを防ぐ。
- * 例：100 × (1 − 0.9) は 9.999… になり floor すると 9 に、100 × 0.57 は 56.999… になり HP 57 で発動しない
+ * 小数の誤差で、ダメージの floor が1つ下がったり、条件の境界ちょうどで倍率が掛からなかったりするのを防ぐ。
+ * 例：100 × (1 − 0.9) は 9.999… になり floor すると 9 に、100 × 0.57 は 56.999… になり HP 57 で掛からない
  */
 const FLOAT_TOLERANCE = 1e-9;
 
@@ -85,7 +85,7 @@ function damageTaken(value, defense) {
 
 /**
  * 戦闘中に変わる状態。base は総当たりで使い回せるよう、戦闘中に書き換えない。
- * profile は、base にそのターンに効いている時限能力の中身を足したもの。時限能力が無ければ base そのもの
+ * profile は、base にそのターンに有効な時限能力の中身を足したもの。時限能力が無ければ base そのもの
  * @typedef {{
  *   actor: Actor,
  *   base: CombatantProfile,
@@ -158,7 +158,7 @@ function isTimedActive(period, turn, activatedAt) {
 }
 
 /**
- * 効いている時限能力の中身を base に足して、集計を作り直す
+ * 有効な時限能力の中身を base に足して、集計を作り直す
  * @param {Fighter} fighter
  */
 function refreshProfile(fighter) {
@@ -167,8 +167,8 @@ function refreshProfile(fighter) {
 }
 
 /**
- * ターン開始時に、時限能力が効いているかを決め直す。
- * ローテーションの時限能力は、回ってきたターンから効く。効いている間に再び回ってきたら、そのターンから数え直す。
+ * ターン開始時に、時限能力が有効かを決め直す。
+ * ローテーションの時限能力は、回ってきたターンから有効になる。有効な間に再び回ってきたら、そのターンから数え直す。
  * 効き方が変わったときだけ、そのターンの集計を作り直す
  * @param {Fighter} fighter
  * @param {number} turn
@@ -231,7 +231,7 @@ function defenseAgainst(attacker, target) {
  * HP を減らす処理はすべてここを通す。致死時の能力（根性・復活）を1か所で扱うため
  * @param {Fighter} target
  * @param {number} damage
- * @returns {boolean} 根性・復活で踏みとどまったら true
+ * @returns {boolean} 根性・復活が発動したら true
  */
 function takeDamage(target, damage) {
   target.hp = Math.max(0, target.hp - damage);
@@ -272,8 +272,8 @@ function meetsDamageCondition(period, fighter, endured) {
 }
 
 /**
- * ダメージを受けた直後の処理。根性・復活をログに出し、HP・復活の条件を満たした時限能力を効かせ始める。
- * 効き始めた能力は、同じターンの次の1発から効く。一度効き始めたら、回復しても切れない。
+ * ダメージを受けた直後の処理。根性・復活をログに出し、HP・復活の条件を満たした時限能力を有効にする。
+ * 有効になった能力は、同じターンの次の1発から効く。一度有効になったら、回復しても切れない。
  * HP が0で戦闘が終わるときは何もしない
  * @param {LogEntry[]} log
  * @param {Fighter} target
@@ -354,7 +354,7 @@ function strike(attacker, target, damage, turn, log, toEntry) {
 
 /**
  * ローテーションで今のターンの周期スキルを発動し、この行動の属性と倍率を決める。
- * 溜め・解放・時限能力のターンは物理で殴る。ローテーションの時限能力が効き始めるのはターン開始（updateTimed）で扱う
+ * 溜め・解放・時限能力のターンは物理で殴る。ローテーションの時限能力が有効になるのはターン開始（updateTimed）で扱う
  * @param {Fighter} attacker
  * @param {Fighter} defender
  * @param {number} turn
@@ -392,8 +392,8 @@ function useRotationSkill(attacker, defender, turn, log) {
 
 /**
  * 周期スキルを発動してから、連撃の回数だけ通常攻撃する。1発ごとに相手の反撃を受ける。
- * 連撃の回数は行動の最初に決め、途中で時限能力が効き始めても変えない。
- * 威力・防御・反撃は1発ごとに今の集計を読むので、効き始めた能力は次の1発から効く
+ * 連撃の回数は行動の最初に決め、途中で時限能力が有効になっても変えない。
+ * 威力・防御・反撃は1発ごとに今の集計を読むので、有効になった能力は次の1発から効く
  * @param {Fighter} attacker
  * @param {Fighter} defender
  * @param {number} turn
@@ -415,7 +415,7 @@ function act(attacker, defender, turn, log) {
       tempo *
       skillMultiplier;
     const damage = damageTaken(Math.floor(raw + FLOAT_TOLERANCE), defenseAgainst(attacker, defender));
-    // 反撃はこの1発への応答なので、この1発で効き始めた反撃は返さない（逆上と同じく、次の1発から効く）
+    // 反撃はこの1発への応答なので、この1発で有効になった反撃は返さない（逆上と同じく、次の1発から効く）
     const { counter } = defender.profile;
     const defeated = strike(attacker, defender, damage, turn, log, (targetHp, changes) => ({
       type: 'hit',

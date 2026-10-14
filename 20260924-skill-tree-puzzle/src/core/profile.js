@@ -79,7 +79,7 @@ function applyEffect(profile, effect) {
       profile.poison += effect.damage;
       break;
     case 'endure':
-      // 根性と復活は合わせて1回しか使えないので、戻す HP の大きいほうだけが効く
+      // 根性と復活は合わせて1回しか発動しないので、戻す HP の大きいほうだけが効く
       profile.endureHp = Math.max(profile.endureHp, effect.hp);
       break;
     case 'drain':
@@ -109,7 +109,7 @@ function applyEffect(profile, effect) {
 
 /**
  * base に effects を足した集計を、新しく作って返す。base は書き換えない。
- * 戦闘中に、そのターンに効いている時限能力の中身を足すのに使う
+ * 戦闘中に、そのターンに有効な時限能力の中身を足すのに使う
  * @param {CombatantProfile} base
  * @param {readonly Effect[]} effects
  * @returns {CombatantProfile}

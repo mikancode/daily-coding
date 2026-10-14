@@ -83,17 +83,17 @@ function formatPeriod(period) {
 function describePeriod(period) {
   switch (period.kind) {
     case 'first':
-      return `最初の ${period.turns} ターンだけ効く。`;
+      return `最初の ${period.turns} ターンだけ有効。`;
     case 'from':
-      return `${period.turn} ターン目から効く。`;
+      return `${period.turn} ターン目から有効。`;
     case 'at':
-      return `${period.turn} ターン目にだけ効く。`;
+      return `${period.turn} ターン目だけ有効。`;
     case 'rotation':
-      return `周期スキル。回ってきたターンは物理で攻撃し、そのターンから ${period.turns} ターン効く。効いている間に再び回ってきたら、そこから数え直す。`;
+      return `周期スキル。回ってきたターンは物理で攻撃し、そのターンから ${period.turns} ターン有効。有効な間に再び回ってきたら、そこから数え直す。`;
     case 'hpAtMost':
-      return `HP が最大 HP の ${Math.round(period.ratio * PERCENT)}% 以下になったら効き始め、回復しても切れない。`;
+      return `HP が最大 HP の ${Math.round(period.ratio * PERCENT)}% 以下になったら有効になり、回復しても切れない。`;
     case 'revived':
-      return '根性・復活で踏みとどまったら効き始める。';
+      return '根性・復活が発動したら有効になる。';
   }
 }
 
@@ -235,7 +235,7 @@ export function describeEffect(effect) {
     case 'mark':
       return `攻撃を当てるたびに、相手に刻印を ${effect.amount} 付ける`;
     case 'burst':
-      return `周期スキル。回ってきたターンは物理で攻撃し、相手の刻印を全部使って、1つにつき与えるダメージ +${effect.perMark} 倍`;
+      return `周期スキル。回ってきたターンは物理で攻撃し、相手の刻印を全部消費して、1つにつき与えるダメージ +${effect.perMark} 倍`;
     case 'timed':
       return `${describePeriod(effect.period)}${describeEffect(effect.effect)}`;
   }

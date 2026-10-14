@@ -54,7 +54,7 @@ export interface PoisonEffect {
 
 /**
  * 致死時。戦闘中に1回だけ、HP が0になるダメージを受けても HP を hp に戻す（最大 HP で頭打ち）。
- * 根性は hp が 1、復活はそれより大きい。複数持っても使えるのは合わせて1回で、戻す HP は大きいほうになる
+ * 根性は hp が 1、復活はそれより大きい。複数持っても発動するのは合わせて1回で、戻す HP は大きいほうになる
  */
 export interface EndureEffect {
   readonly type: 'endure';
@@ -106,7 +106,7 @@ export interface MarkEffect {
   readonly amount: number;
 }
 
-/** 周期スキル。回ってきたターンは物理で殴り、相手の刻印を全部使って、通常攻撃の与ダメージを 1 + perMark × 使った数 倍にする */
+/** 周期スキル。回ってきたターンは物理で殴り、相手の刻印を全部消費して、通常攻撃の与ダメージを 1 + perMark × 消費した数 倍にする */
 export interface BurstEffect {
   readonly type: 'burst';
   readonly perMark: number;
@@ -115,9 +115,9 @@ export interface BurstEffect {
 /**
  * 時限能力の期間。ターン数は1から数える。
  * first：1〜turns ターン目。from：turn ターン目以降。at：turn ターン目だけ。
- * rotation：周期スキルとしてローテーションに入り、回ってきたターンから turns ターン。効いている間に再び回ってきたら張り直す。
+ * rotation：周期スキルとしてローテーションに入り、回ってきたターンから turns ターン。有効な間に再び回ってきたら再発動する。
  * hpAtMost：ダメージを受けた直後に HP が 最大 HP × ratio 以下になったら、それ以降ずっと。回復しても切れない。
- * revived：根性・復活で踏みとどまったら、それ以降ずっと
+ * revived：根性・復活が発動したら、それ以降ずっと
  */
 export type TimedPeriod =
   | { readonly kind: 'first'; readonly turns: number }
@@ -257,7 +257,7 @@ export interface CombatantProfile {
   ratio: number;
   conditionals: ConditionalEffect[];
   tempos: TempoEffect[];
-  /** rotation 以外の期間の時限能力。効いているかは戦闘中にターン数・HP・根性の発動で決める */
+  /** rotation 以外の期間の時限能力。有効かは戦闘中にターン数・HP・根性と復活の発動で決める */
   timed: TimedEffect[];
   /** 周期スキルを、ローテーションの順に並べたもの。空なら毎ターン物理 */
   rotation: RotationSkill[];
@@ -324,7 +324,7 @@ export type LogEntry =
       readonly actor: Actor;
       readonly turn: number;
       readonly effect: TimedEffect;
-      /** start：効き始めた。renew：効いている間に再び回ってきて張り直した。end：このターンから切れた */
+      /** start：有効になった。renew：有効な間に再び回ってきて再発動した。end：このターンから切れた */
       readonly state: 'start' | 'renew' | 'end';
     }
   | { readonly type: 'turnLimit'; readonly turn: number };
