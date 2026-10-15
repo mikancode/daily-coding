@@ -336,17 +336,26 @@ function afterDamage(log, target, turn, endured) {
 }
 
 /**
- * 攻撃が当たった直後に、受けた側の状態を変える（逆上・破甲・刻印）。
- * 刻印が増えると縛陣・砕陣で攻撃・防御も変わるので、全部変えてから、変わった値を読む
+ * 攻撃が当たった直後に、受けた側の状態を変える（逆上・破甲・刻印）
+ * @param {Fighter} attacker
+ * @param {Fighter} target
+ */
+function applyStrikeEffects(attacker, target) {
+  target.attackBonus += target.profile.rage;
+  target.defenseDown += attacker.profile.armorBreak;
+  target.marks += attacker.profile.mark;
+}
+
+/**
+ * applyStrikeEffects で変わった、受けた側の状態を読む。
+ * 刻印が増えると縛陣・砕陣（刻印の数の期間で有効になったものも含む）で攻撃・防御も変わるので、
+ * 刻印の数の期間を決め直したあとに呼ぶ
  * @param {Fighter} attacker
  * @param {Fighter} target
  * @returns {TargetChanges | undefined} 何も変わらなければ undefined
  */
-function applyStrikeEffects(attacker, target) {
+function readStrikeChanges(attacker, target) {
   const marked = attacker.profile.mark > 0;
-  target.attackBonus += target.profile.rage;
-  target.defenseDown += attacker.profile.armorBreak;
-  target.marks += attacker.profile.mark;
   /** @type {{ attack?: number, defense?: number, marks?: number }} */
   const changes = {};
   if (target.profile.rage > 0 || (marked && attacker.profile.markAttackDown > 0)) {
@@ -375,15 +384,21 @@ function applyStrikeEffects(attacker, target) {
  */
 function strike(attacker, target, damage, turn, log, toEntry) {
   const endured = takeDamage(target, damage);
-  const changes = target.hp === 0 ? undefined : applyStrikeEffects(attacker, target);
-  log.push(toEntry(target.hp, changes));
-  afterDamage(log, target, turn, endured);
   if (target.hp === 0) {
+    log.push(toEntry(target.hp, undefined));
+    afterDamage(log, target, turn, endured);
     return true;
   }
-  if (changes?.marks !== undefined) {
-    updateMarkTimed(attacker, target, turn, log);
+  applyStrikeEffects(attacker, target);
+  // 刻印の数の期間の切り替えは、この1発の行のあとに出す。ただし行に添える ATK・DEF は、切り替えたあとの値にする
+  /** @type {LogEntry[]} */
+  const markTimedLog = [];
+  if (attacker.profile.mark > 0) {
+    updateMarkTimed(attacker, target, turn, markTimedLog);
   }
+  log.push(toEntry(target.hp, readStrikeChanges(attacker, target)));
+  afterDamage(log, target, turn, endured);
+  log.push(...markTimedLog);
   const drained = heal(attacker, Math.floor(damage * attacker.profile.drain + FLOAT_TOLERANCE));
   if (drained > 0) {
     log.push({ type: 'drain', actor: attacker.actor, turn, amount: drained, hp: attacker.hp });

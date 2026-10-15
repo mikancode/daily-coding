@@ -969,6 +969,16 @@ describe('刻印の使い道', () => {
     assert.deepEqual(damagesOf(outcome, 'player'), [6, 11, 8, 16]);
   });
 
+  test('刻印の数の期間で有効になった砕陣は、有効にした1発の行に下がった DEF を添える', () => {
+    const marked = timed({ kind: 'marksAtLeast', count: 2 }, markScaling('defenseDown', 2));
+    const outcome = simulate([ORIGIN, MARK, node('marked', [marked])], sandbag({ defense: 5, turnLimit: 2 }));
+
+    assert.deepEqual(
+      entriesOf(outcome, 'player', 'hit').map((entry) => entry.changes),
+      [{ marks: 1 }, { defense: 1, marks: 2 }],
+    );
+  });
+
   test('砕陣：敵も味方の防御を下げ、0 未満にはしない', () => {
     const outcome = simulate(
       [ORIGIN, node('def', [{ type: 'stat', stat: 'defense', amount: 3 }])],
