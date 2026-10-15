@@ -37,6 +37,9 @@ function emptyProfile(resistances) {
     pierce: false,
     armorBreak: 0,
     mark: 0,
+    markPoison: 0,
+    markAttackDown: 0,
+    markDefenseDown: 0,
     resistances,
   };
 }
@@ -96,6 +99,11 @@ function applyEffect(profile, effect) {
       break;
     case 'mark':
       profile.mark += effect.amount;
+      break;
+    case 'markScaling':
+      if (effect.target === 'poison') profile.markPoison += effect.perMark;
+      if (effect.target === 'attackDown') profile.markAttackDown += effect.perMark;
+      if (effect.target === 'defenseDown') profile.markDefenseDown += effect.perMark;
       break;
     case 'timed':
       if (effect.period.kind === 'rotation') {

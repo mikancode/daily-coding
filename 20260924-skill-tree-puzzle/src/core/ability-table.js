@@ -4,6 +4,7 @@
 /**
  * @typedef {import('../types.js').AbilityDefinition} AbilityDefinition
  * @typedef {import('../types.js').Effect} Effect
+ * @typedef {import('../types.js').MarkScalingTarget} MarkScalingTarget
  * @typedef {import('../types.js').PeriodDefinition} PeriodDefinition
  * @typedef {import('../types.js').TimedEffect} TimedEffect
  * @typedef {import('../types.js').TimedPeriod} TimedPeriod
@@ -34,6 +35,19 @@ const elementAbility = (name, label, element) => ({
   group: 'element',
   defaults: [],
   build: () => ({ type: 'element', element }),
+});
+
+/**
+ * 表の引数は数値だけなので、刻印で強まる能力は target ごとに1行ずつ置き、型は1つで共有する
+ * @param {string} name @param {string} label @param {MarkScalingTarget} target @param {number} perMark
+ * @returns {AbilityDefinition}
+ */
+const markScalingAbility = (name, label, target, perMark) => ({
+  name,
+  label,
+  group: 'ability',
+  defaults: [perMark],
+  build: (amount) => ({ type: 'markScaling', target, perMark: amount }),
 });
 
 /**
@@ -143,9 +157,13 @@ export const ABILITIES = [
     name: 'Burst',
     label: '解放',
     group: 'ability',
-    defaults: [0.2],
-    build: (perMark) => ({ type: 'burst', perMark }),
+    defaults: [0.2, 0.5],
+    check: ([, ratio]) => (ratio > 0 && ratio <= 1 ? null : '解放で使う割合は0より大きく1以下にしてください'),
+    build: (perMark, ratio) => ({ type: 'burst', perMark, ratio }),
   },
+  markScalingAbility('MarkPoison', '呪陣', 'poison', 2),
+  markScalingAbility('MarkAtkDown', '縛陣', 'attackDown', 1),
+  markScalingAbility('MarkDefDown', '砕陣', 'defenseDown', 1),
   elementAbility('Physical', '物理', 'physical'),
   elementAbility('Fire', '炎', 'fire'),
   elementAbility('Ice', '氷', 'ice'),
@@ -238,6 +256,7 @@ export const PERIODS = [
   { name: 'Cycle', label: '周期でxT', defaults: [2], build: (turns) => ({ kind: 'rotation', turns }) },
   { name: 'Below', label: 'HPx%以下', defaults: [0.5], build: (ratio) => ({ kind: 'hpAtMost', ratio }) },
   { name: 'Revived', label: '復活後', defaults: [], build: () => ({ kind: 'revived' }) },
+  { name: 'Marked', label: '印x個以上', defaults: [3], build: (count) => ({ kind: 'marksAtLeast', count }) },
 ];
 
 /**
@@ -275,6 +294,8 @@ function checkPeriod(period) {
       return period.ratio > 0 && period.ratio < 1 ? null : '期間の HP の割合は0より大きく1より小さくしてください';
     case 'revived':
       return null;
+    case 'marksAtLeast':
+      return Number.isInteger(period.count) && period.count >= 1 ? null : '期間の刻印の数は1以上の整数にしてください';
   }
 }
 
@@ -316,6 +337,7 @@ export function wrapTimed(period, effect) {
     case 'pierce':
     case 'armorBreak':
     case 'mark':
+    case 'markScaling':
       return { effect: { type: 'timed', period, effect } };
   }
 }

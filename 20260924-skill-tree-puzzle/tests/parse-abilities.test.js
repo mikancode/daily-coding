@@ -69,7 +69,7 @@ describe('createProfile との組み合わせ', () => {
       { type: 'element', element: 'ice' },
       { type: 'charge', perTurn: 0.5 },
       { type: 'element', element: 'fire' },
-      { type: 'burst', perMark: 0.2 },
+      { type: 'burst', perMark: 0.2, ratio: 0.5 },
     ]);
   });
 });

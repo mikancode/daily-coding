@@ -106,9 +106,26 @@ export interface MarkEffect {
   readonly amount: number;
 }
 
-/** 周期スキル。回ってきたターンは物理で殴り、相手の刻印を全部消費して、通常攻撃の与ダメージを 1 + perMark × 消費した数 倍にする */
+/**
+ * 周期スキル。回ってきたターンは物理で殴り、相手の刻印を 刻印の数 × ratio（切り捨て）だけ消費して、
+ * 通常攻撃の与ダメージを 1 + perMark × 消費した数 倍にする。ratio が 1 なら全部消費する
+ */
 export interface BurstEffect {
   readonly type: 'burst';
+  readonly perMark: number;
+  readonly ratio: number;
+}
+
+/** 刻印で強まる能力が、相手の何を変えるか */
+export type MarkScalingTarget = 'poison' | 'attackDown' | 'defenseDown';
+
+/**
+ * 相手の刻印1つにつき、target を perMark だけ効かせる。効く量はその時点の刻印の数で決まり、刻印が減れば戻る。
+ * poison：ターン終了時に、防御を無視したダメージを与える。attackDown・defenseDown：相手の攻撃・防御を下げる。0 未満にはしない
+ */
+export interface MarkScalingEffect {
+  readonly type: 'markScaling';
+  readonly target: MarkScalingTarget;
   readonly perMark: number;
 }
 
@@ -117,7 +134,8 @@ export interface BurstEffect {
  * first：1〜turns ターン目。from：turn ターン目以降。at：turn ターン目だけ。
  * rotation：周期スキルとしてローテーションに入り、回ってきたターンから turns ターン。有効な間に再び回ってきたら再発動する。
  * hpAtMost：ダメージを受けた直後に HP が 最大 HP × ratio 以下になったら、それ以降ずっと。回復しても切れない。
- * revived：根性・復活が発動したら、それ以降ずっと
+ * revived：根性・復活が発動したら、それ以降ずっと。
+ * marksAtLeast：相手の刻印が count 個以上の間だけ。刻印が変わった直後に判定し、下回ったら切れる
  */
 export type TimedPeriod =
   | { readonly kind: 'first'; readonly turns: number }
@@ -125,7 +143,8 @@ export type TimedPeriod =
   | { readonly kind: 'at'; readonly turn: number }
   | { readonly kind: 'rotation'; readonly turns: number }
   | { readonly kind: 'hpAtMost'; readonly ratio: number }
-  | { readonly kind: 'revived' };
+  | { readonly kind: 'revived' }
+  | { readonly kind: 'marksAtLeast'; readonly count: number };
 
 /**
  * 時限能力で包める能力。途中で増減しても意味が通るものに絞る。
@@ -143,7 +162,8 @@ export type TimedInnerEffect =
   | RageEffect
   | PierceEffect
   | ArmorBreakEffect
-  | MarkEffect;
+  | MarkEffect
+  | MarkScalingEffect;
 
 /** 期間の間だけ effect が効く。作るときは wrapTimed / timed を通す */
 export interface TimedEffect {
@@ -172,6 +192,7 @@ export type Effect =
   | TempoEffect
   | ChargeEffect
   | MarkEffect
+  | MarkScalingEffect
   | BurstEffect
   | TimedEffect;
 
@@ -273,6 +294,12 @@ export interface CombatantProfile {
   pierce: boolean;
   armorBreak: number;
   mark: number;
+  /** 相手の刻印1つあたりの毒のダメージ */
+  markPoison: number;
+  /** 相手の刻印1つあたりに下げる、相手の攻撃 */
+  markAttackDown: number;
+  /** 相手の刻印1つあたりに下げる、相手の防御 */
+  markDefenseDown: number;
   /** 味方は属性の軽減を持たないので空 */
   resistances: Readonly<Partial<Record<ElementId, number>>>;
 }
@@ -315,8 +342,25 @@ export type LogEntry =
     }
   | { readonly type: 'drain'; readonly actor: Actor; readonly turn: number; readonly amount: number; readonly hp: number }
   | { readonly type: 'charge'; readonly actor: Actor; readonly turn: number; readonly multiplier: number }
-  | { readonly type: 'burst'; readonly actor: Actor; readonly turn: number; readonly marks: number; readonly multiplier: number }
-  | { readonly type: 'poison'; readonly actor: Actor; readonly turn: number; readonly damage: number; readonly targetHp: number }
+  | {
+      readonly type: 'burst';
+      readonly actor: Actor;
+      readonly turn: number;
+      /** 消費した刻印の数 */
+      readonly marks: number;
+      /** 消費したあとに残った刻印の数 */
+      readonly remaining: number;
+      readonly multiplier: number;
+    }
+  | {
+      readonly type: 'poison';
+      readonly actor: Actor;
+      readonly turn: number;
+      readonly damage: number;
+      readonly targetHp: number;
+      /** 刻印で強まる毒が乗ったときの、相手の刻印の数。乗らなかったときは持たない */
+      readonly marks?: number;
+    }
   | { readonly type: 'regen'; readonly actor: Actor; readonly turn: number; readonly amount: number; readonly hp: number }
   | { readonly type: 'endure'; readonly actor: Actor; readonly turn: number; readonly hp: number }
   | {

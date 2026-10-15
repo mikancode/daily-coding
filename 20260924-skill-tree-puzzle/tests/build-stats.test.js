@@ -38,7 +38,7 @@ describe('buildStatsBadges', () => {
       ORIGIN,
       node('charge', [{ type: 'charge', perTurn: 0.5 }]),
       node('ice', [{ type: 'element', element: 'ice' }]),
-      node('burst', [{ type: 'burst', perMark: 0.2 }]),
+      node('burst', [{ type: 'burst', perMark: 0.2, ratio: 1 }]),
       node('last-stand', [{ type: 'conditional', hpRatioAtMost: 0.5, damageMultiplier: 2 }]),
       node('tempo', [{ type: 'tempo', every: 2, damageMultiplier: 2 }]),
       node('drain', [{ type: 'drain', ratio: 0.5 }]),

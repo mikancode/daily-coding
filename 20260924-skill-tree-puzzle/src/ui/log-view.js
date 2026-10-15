@@ -29,8 +29,8 @@ const formatMultiplier = (multiplier) => `${Number(multiplier.toFixed(MULTIPLIER
 function formatAddenda(tempo, changes) {
   const parts = [
     ...(tempo === undefined ? [] : [`好機で${formatMultiplier(tempo)}`]),
-    ...(changes?.attack === undefined ? [] : [`逆上で ATK ${changes.attack}`]),
-    ...(changes?.defense === undefined ? [] : [`破甲で DEF ${changes.defense}`]),
+    ...(changes?.attack === undefined ? [] : [`ATK ${changes.attack}`]),
+    ...(changes?.defense === undefined ? [] : [`DEF ${changes.defense}`]),
     ...(changes?.marks === undefined ? [] : [`刻印 ${changes.marks}`]),
   ];
   return parts.length === 0 ? '' : ` ／ ${parts.join('・')}`;
@@ -80,12 +80,14 @@ function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
         : `${entry.turn}T ボスが溜めを放った（与ダメージ${formatMultiplier(entry.multiplier)}）`;
     case 'burst':
       return byPlayer
-        ? `${entry.turn}T 刻印 ${entry.marks} を解放（与ダメージ${formatMultiplier(entry.multiplier)}）`
-        : `${entry.turn}T ボスが刻印 ${entry.marks} を解放（与ダメージ${formatMultiplier(entry.multiplier)}）`;
-    case 'poison':
+        ? `${entry.turn}T 刻印 ${entry.marks} を解放（与ダメージ${formatMultiplier(entry.multiplier)}・残り ${entry.remaining}）`
+        : `${entry.turn}T ボスが刻印 ${entry.marks} を解放（与ダメージ${formatMultiplier(entry.multiplier)}・残り ${entry.remaining}）`;
+    case 'poison': {
+      const marks = entry.marks === undefined ? '' : ` ／ 刻印 ${entry.marks}`;
       return byPlayer
-        ? `${entry.turn}T 毒でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
-        : `${entry.turn}T ボスの毒で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`;
+        ? `${entry.turn}T 毒でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）${marks}`
+        : `${entry.turn}T ボスの毒で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）${marks}`;
+    }
     case 'regen':
       return byPlayer
         ? `${entry.turn}T 再生で ${entry.amount} 回復（${playerHp(entry.hp)}）`
