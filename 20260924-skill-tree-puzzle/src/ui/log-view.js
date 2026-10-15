@@ -22,13 +22,30 @@ const MULTIPLIER_DIGITS = 2;
 const formatMultiplier = (multiplier) => `${Number(multiplier.toFixed(MULTIPLIER_DIGITS))}倍`;
 
 /**
- * 合計のあとに、ベースの値と増減の内訳を添える。例：`11(10+3-2)`。増減が無ければ合計だけ
- * @param {StatBreakdown} stat
- * @returns {string}
+ * ログの1行を組み立てる断片。増減の部分だけ、味方にとって有利か不利かを持たせて色を付ける
+ * @typedef {string | { readonly text: string, readonly favor: 'good' | 'bad' }} Segment
  */
-function formatBreakdown({ value, base, up, down }) {
-  const parts = [`${base}`, ...(up > 0 ? [`+${up}`] : []), ...(down > 0 ? [`-${down}`] : [])];
-  return parts.length === 1 ? `${value}` : `${value}(${parts.join('')})`;
+
+/** @param {string} text @param {boolean} good @returns {Segment} */
+const delta = (text, good) => ({ text, favor: good ? 'good' : 'bad' });
+
+/**
+ * 合計のあとに、ベースの値と増減の内訳を添える。例：`11(10+3-2)`。増減が無ければ合計だけ。
+ * ATK・DEF は増えると受けた側に有利なので、受けた側が味方なら増を有利、ボスなら減を有利とする
+ * @param {StatBreakdown} stat
+ * @param {boolean} targetIsPlayer
+ * @returns {Segment[]}
+ */
+function formatBreakdown({ value, base, up, down }, targetIsPlayer) {
+  if (up === 0 && down === 0) {
+    return [`${value}`];
+  }
+  return [
+    `${value}(${base}`,
+    ...(up > 0 ? [delta(`+${up}`, targetIsPlayer)] : []),
+    ...(down > 0 ? [delta(`-${down}`, !targetIsPlayer)] : []),
+    ')',
+  ];
 }
 
 /** @param {number} before @param {number} after @returns {string} */
@@ -42,18 +59,24 @@ const formatMarkChange = (before, after) => `${before}→${after}`;
 const formatDetail = (parts) => (parts.length === 0 ? '' : ` | ${parts.join(', ')}`);
 
 /**
- * 攻撃の行に、有効だった好機の倍率と、受けた側の変わった状態を添える
+ * 攻撃の行に、有効だった好機の倍率と、受けた側の変わった状態を添える。
+ * 刻印は付いた側に不利なので、受けた側がボスなら有利とする
  * @param {number | undefined} tempo
  * @param {TargetChanges | undefined} changes
- * @returns {string}
+ * @param {boolean} targetIsPlayer
+ * @returns {Segment[]}
  */
-function formatAddenda(tempo, changes) {
-  return formatDetail([
-    ...(tempo === undefined ? [] : [`好機で${formatMultiplier(tempo)}`]),
-    ...(changes?.attack === undefined ? [] : [`ATK${formatBreakdown(changes.attack)}`]),
-    ...(changes?.defense === undefined ? [] : [`DEF${formatBreakdown(changes.defense)}`]),
-    ...(changes?.marks === undefined ? [] : [`刻印${formatMarkChange(changes.marks.before, changes.marks.after)}`]),
-  ]);
+function formatAddenda(tempo, changes, targetIsPlayer) {
+  /** @type {Segment[][]} */
+  const parts = [
+    ...(tempo === undefined ? [] : [[`好機で${formatMultiplier(tempo)}`]]),
+    ...(changes?.attack === undefined ? [] : [['ATK', ...formatBreakdown(changes.attack, targetIsPlayer)]]),
+    ...(changes?.defense === undefined ? [] : [['DEF', ...formatBreakdown(changes.defense, targetIsPlayer)]]),
+    ...(changes?.marks === undefined
+      ? []
+      : [['刻印', delta(formatMarkChange(changes.marks.before, changes.marks.after), !targetIsPlayer)]]),
+  ];
+  return parts.flatMap((part, index) => [index === 0 ? ' | ' : ', ', ...part]);
 }
 
 /** @type {Readonly<Record<'start' | 'renew' | 'end', string>>} */
@@ -70,9 +93,9 @@ const LOSE_REASONS = {
  * 1行の幅を抑えるため、かっこ・区切りは半角にし、数値の前後に空白を入れない
  * @param {LogEntry} entry
  * @param {SimulationSummary} summary
- * @returns {string}
+ * @returns {Segment[]}
  */
-function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
+export function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
   /** 変化の前後と最大を、敵と味方で同じ形で出す。例：`HP43→33/160` */
   const hpChange = (/** @type {number} */ before, /** @type {number} */ after, /** @type {number} */ max) =>
     `HP${before}→${after}/${max}`;
@@ -81,30 +104,34 @@ function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
   const byPlayer = entry.type !== 'turnLimit' && entry.actor === 'player';
   switch (entry.type) {
     case 'hit':
-      return (
-        (byPlayer
+      return [
+        byPlayer
           ? `${entry.turn}T ${ELEMENT_NAMES[entry.element]}で${entry.damage}ダメージ(${bossHp(entry.targetHpBefore, entry.targetHp)})`
-          : `${entry.turn}T ボスの${ELEMENT_NAMES[entry.element]}攻撃で${entry.damage}ダメージ受けた(${playerHp(entry.targetHpBefore, entry.targetHp)})`) +
-        formatAddenda(entry.tempo, entry.changes)
-      );
+          : `${entry.turn}T ボスの${ELEMENT_NAMES[entry.element]}攻撃で${entry.damage}ダメージ受けた(${playerHp(entry.targetHpBefore, entry.targetHp)})`,
+        ...formatAddenda(entry.tempo, entry.changes, !byPlayer),
+      ];
     case 'counter':
-      return (
-        (byPlayer
+      return [
+        byPlayer
           ? `${entry.turn}T 反撃でボスに${entry.damage}ダメージ(${bossHp(entry.targetHpBefore, entry.targetHp)})`
-          : `${entry.turn}T 反撃で${entry.damage}ダメージ受けた(${playerHp(entry.targetHpBefore, entry.targetHp)})`) +
-        formatAddenda(undefined, entry.changes)
-      );
+          : `${entry.turn}T 反撃で${entry.damage}ダメージ受けた(${playerHp(entry.targetHpBefore, entry.targetHp)})`,
+        ...formatAddenda(undefined, entry.changes, !byPlayer),
+      ];
     case 'drain':
-      return byPlayer
-        ? `${entry.turn}T 吸収で${entry.amount}回復(${playerHp(entry.hp - entry.amount, entry.hp)})`
-        : `${entry.turn}T ボスが吸収で${entry.amount}回復(${bossHp(entry.hp - entry.amount, entry.hp)})`;
+      return [
+        byPlayer
+          ? `${entry.turn}T 吸収で${entry.amount}回復(${playerHp(entry.hp - entry.amount, entry.hp)})`
+          : `${entry.turn}T ボスが吸収で${entry.amount}回復(${bossHp(entry.hp - entry.amount, entry.hp)})`,
+      ];
     case 'charge':
-      return byPlayer
-        ? `${entry.turn}T 溜めを放った(与ダメージ${formatMultiplier(entry.multiplier)})`
-        : `${entry.turn}T ボスが溜めを放った(与ダメージ${formatMultiplier(entry.multiplier)})`;
+      return [
+        byPlayer
+          ? `${entry.turn}T 溜めを放った(与ダメージ${formatMultiplier(entry.multiplier)})`
+          : `${entry.turn}T ボスが溜めを放った(与ダメージ${formatMultiplier(entry.multiplier)})`,
+      ];
     case 'burst': {
       const detail = `${formatMarkChange(entry.marks + entry.remaining, entry.remaining)}, 与ダメージ${formatMultiplier(entry.multiplier)}`;
-      return byPlayer ? `${entry.turn}T 刻印を解放(${detail})` : `${entry.turn}T ボスが刻印を解放(${detail})`;
+      return [byPlayer ? `${entry.turn}T 刻印を解放(${detail})` : `${entry.turn}T ボスが刻印を解放(${detail})`];
     }
     case 'poison': {
       // 呪陣が乗ったら、毒のぶんと呪陣のぶんを分けて添える
@@ -112,27 +139,35 @@ function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
         entry.markDamage === undefined || entry.marks === undefined
           ? ''
           : formatDetail([`${entry.damage - entry.markDamage}+呪陣${entry.markDamage}(刻印${entry.marks})`]);
-      return byPlayer
-        ? `${entry.turn}T 毒でボスに${entry.damage}ダメージ(${bossHp(entry.targetHpBefore, entry.targetHp)})${detail}`
-        : `${entry.turn}T ボスの毒で${entry.damage}ダメージ受けた(${playerHp(entry.targetHpBefore, entry.targetHp)})${detail}`;
+      return [
+        byPlayer
+          ? `${entry.turn}T 毒でボスに${entry.damage}ダメージ(${bossHp(entry.targetHpBefore, entry.targetHp)})${detail}`
+          : `${entry.turn}T ボスの毒で${entry.damage}ダメージ受けた(${playerHp(entry.targetHpBefore, entry.targetHp)})${detail}`,
+      ];
     }
     case 'regen':
-      return byPlayer
-        ? `${entry.turn}T 再生で${entry.amount}回復(${playerHp(entry.hp - entry.amount, entry.hp)})`
-        : `${entry.turn}T ボスが再生で${entry.amount}回復(${bossHp(entry.hp - entry.amount, entry.hp)})`;
+      return [
+        byPlayer
+          ? `${entry.turn}T 再生で${entry.amount}回復(${playerHp(entry.hp - entry.amount, entry.hp)})`
+          : `${entry.turn}T ボスが再生で${entry.amount}回復(${bossHp(entry.hp - entry.amount, entry.hp)})`,
+      ];
     case 'endure': {
       // 戻したあとの HP で呼び分ける。最大 HP の頭打ちで1に戻った復活も、働きは根性と同じなので根性と出す
       const name = entry.hp === ENDURE_HP ? '根性' : '復活';
-      return byPlayer
-        ? `${entry.turn}T ${name}が発動した(${playerHp(0, entry.hp)})`
-        : `${entry.turn}T ボスの${name}が発動した(${bossHp(0, entry.hp)})`;
+      return [
+        byPlayer
+          ? `${entry.turn}T ${name}が発動した(${playerHp(0, entry.hp)})`
+          : `${entry.turn}T ボスの${name}が発動した(${bossHp(0, entry.hp)})`,
+      ];
     }
     case 'timed':
-      return byPlayer
-        ? `${entry.turn}T ${formatBadgeLabel(entry.effect)}が${TIMED_STATES[entry.state]}`
-        : `${entry.turn}T ボスの${formatBadgeLabel(entry.effect)}が${TIMED_STATES[entry.state]}`;
+      return [
+        byPlayer
+          ? `${entry.turn}T ${formatBadgeLabel(entry.effect)}が${TIMED_STATES[entry.state]}`
+          : `${entry.turn}T ボスの${formatBadgeLabel(entry.effect)}が${TIMED_STATES[entry.state]}`,
+      ];
     case 'turnLimit':
-      return `${entry.turn}ターンが過ぎた`;
+      return [`${entry.turn}ターンが過ぎた`];
   }
 }
 
@@ -183,7 +218,17 @@ export function createLogView(elements) {
     elements.entries.replaceChildren(
       ...result.log.map((entry) => {
         const item = document.createElement('li');
-        item.textContent = formatEntry(entry, result.summary);
+        item.append(
+          ...formatEntry(entry, result.summary).map((segment) => {
+            if (typeof segment === 'string') {
+              return segment;
+            }
+            const span = document.createElement('span');
+            span.className = `log-delta is-${segment.favor}`;
+            span.textContent = segment.text;
+            return span;
+          }),
+        );
         item.className = `log-entry is-${entry.type}${isDamageTaken(entry) ? ' is-taken' : ''}`;
         return item;
       }),
