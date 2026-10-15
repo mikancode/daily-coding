@@ -66,35 +66,38 @@ const LOSE_REASONS = {
 };
 
 /**
- * HP は「現在/最大」で出し、どれだけ削れたか・残ったかを割合でも掴めるようにする。
+ * HP は「前→後/最大」で出し、どれだけ削れたか・残ったかを割合でも掴めるようにする。
  * 1行の幅を抑えるため、かっこ・区切りは半角にし、数値の前後に空白を入れない
  * @param {LogEntry} entry
  * @param {SimulationSummary} summary
  * @returns {string}
  */
 function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
-  const bossHp = (/** @type {number} */ hp) => `ボス残り${hp}/${bossMaxHp}`;
-  const playerHp = (/** @type {number} */ hp) => `残りHP${hp}/${playerMaxHp}`;
+  /** 変化の前後と最大を、敵と味方で同じ形で出す。例：`HP43→33/160` */
+  const hpChange = (/** @type {number} */ before, /** @type {number} */ after, /** @type {number} */ max) =>
+    `HP${before}→${after}/${max}`;
+  const bossHp = (/** @type {number} */ before, /** @type {number} */ after) => hpChange(before, after, bossMaxHp);
+  const playerHp = (/** @type {number} */ before, /** @type {number} */ after) => hpChange(before, after, playerMaxHp);
   const byPlayer = entry.type !== 'turnLimit' && entry.actor === 'player';
   switch (entry.type) {
     case 'hit':
       return (
         (byPlayer
-          ? `${entry.turn}T ${ELEMENT_NAMES[entry.element]}で${entry.damage}ダメージ(${bossHp(entry.targetHp)})`
-          : `${entry.turn}T ボスの${ELEMENT_NAMES[entry.element]}攻撃で${entry.damage}ダメージ受けた(${playerHp(entry.targetHp)})`) +
+          ? `${entry.turn}T ${ELEMENT_NAMES[entry.element]}で${entry.damage}ダメージ(${bossHp(entry.targetHpBefore, entry.targetHp)})`
+          : `${entry.turn}T ボスの${ELEMENT_NAMES[entry.element]}攻撃で${entry.damage}ダメージ受けた(${playerHp(entry.targetHpBefore, entry.targetHp)})`) +
         formatAddenda(entry.tempo, entry.changes)
       );
     case 'counter':
       return (
         (byPlayer
-          ? `${entry.turn}T 反撃でボスに${entry.damage}ダメージ(${bossHp(entry.targetHp)})`
-          : `${entry.turn}T 反撃で${entry.damage}ダメージ受けた(${playerHp(entry.targetHp)})`) +
+          ? `${entry.turn}T 反撃でボスに${entry.damage}ダメージ(${bossHp(entry.targetHpBefore, entry.targetHp)})`
+          : `${entry.turn}T 反撃で${entry.damage}ダメージ受けた(${playerHp(entry.targetHpBefore, entry.targetHp)})`) +
         formatAddenda(undefined, entry.changes)
       );
     case 'drain':
       return byPlayer
-        ? `${entry.turn}T 吸収で${entry.amount}回復(${playerHp(entry.hp)})`
-        : `${entry.turn}T ボスが吸収で${entry.amount}回復(${bossHp(entry.hp)})`;
+        ? `${entry.turn}T 吸収で${entry.amount}回復(${playerHp(entry.hp - entry.amount, entry.hp)})`
+        : `${entry.turn}T ボスが吸収で${entry.amount}回復(${bossHp(entry.hp - entry.amount, entry.hp)})`;
     case 'charge':
       return byPlayer
         ? `${entry.turn}T 溜めを放った(与ダメージ${formatMultiplier(entry.multiplier)})`
@@ -110,19 +113,19 @@ function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
           ? ''
           : formatDetail([`${entry.damage - entry.markDamage}+呪陣${entry.markDamage}(刻印${entry.marks})`]);
       return byPlayer
-        ? `${entry.turn}T 毒でボスに${entry.damage}ダメージ(${bossHp(entry.targetHp)})${detail}`
-        : `${entry.turn}T ボスの毒で${entry.damage}ダメージ受けた(${playerHp(entry.targetHp)})${detail}`;
+        ? `${entry.turn}T 毒でボスに${entry.damage}ダメージ(${bossHp(entry.targetHpBefore, entry.targetHp)})${detail}`
+        : `${entry.turn}T ボスの毒で${entry.damage}ダメージ受けた(${playerHp(entry.targetHpBefore, entry.targetHp)})${detail}`;
     }
     case 'regen':
       return byPlayer
-        ? `${entry.turn}T 再生で${entry.amount}回復(${playerHp(entry.hp)})`
-        : `${entry.turn}T ボスが再生で${entry.amount}回復(${bossHp(entry.hp)})`;
+        ? `${entry.turn}T 再生で${entry.amount}回復(${playerHp(entry.hp - entry.amount, entry.hp)})`
+        : `${entry.turn}T ボスが再生で${entry.amount}回復(${bossHp(entry.hp - entry.amount, entry.hp)})`;
     case 'endure': {
       // 戻したあとの HP で呼び分ける。最大 HP の頭打ちで1に戻った復活も、働きは根性と同じなので根性と出す
       const name = entry.hp === ENDURE_HP ? '根性' : '復活';
       return byPlayer
-        ? `${entry.turn}T ${name}が発動した(${playerHp(entry.hp)})`
-        : `${entry.turn}T ボスの${name}が発動した(${bossHp(entry.hp)})`;
+        ? `${entry.turn}T ${name}が発動した(${playerHp(0, entry.hp)})`
+        : `${entry.turn}T ボスの${name}が発動した(${bossHp(0, entry.hp)})`;
     }
     case 'timed':
       return byPlayer

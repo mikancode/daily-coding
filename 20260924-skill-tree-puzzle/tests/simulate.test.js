@@ -80,9 +80,9 @@ describe('ターンの流れ', () => {
     const outcome = simulate([ORIGIN], challenge({ hp: 20, attack: 10 }));
 
     assert.deepEqual(outcome.log, [
-      { type: 'hit', actor: 'player', turn: 1, element: 'physical', damage: 10, targetHp: 10 },
-      { type: 'hit', actor: 'boss', turn: 1, element: 'physical', damage: 10, targetHp: 90 },
-      { type: 'hit', actor: 'player', turn: 2, element: 'physical', damage: 10, targetHp: 0 },
+      { type: 'hit', actor: 'player', turn: 1, element: 'physical', damage: 10, targetHpBefore: 20, targetHp: 10 },
+      { type: 'hit', actor: 'boss', turn: 1, element: 'physical', damage: 10, targetHpBefore: 100, targetHp: 90 },
+      { type: 'hit', actor: 'player', turn: 2, element: 'physical', damage: 10, targetHpBefore: 10, targetHp: 0 },
     ]);
     assert.deepEqual(outcome.summary, { turns: 2, bossHp: 0, playerHp: 90, playerMaxHp: 100, bossMaxHp: 20, loseReason: null });
   });
@@ -253,7 +253,7 @@ describe('能力を味方が持つ場合と敵が持つ場合', () => {
     const outcome = simulate([ORIGIN, thorns], challenge({ hp: 1000, attack: 10, defense: 2, turnLimit: 1 }));
 
     assert.deepEqual(entriesOf(outcome, 'player', 'counter'), [
-      { type: 'counter', actor: 'player', turn: 1, damage: 5, targetHp: 1000 - 8 - 5 },
+      { type: 'counter', actor: 'player', turn: 1, damage: 5, targetHpBefore: 1000 - 8, targetHp: 1000 - 8 - 5 },
     ]);
   });
 
@@ -284,8 +284,8 @@ describe('能力を味方が持つ場合と敵が持つ場合', () => {
     assert.deepEqual(
       outcome.log.filter((entry) => entry.type === 'poison'),
       [
-        { type: 'poison', actor: 'player', turn: 1, damage: 5, targetHp: 100 - 7 - 5 },
-        { type: 'poison', actor: 'boss', turn: 1, damage: 4, targetHp: 96 },
+        { type: 'poison', actor: 'player', turn: 1, damage: 5, targetHpBefore: 100 - 7, targetHp: 100 - 7 - 5 },
+        { type: 'poison', actor: 'boss', turn: 1, damage: 4, targetHpBefore: 100, targetHp: 96 },
       ],
     );
   });

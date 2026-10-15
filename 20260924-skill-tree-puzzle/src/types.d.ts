@@ -336,7 +336,10 @@ export interface TargetChanges {
   readonly marks?: MarkChange;
 }
 
-/** actor は行動した側。HP は行動を受けた側（regen・endure・drain は自分）の残り。endure の hp は戻したあとの HP */
+/**
+ * actor は行動した側。HP は行動を受けた側（regen・endure・drain は自分）の残り。targetHpBefore はダメージを受ける前の HP。
+ * endure の hp は戻したあとの HP
+ */
 export type LogEntry =
   | {
       readonly type: 'hit';
@@ -344,6 +347,7 @@ export type LogEntry =
       readonly turn: number;
       readonly element: ElementId;
       readonly damage: number;
+      readonly targetHpBefore: number;
       readonly targetHp: number;
       /** 好機の倍率。好機が有効でなかったターンは持たない */
       readonly tempo?: number;
@@ -354,6 +358,7 @@ export type LogEntry =
       readonly actor: Actor;
       readonly turn: number;
       readonly damage: number;
+      readonly targetHpBefore: number;
       readonly targetHp: number;
       readonly changes?: TargetChanges;
     }
@@ -374,6 +379,7 @@ export type LogEntry =
       readonly actor: Actor;
       readonly turn: number;
       readonly damage: number;
+      readonly targetHpBefore: number;
       readonly targetHp: number;
       /** 呪陣が乗ったときの内訳。乗らなかったときは持たない。damage − markDamage が毒のぶん */
       readonly marks?: number;

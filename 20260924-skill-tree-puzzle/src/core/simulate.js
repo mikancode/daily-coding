@@ -395,13 +395,14 @@ function readStrikeChanges(attacker, target) {
  * @param {number} damage
  * @param {number} turn
  * @param {LogEntry[]} log
- * @param {(targetHp: number, changes: TargetChanges | undefined) => LogEntry} toEntry
+ * @param {(targetHpBefore: number, targetHp: number, changes: TargetChanges | undefined) => LogEntry} toEntry
  * @returns {boolean} 相手の HP が0になったら true
  */
 function strike(attacker, target, damage, turn, log, toEntry) {
+  const hpBefore = target.hp;
   const endured = takeDamage(target, damage);
   if (target.hp === 0) {
-    log.push(toEntry(target.hp, undefined));
+    log.push(toEntry(hpBefore, target.hp, undefined));
     afterDamage(log, target, turn, endured);
     return true;
   }
@@ -412,7 +413,7 @@ function strike(attacker, target, damage, turn, log, toEntry) {
   if (attacker.profile.mark > 0) {
     updateMarkTimed(attacker, target, turn, markTimedLog);
   }
-  log.push(toEntry(target.hp, readStrikeChanges(attacker, target)));
+  log.push(toEntry(hpBefore, target.hp, readStrikeChanges(attacker, target)));
   afterDamage(log, target, turn, endured);
   log.push(...markTimedLog);
   const drained = heal(attacker, Math.floor(damage * attacker.profile.drain + FLOAT_TOLERANCE));
@@ -488,12 +489,13 @@ function act(attacker, defender, turn, log) {
     const damage = damageTaken(Math.floor(raw + FLOAT_TOLERANCE), defenseAgainst(attacker, defender));
     // 反撃はこの1発への応答なので、この1発で有効になった反撃は返さない（逆上と同じく、次の1発から効く）
     const { counter } = defender.profile;
-    const defeated = strike(attacker, defender, damage, turn, log, (targetHp, changes) => ({
+    const defeated = strike(attacker, defender, damage, turn, log, (targetHpBefore, targetHp, changes) => ({
       type: 'hit',
       actor: attacker.actor,
       turn,
       element,
       damage,
+      targetHpBefore,
       targetHp,
       ...(tempo !== NEUTRAL_MULTIPLIER && { tempo }),
       ...(changes && { changes }),
@@ -504,11 +506,12 @@ function act(attacker, defender, turn, log) {
 
     if (counter > 0) {
       const counterDamage = damageTaken(counter, defenseAgainst(defender, attacker));
-      const counterDefeated = strike(defender, attacker, counterDamage, turn, log, (targetHp, changes) => ({
+      const counterDefeated = strike(defender, attacker, counterDamage, turn, log, (targetHpBefore, targetHp, changes) => ({
         type: 'counter',
         actor: defender.actor,
         turn,
         damage: counterDamage,
+        targetHpBefore,
         targetHp,
         ...(changes && { changes }),
       }));
@@ -546,12 +549,14 @@ function poison(source, target, turn, log) {
   if (damage === 0) {
     return false;
   }
+  const hpBefore = target.hp;
   const endured = takeDamage(target, damage);
   log.push({
     type: 'poison',
     actor: source.actor,
     turn,
     damage,
+    targetHpBefore: hpBefore,
     targetHp: target.hp,
     ...(markDamage > 0 && { marks: target.marks, markDamage }),
   });
