@@ -151,7 +151,7 @@ function isDamageTaken(entry) {
  */
 function formatSummary(result) {
   const { turns, bossHp, bossMaxHp, loseReason } = result.summary;
-  const outcome = loseReason === null ? '勝利！' : `敗北（${LOSE_REASONS[loseReason]}）`;
+  const outcome = loseReason === null ? '勝利！' : `敗北(${LOSE_REASONS[loseReason]})`;
   return `${outcome}　ボスの残り HP ${bossHp} / ${bossMaxHp}・${turns}ターン経過`;
 }
 
@@ -163,7 +163,7 @@ function formatOverallSummary(results) {
   const lost = results.filter((result) => result.result === 'lose').length;
   return lost === 0
     ? `勝利！　${results.length}体すべてに勝った`
-    : `敗北（${results.length}体中 ${lost}体に負けた）`;
+    : `敗北(${results.length}体中 ${lost}体に負けた)`;
 }
 
 /**
