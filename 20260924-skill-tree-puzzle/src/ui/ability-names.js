@@ -121,7 +121,7 @@ const formatMarkScaling = (effect) => `${MARK_SCALING_NAMES[effect.target]} ${ef
 
 /** @param {BurstEffect} effect @returns {string} */
 const describeBurstAmount = (effect) =>
-  effect.ratio === 1 ? '全部' : `${Math.round(effect.ratio * PERCENT)}%（切り捨て）`;
+  effect.ratio === 1 ? '全部' : `${Math.round(effect.ratio * PERCENT)}%(切り捨て)`;
 
 /** @param {MarkScalingEffect} effect @returns {string} */
 function describeMarkScaling(effect) {
