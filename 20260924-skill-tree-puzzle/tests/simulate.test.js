@@ -31,6 +31,9 @@ const challenge = (overrides) => ({
   ...overrides,
 });
 
+/** 攻撃・防御の内訳。value = max(0, base + up − down) */
+const stat = (base, up, down) => ({ value: Math.max(0, base + up - down), base, up, down });
+
 /** @param {object[]} enemies */
 const group = (enemies) => ({ id: 'test', name: 'テスト用のお題', enemies, points: 10 });
 
@@ -371,8 +374,8 @@ describe('攻撃を当てた・受けたときの能力', () => {
     assert.deepEqual(
       entriesOf(outcome, 'boss', 'hit').slice(0, 2).map((entry) => [entry.damage, entry.changes]),
       [
-        [0, { attack: 12 }],
-        [0, { attack: 14 }],
+        [0, { attack: stat(10, 2, 0) }],
+        [0, { attack: stat(10, 4, 0) }],
       ],
     );
     assert.equal(entriesOf(outcome, 'player', 'hit')[1].damage, 14);
@@ -381,7 +384,7 @@ describe('攻撃を当てた・受けたときの能力', () => {
   test('rage：敵も被弾すると攻撃が上がる', () => {
     const outcome = simulate([ORIGIN], challenge({ hp: 1000, attack: 10, abilities: [{ type: 'rage', amount: 3 }], turnLimit: 1 }));
 
-    assert.deepEqual(entriesOf(outcome, 'player', 'hit')[0].changes, { attack: 13 });
+    assert.deepEqual(entriesOf(outcome, 'player', 'hit')[0].changes, { attack: stat(10, 3, 0) });
     assert.equal(entriesOf(outcome, 'boss', 'hit')[0].damage, 13);
   });
 
@@ -424,9 +427,9 @@ describe('攻撃を当てた・受けたときの能力', () => {
     assert.deepEqual(
       entriesOf(outcome, 'player', 'hit').map((entry) => [entry.damage, entry.changes]),
       [
-        [5, { defense: 3 }],
-        [7, { defense: 1 }],
-        [9, { defense: 0 }],
+        [5, { defense: stat(5, 0, 2) }],
+        [7, { defense: stat(5, 0, 4) }],
+        [9, { defense: stat(5, 0, 6) }],
       ],
     );
   });
@@ -900,10 +903,10 @@ describe('刻印の使い道', () => {
     );
 
     assert.deepEqual(
-      entriesOf(outcome, 'player', 'poison').map((entry) => [entry.damage, entry.marks]),
+      entriesOf(outcome, 'player', 'poison').map((entry) => [entry.damage, entry.markDamage, entry.marks]),
       [
-        [5, 1],
-        [7, 2],
+        [5, 2, 1],
+        [7, 4, 2],
       ],
     );
   });
@@ -930,8 +933,8 @@ describe('刻印の使い道', () => {
     assert.deepEqual(
       entriesOf(outcome, 'player', 'hit').map((entry) => entry.changes),
       [
-        { attack: 7, marks: 1 },
-        { attack: 4, marks: 2 },
+        { attack: stat(10, 0, 3), marks: 1 },
+        { attack: stat(10, 0, 6), marks: 2 },
       ],
     );
   });
@@ -975,7 +978,7 @@ describe('刻印の使い道', () => {
 
     assert.deepEqual(
       entriesOf(outcome, 'player', 'hit').map((entry) => entry.changes),
-      [{ marks: 1 }, { defense: 1, marks: 2 }],
+      [{ marks: 1 }, { defense: stat(5, 0, 4), marks: 2 }],
     );
   });
 

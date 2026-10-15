@@ -12,6 +12,7 @@ import { ELEMENT_NAMES } from './element-names.js';
  * @typedef {import('../types.js').SimulationResult} SimulationResult
  * @typedef {import('../types.js').SimulationSummary} SimulationSummary
  * @typedef {import('../types.js').TargetChanges} TargetChanges
+ * @typedef {import('../types.js').StatBreakdown} StatBreakdown
  */
 
 /** 倍率は小数の誤差（1.6000000000000001 など）を見せないよう、小数第2位までで出す */
@@ -19,6 +20,16 @@ const MULTIPLIER_DIGITS = 2;
 
 /** @param {number} multiplier @returns {string} */
 const formatMultiplier = (multiplier) => `${Number(multiplier.toFixed(MULTIPLIER_DIGITS))}倍`;
+
+/**
+ * 合計のあとに、ベースの値と増減の内訳を添える。例：`11（10 +3 −2）`。増減が無ければ合計だけ
+ * @param {StatBreakdown} stat
+ * @returns {string}
+ */
+function formatBreakdown({ value, base, up, down }) {
+  const parts = [`${base}`, ...(up > 0 ? [`+${up}`] : []), ...(down > 0 ? [`−${down}`] : [])];
+  return parts.length === 1 ? `${value}` : `${value}（${parts.join(' ')}）`;
+}
 
 /**
  * 攻撃の行に、有効だった好機の倍率と、受けた側の変わった状態を添える
@@ -29,8 +40,8 @@ const formatMultiplier = (multiplier) => `${Number(multiplier.toFixed(MULTIPLIER
 function formatAddenda(tempo, changes) {
   const parts = [
     ...(tempo === undefined ? [] : [`好機で${formatMultiplier(tempo)}`]),
-    ...(changes?.attack === undefined ? [] : [`ATK ${changes.attack}`]),
-    ...(changes?.defense === undefined ? [] : [`DEF ${changes.defense}`]),
+    ...(changes?.attack === undefined ? [] : [`ATK ${formatBreakdown(changes.attack)}`]),
+    ...(changes?.defense === undefined ? [] : [`DEF ${formatBreakdown(changes.defense)}`]),
     ...(changes?.marks === undefined ? [] : [`刻印 ${changes.marks}`]),
   ];
   return parts.length === 0 ? '' : ` ／ ${parts.join('・')}`;
@@ -83,10 +94,14 @@ function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
         ? `${entry.turn}T 刻印 ${entry.marks} を解放（与ダメージ${formatMultiplier(entry.multiplier)}・残り ${entry.remaining}）`
         : `${entry.turn}T ボスが刻印 ${entry.marks} を解放（与ダメージ${formatMultiplier(entry.multiplier)}・残り ${entry.remaining}）`;
     case 'poison': {
-      const marks = entry.marks === undefined ? '' : ` ／ 刻印 ${entry.marks}`;
+      // 呪陣が乗ったら、毒のぶんと呪陣のぶんを分けて添える
+      const detail =
+        entry.markDamage === undefined
+          ? ''
+          : ` ／ ${entry.damage - entry.markDamage} + 呪陣 ${entry.markDamage}（刻印 ${entry.marks}）`;
       return byPlayer
-        ? `${entry.turn}T 毒でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）${marks}`
-        : `${entry.turn}T ボスの毒で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）${marks}`;
+        ? `${entry.turn}T 毒でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）${detail}`
+        : `${entry.turn}T ボスの毒で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）${detail}`;
     }
     case 'regen':
       return byPlayer

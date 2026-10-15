@@ -307,14 +307,25 @@ export interface CombatantProfile {
 export type Actor = 'player' | 'boss';
 
 /**
+ * 戦闘中に増減した攻撃・防御の内訳。value = max(0, base + up − down)。
+ * base は集計の値で、有効な時限能力の加算を含む。up は逆上、down は破甲・縛陣・砕陣で変わった量
+ */
+export interface StatBreakdown {
+  readonly value: number;
+  readonly base: number;
+  readonly up: number;
+  readonly down: number;
+}
+
+/**
  * 攻撃を受けた側の、その1発で変わった状態。変わったものだけを持つ。
  * 逆上・破甲・刻印は1発ごとに起きるので、行を増やさず攻撃の行に添える
  */
 export interface TargetChanges {
-  /** 逆上で上がったあとの攻撃 */
-  readonly attack?: number;
-  /** 破甲で下がったあとの防御 */
-  readonly defense?: number;
+  /** 逆上・縛陣で変わったあとの攻撃 */
+  readonly attack?: StatBreakdown;
+  /** 破甲・砕陣で変わったあとの防御 */
+  readonly defense?: StatBreakdown;
   /** 付いたあとの刻印の数 */
   readonly marks?: number;
 }
@@ -358,8 +369,9 @@ export type LogEntry =
       readonly turn: number;
       readonly damage: number;
       readonly targetHp: number;
-      /** 刻印で強まる毒が乗ったときの、相手の刻印の数。乗らなかったときは持たない */
+      /** 呪陣が乗ったときの内訳。乗らなかったときは持たない。damage − markDamage が毒のぶん */
       readonly marks?: number;
+      readonly markDamage?: number;
     }
   | { readonly type: 'regen'; readonly actor: Actor; readonly turn: number; readonly amount: number; readonly hp: number }
   | { readonly type: 'endure'; readonly actor: Actor; readonly turn: number; readonly hp: number }

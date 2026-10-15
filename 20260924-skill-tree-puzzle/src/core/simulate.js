@@ -15,6 +15,7 @@ import { createEnemyProfile, createProfile, withEffects } from './profile.js';
  * @typedef {import('../types.js').TargetChanges} TargetChanges
  * @typedef {import('../types.js').Effect} Effect
  * @typedef {import('../types.js').SimulationResult} SimulationResult
+ * @typedef {import('../types.js').StatBreakdown} StatBreakdown
  * @typedef {import('../types.js').TimedEffect} TimedEffect
  * @typedef {import('../types.js').TimedPeriod} TimedPeriod
  * @typedef {import('../types.js').RotationSkill} RotationSkill
@@ -230,26 +231,40 @@ function updateMarkTimed(owner, opponent, turn, log) {
 }
 
 /**
- * 逆上で上がった分と、相手の縛陣で下がった分を含む、今の攻撃。0 未満にはしない
- * @param {Fighter} fighter
- * @param {Fighter} opponent
- * @returns {number}
+ * @param {number} base
+ * @param {number} up
+ * @param {number} down
+ * @returns {StatBreakdown} value は 0 未満にしない
  */
-function currentAttack(fighter, opponent) {
-  const markDown = opponent.profile.markAttackDown * fighter.marks;
-  return Math.max(0, fighter.profile.attack + fighter.attackBonus - markDown);
+function breakdown(base, up, down) {
+  return { value: Math.max(0, base + up - down), base, up, down };
 }
 
 /**
- * 破甲と、相手の砕陣で下がった分を含む、今の防御。0 未満にはしない
+ * 逆上で上がった分と、相手の縛陣で下がった分を含む、今の攻撃
  * @param {Fighter} fighter
  * @param {Fighter} opponent
- * @returns {number}
+ * @returns {StatBreakdown}
  */
-function currentDefense(fighter, opponent) {
-  const markDown = opponent.profile.markDefenseDown * fighter.marks;
-  return Math.max(0, fighter.profile.defense - fighter.defenseDown - markDown);
+function attackBreakdown(fighter, opponent) {
+  return breakdown(fighter.profile.attack, fighter.attackBonus, opponent.profile.markAttackDown * fighter.marks);
 }
+
+/**
+ * 破甲と、相手の砕陣で下がった分を含む、今の防御
+ * @param {Fighter} fighter
+ * @param {Fighter} opponent
+ * @returns {StatBreakdown}
+ */
+function defenseBreakdown(fighter, opponent) {
+  return breakdown(fighter.profile.defense, 0, fighter.defenseDown + opponent.profile.markDefenseDown * fighter.marks);
+}
+
+/** @param {Fighter} fighter @param {Fighter} opponent @returns {number} */
+const currentAttack = (fighter, opponent) => attackBreakdown(fighter, opponent).value;
+
+/** @param {Fighter} fighter @param {Fighter} opponent @returns {number} */
+const currentDefense = (fighter, opponent) => defenseBreakdown(fighter, opponent).value;
 
 /**
  * 攻撃側が貫通を持っていれば、防御を引かない
@@ -356,13 +371,13 @@ function applyStrikeEffects(attacker, target) {
  */
 function readStrikeChanges(attacker, target) {
   const marked = attacker.profile.mark > 0;
-  /** @type {{ attack?: number, defense?: number, marks?: number }} */
+  /** @type {{ attack?: StatBreakdown, defense?: StatBreakdown, marks?: number }} */
   const changes = {};
   if (target.profile.rage > 0 || (marked && attacker.profile.markAttackDown > 0)) {
-    changes.attack = currentAttack(target, attacker);
+    changes.attack = attackBreakdown(target, attacker);
   }
   if (attacker.profile.armorBreak > 0 || (marked && attacker.profile.markDefenseDown > 0)) {
-    changes.defense = currentDefense(target, attacker);
+    changes.defense = defenseBreakdown(target, attacker);
   }
   if (marked) {
     changes.marks = target.marks;
@@ -537,7 +552,7 @@ function poison(source, target, turn, log) {
     turn,
     damage,
     targetHp: target.hp,
-    ...(markDamage > 0 && { marks: target.marks }),
+    ...(markDamage > 0 && { marks: target.marks, markDamage }),
   });
   afterDamage(log, target, turn, endured);
   return target.hp === 0;
