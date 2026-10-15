@@ -61,7 +61,7 @@ const TIMED_STATES = { start: '有効になった', renew: '再発動した', en
 
 /** @type {Readonly<Record<LoseReason, string>>} */
 const LOSE_REASONS = {
-  defeated: 'HP が尽きた',
+  defeated: 'HPが尽きた',
   turnLimit: 'ターン上限までに倒せなかった',
 };
 
@@ -151,8 +151,8 @@ function isDamageTaken(entry) {
  */
 function formatSummary(result) {
   const { turns, bossHp, bossMaxHp, loseReason } = result.summary;
-  const outcome = loseReason === null ? '勝利！' : `敗北(${LOSE_REASONS[loseReason]})`;
-  return `${outcome}　ボスの残り HP ${bossHp} / ${bossMaxHp}・${turns}ターン経過`;
+  const outcome = loseReason === null ? '勝利!' : `敗北(${LOSE_REASONS[loseReason]})`;
+  return `${outcome} ボスHP${bossHp}/${bossMaxHp}, ${turns}ターン経過`;
 }
 
 /**
@@ -162,8 +162,8 @@ function formatSummary(result) {
 function formatOverallSummary(results) {
   const lost = results.filter((result) => result.result === 'lose').length;
   return lost === 0
-    ? `勝利！　${results.length}体すべてに勝った`
-    : `敗北(${results.length}体中 ${lost}体に負けた)`;
+    ? `勝利! ${results.length}体すべてに勝った`
+    : `敗北(${results.length}体中${lost}体に負けた)`;
 }
 
 /**
