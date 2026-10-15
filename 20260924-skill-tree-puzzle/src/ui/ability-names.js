@@ -165,15 +165,15 @@ function formatAbility(effect) {
     case 'tempo':
       return formatTempo(effect);
     case 'charge':
-      return `溜め（経過1ターンにつき+${effect.perTurn}倍）`;
+      return `溜め(経過1ターンにつき+${effect.perTurn}倍)`;
     case 'mark':
       return formatMark(effect.amount);
     case 'burst':
-      return `解放（刻印1つにつき+${effect.perMark}倍）`;
+      return `解放(刻印1つにつき+${effect.perMark}倍)`;
     case 'markScaling':
       return formatMarkScaling(effect);
     case 'timed':
-      return `${formatReward(effect.effect)}（${formatPeriod(effect.period)}）`;
+      return `${formatReward(effect.effect)}(${formatPeriod(effect.period)})`;
     case 'stat':
     case 'multiHit':
       return null;
@@ -193,7 +193,7 @@ export function formatReward(effect) {
     case 'stat':
       return `${STAT_NAMES[effect.stat]} +${effect.amount}`;
     case 'multiHit':
-      return `${effect.hits}連撃（1発 ${effect.ratio}倍）`;
+      return `${effect.hits}連撃(1発 ${effect.ratio}倍)`;
     default:
       return formatAbility(effect) ?? '';
   }
@@ -345,6 +345,6 @@ export function formatBadgeLabel(effect) {
     case 'markScaling':
       return formatMarkScaling(effect);
     case 'timed':
-      return `${formatBadgeLabel(effect.effect)}（${formatPeriod(effect.period)}）`;
+      return `${formatBadgeLabel(effect.effect)}(${formatPeriod(effect.period)})`;
   }
 }
