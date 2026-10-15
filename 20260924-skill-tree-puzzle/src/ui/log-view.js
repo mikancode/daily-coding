@@ -12,6 +12,7 @@ import { ELEMENT_NAMES } from './element-names.js';
  * @typedef {import('../types.js').SimulationResult} SimulationResult
  * @typedef {import('../types.js').SimulationSummary} SimulationSummary
  * @typedef {import('../types.js').TargetChanges} TargetChanges
+ * @typedef {import('../types.js').StatBreakdown} StatBreakdown
  */
 
 /** 倍率は小数の誤差（1.6000000000000001 など）を見せないよう、小数第2位までで出す */
@@ -21,19 +22,38 @@ const MULTIPLIER_DIGITS = 2;
 const formatMultiplier = (multiplier) => `${Number(multiplier.toFixed(MULTIPLIER_DIGITS))}倍`;
 
 /**
+ * 合計のあとに、ベースの値と増減の内訳を添える。例：`11(10+3-2)`。増減が無ければ合計だけ
+ * @param {StatBreakdown} stat
+ * @returns {string}
+ */
+function formatBreakdown({ value, base, up, down }) {
+  const parts = [`${base}`, ...(up > 0 ? [`+${up}`] : []), ...(down > 0 ? [`-${down}`] : [])];
+  return parts.length === 1 ? `${value}` : `${value}(${parts.join('')})`;
+}
+
+/** @param {number} before @param {number} after @returns {string} */
+const formatMarkChange = (before, after) => `${before}→${after}`;
+
+/**
+ * 行の本文のあとに、`|` で区切って添える。添えるものが無ければ空
+ * @param {readonly string[]} parts
+ * @returns {string}
+ */
+const formatDetail = (parts) => (parts.length === 0 ? '' : ` | ${parts.join(', ')}`);
+
+/**
  * 攻撃の行に、有効だった好機の倍率と、受けた側の変わった状態を添える
  * @param {number | undefined} tempo
  * @param {TargetChanges | undefined} changes
  * @returns {string}
  */
 function formatAddenda(tempo, changes) {
-  const parts = [
+  return formatDetail([
     ...(tempo === undefined ? [] : [`好機で${formatMultiplier(tempo)}`]),
-    ...(changes?.attack === undefined ? [] : [`逆上で ATK ${changes.attack}`]),
-    ...(changes?.defense === undefined ? [] : [`破甲で DEF ${changes.defense}`]),
-    ...(changes?.marks === undefined ? [] : [`刻印 ${changes.marks}`]),
-  ];
-  return parts.length === 0 ? '' : ` ／ ${parts.join('・')}`;
+    ...(changes?.attack === undefined ? [] : [`ATK${formatBreakdown(changes.attack)}`]),
+    ...(changes?.defense === undefined ? [] : [`DEF${formatBreakdown(changes.defense)}`]),
+    ...(changes?.marks === undefined ? [] : [`刻印${formatMarkChange(changes.marks.before, changes.marks.after)}`]),
+  ]);
 }
 
 /** @type {Readonly<Record<'start' | 'renew' | 'end', string>>} */
@@ -41,61 +61,71 @@ const TIMED_STATES = { start: '有効になった', renew: '再発動した', en
 
 /** @type {Readonly<Record<LoseReason, string>>} */
 const LOSE_REASONS = {
-  defeated: 'HP が尽きた',
+  defeated: 'HPが尽きた',
   turnLimit: 'ターン上限までに倒せなかった',
 };
 
 /**
- * HP は「現在/最大」で出し、どれだけ削れたか・残ったかを割合でも掴めるようにする
+ * HP は「前→後/最大」で出し、どれだけ削れたか・残ったかを割合でも掴めるようにする。
+ * 1行の幅を抑えるため、かっこ・区切りは半角にし、数値の前後に空白を入れない
  * @param {LogEntry} entry
  * @param {SimulationSummary} summary
  * @returns {string}
  */
 function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
-  const bossHp = (/** @type {number} */ hp) => `ボス残り ${hp}/${bossMaxHp}`;
-  const playerHp = (/** @type {number} */ hp) => `残り HP ${hp}/${playerMaxHp}`;
+  /** 変化の前後と最大を、敵と味方で同じ形で出す。例：`HP43→33/160` */
+  const hpChange = (/** @type {number} */ before, /** @type {number} */ after, /** @type {number} */ max) =>
+    `HP${before}→${after}/${max}`;
+  const bossHp = (/** @type {number} */ before, /** @type {number} */ after) => hpChange(before, after, bossMaxHp);
+  const playerHp = (/** @type {number} */ before, /** @type {number} */ after) => hpChange(before, after, playerMaxHp);
   const byPlayer = entry.type !== 'turnLimit' && entry.actor === 'player';
   switch (entry.type) {
     case 'hit':
       return (
         (byPlayer
-          ? `${entry.turn}T ${ELEMENT_NAMES[entry.element]}で ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
-          : `${entry.turn}T ボスの${ELEMENT_NAMES[entry.element]}攻撃で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`) +
+          ? `${entry.turn}T ${ELEMENT_NAMES[entry.element]}で${entry.damage}ダメージ(${bossHp(entry.targetHpBefore, entry.targetHp)})`
+          : `${entry.turn}T ボスの${ELEMENT_NAMES[entry.element]}攻撃で${entry.damage}ダメージ受けた(${playerHp(entry.targetHpBefore, entry.targetHp)})`) +
         formatAddenda(entry.tempo, entry.changes)
       );
     case 'counter':
       return (
         (byPlayer
-          ? `${entry.turn}T 反撃でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
-          : `${entry.turn}T 反撃で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`) +
+          ? `${entry.turn}T 反撃でボスに${entry.damage}ダメージ(${bossHp(entry.targetHpBefore, entry.targetHp)})`
+          : `${entry.turn}T 反撃で${entry.damage}ダメージ受けた(${playerHp(entry.targetHpBefore, entry.targetHp)})`) +
         formatAddenda(undefined, entry.changes)
       );
     case 'drain':
       return byPlayer
-        ? `${entry.turn}T 吸収で ${entry.amount} 回復（${playerHp(entry.hp)}）`
-        : `${entry.turn}T ボスが吸収で ${entry.amount} 回復（${bossHp(entry.hp)}）`;
+        ? `${entry.turn}T 吸収で${entry.amount}回復(${playerHp(entry.hp - entry.amount, entry.hp)})`
+        : `${entry.turn}T ボスが吸収で${entry.amount}回復(${bossHp(entry.hp - entry.amount, entry.hp)})`;
     case 'charge':
       return byPlayer
-        ? `${entry.turn}T 溜めを放った（与ダメージ${formatMultiplier(entry.multiplier)}）`
-        : `${entry.turn}T ボスが溜めを放った（与ダメージ${formatMultiplier(entry.multiplier)}）`;
-    case 'burst':
+        ? `${entry.turn}T 溜めを放った(与ダメージ${formatMultiplier(entry.multiplier)})`
+        : `${entry.turn}T ボスが溜めを放った(与ダメージ${formatMultiplier(entry.multiplier)})`;
+    case 'burst': {
+      const detail = `${formatMarkChange(entry.marks + entry.remaining, entry.remaining)}, 与ダメージ${formatMultiplier(entry.multiplier)}`;
+      return byPlayer ? `${entry.turn}T 刻印を解放(${detail})` : `${entry.turn}T ボスが刻印を解放(${detail})`;
+    }
+    case 'poison': {
+      // 呪陣が乗ったら、毒のぶんと呪陣のぶんを分けて添える
+      const detail =
+        entry.markDamage === undefined || entry.marks === undefined
+          ? ''
+          : formatDetail([`${entry.damage - entry.markDamage}+呪陣${entry.markDamage}(刻印${entry.marks})`]);
       return byPlayer
-        ? `${entry.turn}T 刻印 ${entry.marks} を解放（与ダメージ${formatMultiplier(entry.multiplier)}）`
-        : `${entry.turn}T ボスが刻印 ${entry.marks} を解放（与ダメージ${formatMultiplier(entry.multiplier)}）`;
-    case 'poison':
-      return byPlayer
-        ? `${entry.turn}T 毒でボスに ${entry.damage} ダメージ（${bossHp(entry.targetHp)}）`
-        : `${entry.turn}T ボスの毒で ${entry.damage} ダメージ受けた（${playerHp(entry.targetHp)}）`;
+        ? `${entry.turn}T 毒でボスに${entry.damage}ダメージ(${bossHp(entry.targetHpBefore, entry.targetHp)})${detail}`
+        : `${entry.turn}T ボスの毒で${entry.damage}ダメージ受けた(${playerHp(entry.targetHpBefore, entry.targetHp)})${detail}`;
+    }
     case 'regen':
       return byPlayer
-        ? `${entry.turn}T 再生で ${entry.amount} 回復（${playerHp(entry.hp)}）`
-        : `${entry.turn}T ボスが再生で ${entry.amount} 回復（${bossHp(entry.hp)}）`;
+        ? `${entry.turn}T 再生で${entry.amount}回復(${playerHp(entry.hp - entry.amount, entry.hp)})`
+        : `${entry.turn}T ボスが再生で${entry.amount}回復(${bossHp(entry.hp - entry.amount, entry.hp)})`;
     case 'endure': {
       // 戻したあとの HP で呼び分ける。最大 HP の頭打ちで1に戻った復活も、働きは根性と同じなので根性と出す
       const name = entry.hp === ENDURE_HP ? '根性' : '復活';
       return byPlayer
-        ? `${entry.turn}T ${name}が発動した（${playerHp(entry.hp)}）`
-        : `${entry.turn}T ボスの${name}が発動した（${bossHp(entry.hp)}）`;
+        ? `${entry.turn}T ${name}が発動した(${playerHp(0, entry.hp)})`
+        : `${entry.turn}T ボスの${name}が発動した(${bossHp(0, entry.hp)})`;
     }
     case 'timed':
       return byPlayer
@@ -121,8 +151,8 @@ function isDamageTaken(entry) {
  */
 function formatSummary(result) {
   const { turns, bossHp, bossMaxHp, loseReason } = result.summary;
-  const outcome = loseReason === null ? '勝利！' : `敗北（${LOSE_REASONS[loseReason]}）`;
-  return `${outcome}　ボスの残り HP ${bossHp} / ${bossMaxHp}・${turns}ターン経過`;
+  const outcome = loseReason === null ? '勝利!' : `敗北(${LOSE_REASONS[loseReason]})`;
+  return `${outcome} ボスHP${bossHp}/${bossMaxHp}, ${turns}ターン経過`;
 }
 
 /**
@@ -132,8 +162,8 @@ function formatSummary(result) {
 function formatOverallSummary(results) {
   const lost = results.filter((result) => result.result === 'lose').length;
   return lost === 0
-    ? `勝利！　${results.length}体すべてに勝った`
-    : `敗北（${results.length}体中 ${lost}体に負けた）`;
+    ? `勝利! ${results.length}体すべてに勝った`
+    : `敗北(${results.length}体中${lost}体に負けた)`;
 }
 
 /**

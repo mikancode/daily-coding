@@ -15,6 +15,8 @@ import { createEnemyProfile, createProfile, withEffects } from './profile.js';
  * @typedef {import('../types.js').TargetChanges} TargetChanges
  * @typedef {import('../types.js').Effect} Effect
  * @typedef {import('../types.js').SimulationResult} SimulationResult
+ * @typedef {import('../types.js').StatBreakdown} StatBreakdown
+ * @typedef {import('../types.js').MarkChange} MarkChange
  * @typedef {import('../types.js').TimedEffect} TimedEffect
  * @typedef {import('../types.js').TimedPeriod} TimedPeriod
  * @typedef {import('../types.js').RotationSkill} RotationSkill
@@ -139,9 +141,10 @@ function rotationIndexAt(rotation, turn) {
  * @param {number} turn
  * @param {number | null} activatedAt rotation：ローテーションで最後に回ってきたターン。
  *   hpAtMost・revived：条件を満たしたターン。ほかの期間では使わない
+ * @param {number} opponentMarks 相手に付いている刻印の数
  * @returns {boolean}
  */
-function isTimedActive(period, turn, activatedAt) {
+function isTimedActive(period, turn, activatedAt, opponentMarks) {
   switch (period.kind) {
     case 'first':
       return turn <= period.turns;
@@ -154,6 +157,8 @@ function isTimedActive(period, turn, activatedAt) {
     case 'hpAtMost':
     case 'revived':
       return activatedAt !== null;
+    case 'marksAtLeast':
+      return opponentMarks >= period.count;
   }
 }
 
@@ -171,10 +176,11 @@ function refreshProfile(fighter) {
  * ローテーションの時限能力は、回ってきたターンから有効になる。有効な間に再び回ってきたら、そのターンから数え直す。
  * 効き方が変わったときだけ、そのターンの集計を作り直す
  * @param {Fighter} fighter
+ * @param {Fighter} opponent
  * @param {number} turn
  * @param {LogEntry[]} log
  */
-function updateTimed(fighter, turn, log) {
+function updateTimed(fighter, opponent, turn, log) {
   if (fighter.timedSlots.length === 0) {
     return;
   }
@@ -185,7 +191,7 @@ function updateTimed(fighter, turn, log) {
     if (triggered) {
       slot.activatedAt = turn;
     }
-    const active = isTimedActive(slot.effect.period, turn, slot.activatedAt);
+    const active = isTimedActive(slot.effect.period, turn, slot.activatedAt, opponent.marks);
     if (active !== slot.active) {
       slot.active = active;
       changed = true;
@@ -200,22 +206,66 @@ function updateTimed(fighter, turn, log) {
 }
 
 /**
- * 逆上で上がった分を含む、今の攻撃
- * @param {Fighter} fighter
- * @returns {number}
+ * 相手の刻印が変わった直後に、刻印の数を条件にした時限能力が有効かを決め直す。
+ * 条件を満たしている間だけ効き、下回ったら切れる
+ * @param {Fighter} owner 時限能力を持つ側
+ * @param {Fighter} opponent 刻印が変わった側
+ * @param {number} turn
+ * @param {LogEntry[]} log
  */
-function currentAttack(fighter) {
-  return fighter.profile.attack + fighter.attackBonus;
+function updateMarkTimed(owner, opponent, turn, log) {
+  let changed = false;
+  for (const slot of owner.timedSlots) {
+    if (slot.effect.period.kind !== 'marksAtLeast') {
+      continue;
+    }
+    const active = isTimedActive(slot.effect.period, turn, slot.activatedAt, opponent.marks);
+    if (active !== slot.active) {
+      slot.active = active;
+      changed = true;
+      log.push({ type: 'timed', actor: owner.actor, turn, effect: slot.effect, state: active ? 'start' : 'end' });
+    }
+  }
+  if (changed) {
+    refreshProfile(owner);
+  }
 }
 
 /**
- * 破甲で下がった分を含む、今の防御。0 未満にはしない
- * @param {Fighter} fighter
- * @returns {number}
+ * @param {number} base
+ * @param {number} up
+ * @param {number} down
+ * @returns {StatBreakdown} value は 0 未満にしない
  */
-function currentDefense(fighter) {
-  return Math.max(0, fighter.profile.defense - fighter.defenseDown);
+function breakdown(base, up, down) {
+  return { value: Math.max(0, base + up - down), base, up, down };
 }
+
+/**
+ * 逆上で上がった分と、相手の縛陣で下がった分を含む、今の攻撃
+ * @param {Fighter} fighter
+ * @param {Fighter} opponent
+ * @returns {StatBreakdown}
+ */
+function attackBreakdown(fighter, opponent) {
+  return breakdown(fighter.profile.attack, fighter.attackBonus, opponent.profile.markAttackDown * fighter.marks);
+}
+
+/**
+ * 破甲と、相手の砕陣で下がった分を含む、今の防御
+ * @param {Fighter} fighter
+ * @param {Fighter} opponent
+ * @returns {StatBreakdown}
+ */
+function defenseBreakdown(fighter, opponent) {
+  return breakdown(fighter.profile.defense, 0, fighter.defenseDown + opponent.profile.markDefenseDown * fighter.marks);
+}
+
+/** @param {Fighter} fighter @param {Fighter} opponent @returns {number} */
+const currentAttack = (fighter, opponent) => attackBreakdown(fighter, opponent).value;
+
+/** @param {Fighter} fighter @param {Fighter} opponent @returns {number} */
+const currentDefense = (fighter, opponent) => defenseBreakdown(fighter, opponent).value;
 
 /**
  * 攻撃側が貫通を持っていれば、防御を引かない
@@ -224,7 +274,7 @@ function currentDefense(fighter) {
  * @returns {number}
  */
 function defenseAgainst(attacker, target) {
-  return attacker.profile.pierce ? 0 : currentDefense(target);
+  return attacker.profile.pierce ? 0 : currentDefense(target, attacker);
 }
 
 /**
@@ -305,22 +355,33 @@ function afterDamage(log, target, turn, endured) {
  * 攻撃が当たった直後に、受けた側の状態を変える（逆上・破甲・刻印）
  * @param {Fighter} attacker
  * @param {Fighter} target
- * @returns {TargetChanges | undefined} 何も変わらなければ undefined
  */
 function applyStrikeEffects(attacker, target) {
-  /** @type {{ attack?: number, defense?: number, marks?: number }} */
+  target.attackBonus += target.profile.rage;
+  target.defenseDown += attacker.profile.armorBreak;
+  target.marks += attacker.profile.mark;
+}
+
+/**
+ * applyStrikeEffects で変わった、受けた側の状態を読む。
+ * 刻印が増えると縛陣・砕陣（刻印の数の期間で有効になったものも含む）で攻撃・防御も変わるので、
+ * 刻印の数の期間を決め直したあとに呼ぶ
+ * @param {Fighter} attacker
+ * @param {Fighter} target
+ * @returns {TargetChanges | undefined} 何も変わらなければ undefined
+ */
+function readStrikeChanges(attacker, target) {
+  const marked = attacker.profile.mark > 0;
+  /** @type {{ attack?: StatBreakdown, defense?: StatBreakdown, marks?: MarkChange }} */
   const changes = {};
-  if (target.profile.rage > 0) {
-    target.attackBonus += target.profile.rage;
-    changes.attack = currentAttack(target);
+  if (target.profile.rage > 0 || (marked && attacker.profile.markAttackDown > 0)) {
+    changes.attack = attackBreakdown(target, attacker);
   }
-  if (attacker.profile.armorBreak > 0) {
-    target.defenseDown += attacker.profile.armorBreak;
-    changes.defense = currentDefense(target);
+  if (attacker.profile.armorBreak > 0 || (marked && attacker.profile.markDefenseDown > 0)) {
+    changes.defense = defenseBreakdown(target, attacker);
   }
-  if (attacker.profile.mark > 0) {
-    target.marks += attacker.profile.mark;
-    changes.marks = target.marks;
+  if (marked) {
+    changes.marks = { before: target.marks - attacker.profile.mark, after: target.marks };
   }
   return Object.keys(changes).length === 0 ? undefined : changes;
 }
@@ -334,17 +395,27 @@ function applyStrikeEffects(attacker, target) {
  * @param {number} damage
  * @param {number} turn
  * @param {LogEntry[]} log
- * @param {(targetHp: number, changes: TargetChanges | undefined) => LogEntry} toEntry
+ * @param {(targetHpBefore: number, targetHp: number, changes: TargetChanges | undefined) => LogEntry} toEntry
  * @returns {boolean} 相手の HP が0になったら true
  */
 function strike(attacker, target, damage, turn, log, toEntry) {
+  const hpBefore = target.hp;
   const endured = takeDamage(target, damage);
-  const changes = target.hp === 0 ? undefined : applyStrikeEffects(attacker, target);
-  log.push(toEntry(target.hp, changes));
-  afterDamage(log, target, turn, endured);
   if (target.hp === 0) {
+    log.push(toEntry(hpBefore, target.hp, undefined));
+    afterDamage(log, target, turn, endured);
     return true;
   }
+  applyStrikeEffects(attacker, target);
+  // 刻印の数の期間の切り替えは、この1発の行のあとに出す。ただし行に添える ATK・DEF は、切り替えたあとの値にする
+  /** @type {LogEntry[]} */
+  const markTimedLog = [];
+  if (attacker.profile.mark > 0) {
+    updateMarkTimed(attacker, target, turn, markTimedLog);
+  }
+  log.push(toEntry(hpBefore, target.hp, readStrikeChanges(attacker, target)));
+  afterDamage(log, target, turn, endured);
+  log.push(...markTimedLog);
   const drained = heal(attacker, Math.floor(damage * attacker.profile.drain + FLOAT_TOLERANCE));
   if (drained > 0) {
     log.push({ type: 'drain', actor: attacker.actor, turn, amount: drained, hp: attacker.hp });
@@ -379,10 +450,11 @@ function useRotationSkill(attacker, defender, turn, log) {
       return { element: DEFAULT_ELEMENT, multiplier };
     }
     case 'burst': {
-      const marks = defender.marks;
-      defender.marks = 0;
+      const marks = Math.floor(defender.marks * skill.ratio + FLOAT_TOLERANCE);
+      defender.marks -= marks;
       const multiplier = NEUTRAL_MULTIPLIER + skill.perMark * marks;
-      log.push({ type: 'burst', actor: attacker.actor, turn, marks, multiplier });
+      log.push({ type: 'burst', actor: attacker.actor, turn, marks, remaining: defender.marks, multiplier });
+      updateMarkTimed(attacker, defender, turn, log);
       return { element: DEFAULT_ELEMENT, multiplier };
     }
     case 'timed':
@@ -408,7 +480,7 @@ function act(attacker, defender, turn, log) {
   for (let hit = 0; hit < hits; hit++) {
     const tempo = tempoMultiplier(attacker.profile, turn);
     const raw =
-      currentAttack(attacker) *
+      currentAttack(attacker, defender) *
       attacker.profile.ratio *
       (1 - reduction) *
       conditionalMultiplier(attacker.profile, attacker.hp) *
@@ -417,12 +489,13 @@ function act(attacker, defender, turn, log) {
     const damage = damageTaken(Math.floor(raw + FLOAT_TOLERANCE), defenseAgainst(attacker, defender));
     // 反撃はこの1発への応答なので、この1発で有効になった反撃は返さない（逆上と同じく、次の1発から効く）
     const { counter } = defender.profile;
-    const defeated = strike(attacker, defender, damage, turn, log, (targetHp, changes) => ({
+    const defeated = strike(attacker, defender, damage, turn, log, (targetHpBefore, targetHp, changes) => ({
       type: 'hit',
       actor: attacker.actor,
       turn,
       element,
       damage,
+      targetHpBefore,
       targetHp,
       ...(tempo !== NEUTRAL_MULTIPLIER && { tempo }),
       ...(changes && { changes }),
@@ -433,11 +506,12 @@ function act(attacker, defender, turn, log) {
 
     if (counter > 0) {
       const counterDamage = damageTaken(counter, defenseAgainst(defender, attacker));
-      const counterDefeated = strike(defender, attacker, counterDamage, turn, log, (targetHp, changes) => ({
+      const counterDefeated = strike(defender, attacker, counterDamage, turn, log, (targetHpBefore, targetHp, changes) => ({
         type: 'counter',
         actor: defender.actor,
         turn,
         damage: counterDamage,
+        targetHpBefore,
         targetHp,
         ...(changes && { changes }),
       }));
@@ -462,6 +536,7 @@ function regenerate(fighter, turn, log) {
 }
 
 /**
+ * 毒と呪陣は、足して1回のダメージにする
  * @param {Fighter} source
  * @param {Fighter} target
  * @param {number} turn
@@ -469,11 +544,22 @@ function regenerate(fighter, turn, log) {
  * @returns {boolean} 相手の HP が0になったら true
  */
 function poison(source, target, turn, log) {
-  if (source.profile.poison === 0) {
+  const markDamage = source.profile.markPoison * target.marks;
+  const damage = source.profile.poison + markDamage;
+  if (damage === 0) {
     return false;
   }
-  const endured = takeDamage(target, source.profile.poison);
-  log.push({ type: 'poison', actor: source.actor, turn, damage: source.profile.poison, targetHp: target.hp });
+  const hpBefore = target.hp;
+  const endured = takeDamage(target, damage);
+  log.push({
+    type: 'poison',
+    actor: source.actor,
+    turn,
+    damage,
+    targetHpBefore: hpBefore,
+    targetHp: target.hp,
+    ...(markDamage > 0 && { marks: target.marks, markDamage }),
+  });
   afterDamage(log, target, turn, endured);
   return target.hp === 0;
 }
@@ -515,8 +601,8 @@ export function simulate(build, enemy, rewards = []) {
   };
 
   for (let turn = 1; turn <= enemy.turnLimit; turn++) {
-    updateTimed(player, turn, log);
-    updateTimed(boss, turn, log);
+    updateTimed(player, boss, turn, log);
+    updateTimed(boss, player, turn, log);
     regenerate(player, turn, log);
     regenerate(boss, turn, log);
     if (act(player, boss, turn, log) || act(boss, player, turn, log)) {

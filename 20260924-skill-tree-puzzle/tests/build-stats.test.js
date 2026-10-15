@@ -38,7 +38,7 @@ describe('buildStatsBadges', () => {
       ORIGIN,
       node('charge', [{ type: 'charge', perTurn: 0.5 }]),
       node('ice', [{ type: 'element', element: 'ice' }]),
-      node('burst', [{ type: 'burst', perMark: 0.2 }]),
+      node('burst', [{ type: 'burst', perMark: 0.2, ratio: 1 }]),
       node('last-stand', [{ type: 'conditional', hpRatioAtMost: 0.5, damageMultiplier: 2 }]),
       node('tempo', [{ type: 'tempo', every: 2, damageMultiplier: 2 }]),
       node('drain', [{ type: 'drain', ratio: 0.5 }]),
@@ -66,12 +66,12 @@ describe('時限能力のバッジ', () => {
       node('timed-1', [timed({ kind: 'first', turns: 2 }, attack)]),
       node('timed-2', [timed({ kind: 'at', turn: 3 }, attack)]),
     ];
-    assert.deepEqual(badgeLabels(build), ['物理', 'ATK +5（〜2T）', 'ATK +5（3T）']);
+    assert.deepEqual(badgeLabels(build), ['物理', 'ATK +5(〜2T)', 'ATK +5(3T)']);
     assert.equal(formatBuildStats(createProfile(build)), 'HP 100 / ATK 13 / DEF 0');
   });
 
   test('ローテーションの時限能力は周期スキルなので、物理のバッジを出さない', () => {
     const build = [ORIGIN, node('timed', [timed({ kind: 'rotation', turns: 2 }, { type: 'regen', amount: 8 })])];
-    assert.deepEqual(badgeLabels(build), ['再生 8（周期2T）']);
+    assert.deepEqual(badgeLabels(build), ['再生 8(周期2T)']);
   });
 });

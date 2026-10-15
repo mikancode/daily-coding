@@ -5,9 +5,12 @@ import { ENDURE_HP } from '../core/ability-table.js';
 import { ELEMENT_NAMES } from './element-names.js';
 
 /**
+ * @typedef {import('../types.js').BurstEffect} BurstEffect
  * @typedef {import('../types.js').CombatantProfile} CombatantProfile
  * @typedef {import('../types.js').ConditionalEffect} ConditionalEffect
  * @typedef {import('../types.js').Effect} Effect
+ * @typedef {import('../types.js').MarkScalingEffect} MarkScalingEffect
+ * @typedef {import('../types.js').MarkScalingTarget} MarkScalingTarget
  * @typedef {import('../types.js').SkillNode} SkillNode
  * @typedef {import('../types.js').TempoEffect} TempoEffect
  * @typedef {import('../types.js').TimedPeriod} TimedPeriod
@@ -72,6 +75,8 @@ function formatPeriod(period) {
       return `HP${Math.round(period.ratio * PERCENT)}%以下`;
     case 'revived':
       return '復活後';
+    case 'marksAtLeast':
+      return `刻印${period.count}以上`;
   }
 }
 
@@ -94,6 +99,8 @@ function describePeriod(period) {
       return `HP が最大 HP の ${Math.round(period.ratio * PERCENT)}% 以下になったら有効になり、回復しても切れない。`;
     case 'revived':
       return '根性・復活が発動したら有効になる。';
+    case 'marksAtLeast':
+      return `相手の刻印が ${period.count} 個以上の間だけ有効。`;
   }
 }
 
@@ -105,6 +112,28 @@ const formatRage = (amount) => `逆上 ATK+${amount}`;
 const formatArmorBreak = (amount) => `破甲 DEF-${amount}`;
 /** @param {number} amount @returns {string} */
 const formatMark = (amount) => `刻印 ${amount}`;
+
+/** @type {Readonly<Record<MarkScalingTarget, string>>} */
+const MARK_SCALING_NAMES = { poison: '呪陣', attackDown: '縛陣', defenseDown: '砕陣' };
+
+/** @param {MarkScalingEffect} effect @returns {string} */
+const formatMarkScaling = (effect) => `${MARK_SCALING_NAMES[effect.target]} ${effect.perMark}`;
+
+/** @param {BurstEffect} effect @returns {string} */
+const describeBurstAmount = (effect) =>
+  effect.ratio === 1 ? '全部' : `${Math.round(effect.ratio * PERCENT)}%(切り捨て)`;
+
+/** @param {MarkScalingEffect} effect @returns {string} */
+function describeMarkScaling(effect) {
+  switch (effect.target) {
+    case 'poison':
+      return `ターン終了時に、相手の DEF を無視して 相手の刻印1つにつき ${effect.perMark} のダメージを与える`;
+    case 'attackDown':
+      return `相手の刻印1つにつき、相手の ATK を ${effect.perMark} 下げる`;
+    case 'defenseDown':
+      return `相手の刻印1つにつき、相手の DEF を ${effect.perMark} 下げる`;
+  }
+}
 
 /**
  * 報酬の一覧に出す能力の名前。ステータスの加算と連撃は formatReward が扱う
@@ -136,13 +165,15 @@ function formatAbility(effect) {
     case 'tempo':
       return formatTempo(effect);
     case 'charge':
-      return `溜め（経過1ターンにつき+${effect.perTurn}倍）`;
+      return `溜め(経過1ターンにつき+${effect.perTurn}倍)`;
     case 'mark':
       return formatMark(effect.amount);
     case 'burst':
-      return `解放（刻印1つにつき+${effect.perMark}倍）`;
+      return `解放(刻印1つにつき+${effect.perMark}倍)`;
+    case 'markScaling':
+      return formatMarkScaling(effect);
     case 'timed':
-      return `${formatReward(effect.effect)}（${formatPeriod(effect.period)}）`;
+      return `${formatReward(effect.effect)}(${formatPeriod(effect.period)})`;
     case 'stat':
     case 'multiHit':
       return null;
@@ -162,7 +193,7 @@ export function formatReward(effect) {
     case 'stat':
       return `${STAT_NAMES[effect.stat]} +${effect.amount}`;
     case 'multiHit':
-      return `${effect.hits}連撃（1発 ${effect.ratio}倍）`;
+      return `${effect.hits}連撃(1発 ${effect.ratio}倍)`;
     default:
       return formatAbility(effect) ?? '';
   }
@@ -235,7 +266,9 @@ export function describeEffect(effect) {
     case 'mark':
       return `攻撃を当てるたびに、相手に刻印を ${effect.amount} 付ける`;
     case 'burst':
-      return `周期スキル。回ってきたターンは物理で攻撃し、相手の刻印を全部消費して、1つにつき与えるダメージ +${effect.perMark} 倍`;
+      return `周期スキル。回ってきたターンは物理で攻撃し、相手の刻印を${describeBurstAmount(effect)}消費して、1つにつき与えるダメージ +${effect.perMark} 倍`;
+    case 'markScaling':
+      return describeMarkScaling(effect);
     case 'timed':
       return `${describePeriod(effect.period)}${describeEffect(effect.effect)}`;
   }
@@ -260,6 +293,13 @@ export function profileEffects(profile) {
   if (profile.pierce) effects.push({ type: 'pierce' });
   if (profile.armorBreak > 0) effects.push({ type: 'armorBreak', amount: profile.armorBreak });
   if (profile.mark > 0) effects.push({ type: 'mark', amount: profile.mark });
+  if (profile.markPoison > 0) effects.push({ type: 'markScaling', target: 'poison', perMark: profile.markPoison });
+  if (profile.markAttackDown > 0) {
+    effects.push({ type: 'markScaling', target: 'attackDown', perMark: profile.markAttackDown });
+  }
+  if (profile.markDefenseDown > 0) {
+    effects.push({ type: 'markScaling', target: 'defenseDown', perMark: profile.markDefenseDown });
+  }
   return effects;
 }
 
@@ -302,7 +342,9 @@ export function formatBadgeLabel(effect) {
       return formatMark(effect.amount);
     case 'burst':
       return '解放';
+    case 'markScaling':
+      return formatMarkScaling(effect);
     case 'timed':
-      return `${formatBadgeLabel(effect.effect)}（${formatPeriod(effect.period)}）`;
+      return `${formatBadgeLabel(effect.effect)}(${formatPeriod(effect.period)})`;
   }
 }

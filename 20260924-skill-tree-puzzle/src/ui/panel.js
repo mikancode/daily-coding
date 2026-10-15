@@ -232,7 +232,7 @@ export function createPanel(elements, characters, challenges, popover, handlers)
           button.type = 'button';
           button.className = 'button is-primary';
           button.disabled = defeated;
-          button.textContent = defeated ? `${enemy.name}（撃破済み）` : `${enemy.name}と戦う`;
+          button.textContent = defeated ? `${enemy.name}(撃破済み)` : `${enemy.name}と戦う`;
           button.addEventListener('click', () => handlers.onFightEnemy(index));
           return button;
         }),

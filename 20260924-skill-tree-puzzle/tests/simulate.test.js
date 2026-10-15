@@ -31,6 +31,9 @@ const challenge = (overrides) => ({
   ...overrides,
 });
 
+/** 攻撃・防御の内訳。value = max(0, base + up − down) */
+const stat = (base, up, down) => ({ value: Math.max(0, base + up - down), base, up, down });
+
 /** @param {object[]} enemies */
 const group = (enemies) => ({ id: 'test', name: 'テスト用のお題', enemies, points: 10 });
 
@@ -77,9 +80,9 @@ describe('ターンの流れ', () => {
     const outcome = simulate([ORIGIN], challenge({ hp: 20, attack: 10 }));
 
     assert.deepEqual(outcome.log, [
-      { type: 'hit', actor: 'player', turn: 1, element: 'physical', damage: 10, targetHp: 10 },
-      { type: 'hit', actor: 'boss', turn: 1, element: 'physical', damage: 10, targetHp: 90 },
-      { type: 'hit', actor: 'player', turn: 2, element: 'physical', damage: 10, targetHp: 0 },
+      { type: 'hit', actor: 'player', turn: 1, element: 'physical', damage: 10, targetHpBefore: 20, targetHp: 10 },
+      { type: 'hit', actor: 'boss', turn: 1, element: 'physical', damage: 10, targetHpBefore: 100, targetHp: 90 },
+      { type: 'hit', actor: 'player', turn: 2, element: 'physical', damage: 10, targetHpBefore: 10, targetHp: 0 },
     ]);
     assert.deepEqual(outcome.summary, { turns: 2, bossHp: 0, playerHp: 90, playerMaxHp: 100, bossMaxHp: 20, loseReason: null });
   });
@@ -250,7 +253,7 @@ describe('能力を味方が持つ場合と敵が持つ場合', () => {
     const outcome = simulate([ORIGIN, thorns], challenge({ hp: 1000, attack: 10, defense: 2, turnLimit: 1 }));
 
     assert.deepEqual(entriesOf(outcome, 'player', 'counter'), [
-      { type: 'counter', actor: 'player', turn: 1, damage: 5, targetHp: 1000 - 8 - 5 },
+      { type: 'counter', actor: 'player', turn: 1, damage: 5, targetHpBefore: 1000 - 8, targetHp: 1000 - 8 - 5 },
     ]);
   });
 
@@ -281,8 +284,8 @@ describe('能力を味方が持つ場合と敵が持つ場合', () => {
     assert.deepEqual(
       outcome.log.filter((entry) => entry.type === 'poison'),
       [
-        { type: 'poison', actor: 'player', turn: 1, damage: 5, targetHp: 100 - 7 - 5 },
-        { type: 'poison', actor: 'boss', turn: 1, damage: 4, targetHp: 96 },
+        { type: 'poison', actor: 'player', turn: 1, damage: 5, targetHpBefore: 100 - 7, targetHp: 100 - 7 - 5 },
+        { type: 'poison', actor: 'boss', turn: 1, damage: 4, targetHpBefore: 100, targetHp: 96 },
       ],
     );
   });
@@ -371,8 +374,8 @@ describe('攻撃を当てた・受けたときの能力', () => {
     assert.deepEqual(
       entriesOf(outcome, 'boss', 'hit').slice(0, 2).map((entry) => [entry.damage, entry.changes]),
       [
-        [0, { attack: 12 }],
-        [0, { attack: 14 }],
+        [0, { attack: stat(10, 2, 0) }],
+        [0, { attack: stat(10, 4, 0) }],
       ],
     );
     assert.equal(entriesOf(outcome, 'player', 'hit')[1].damage, 14);
@@ -381,7 +384,7 @@ describe('攻撃を当てた・受けたときの能力', () => {
   test('rage：敵も被弾すると攻撃が上がる', () => {
     const outcome = simulate([ORIGIN], challenge({ hp: 1000, attack: 10, abilities: [{ type: 'rage', amount: 3 }], turnLimit: 1 }));
 
-    assert.deepEqual(entriesOf(outcome, 'player', 'hit')[0].changes, { attack: 13 });
+    assert.deepEqual(entriesOf(outcome, 'player', 'hit')[0].changes, { attack: stat(10, 3, 0) });
     assert.equal(entriesOf(outcome, 'boss', 'hit')[0].damage, 13);
   });
 
@@ -424,9 +427,9 @@ describe('攻撃を当てた・受けたときの能力', () => {
     assert.deepEqual(
       entriesOf(outcome, 'player', 'hit').map((entry) => [entry.damage, entry.changes]),
       [
-        [5, { defense: 3 }],
-        [7, { defense: 1 }],
-        [9, { defense: 0 }],
+        [5, { defense: stat(5, 0, 2) }],
+        [7, { defense: stat(5, 0, 4) }],
+        [9, { defense: stat(5, 0, 6) }],
       ],
     );
   });
@@ -460,16 +463,16 @@ describe('攻撃を当てた・受けたときの能力', () => {
 
   test('mark・burst：味方は刻印を付け、解放で全部消費して倍率を乗算する', () => {
     const mark = node('mark', [{ type: 'mark', amount: 1 }]);
-    const burst = node('burst', [{ type: 'burst', perMark: 0.5 }]);
+    const burst = node('burst', [{ type: 'burst', perMark: 0.5, ratio: 1 }]);
     const outcome = simulate([ORIGIN, mark, ICE, burst], challenge({ hp: 1000, attack: 0, turnLimit: 4 }));
 
     assert.deepEqual(
       entriesOf(outcome, 'player', 'hit').map((entry) => [entry.element, entry.damage, entry.changes]),
       [
-        ['ice', 10, { marks: 1 }],
-        ['physical', 15, { marks: 1 }],
-        ['ice', 10, { marks: 2 }],
-        ['physical', 20, { marks: 1 }],
+        ['ice', 10, { marks: { before: 0, after: 1 } }],
+        ['physical', 15, { marks: { before: 0, after: 1 } }],
+        ['ice', 10, { marks: { before: 1, after: 2 } }],
+        ['physical', 20, { marks: { before: 0, after: 1 } }],
       ],
     );
     assert.deepEqual(
@@ -489,7 +492,7 @@ describe('攻撃を当てた・受けたときの能力', () => {
         attack: 10,
         abilities: [
           { type: 'mark', amount: 2 },
-          { type: 'burst', perMark: 0.5 },
+          { type: 'burst', perMark: 0.5, ratio: 1 },
         ],
         turnLimit: 2,
       }),
@@ -813,5 +816,183 @@ describe('時限能力', () => {
     const { log } = simulate([ORIGIN, node('timed', [timed({ kind: 'at', turn: 1 }, POISON)])], boss);
     assert.deepEqual(turnsOf(log, 'timed', 'player'), [1, 2]);
     assert.deepEqual(turnsOf(log, 'timed', 'boss'), [1, 2]);
+  });
+});
+
+describe('刻印の使い道', () => {
+  const MARK = node('mark', [{ type: 'mark', amount: 1 }]);
+  /** @param {number} ratio */
+  const burst = (ratio) => node('burst', [{ type: 'burst', perMark: 0.5, ratio }]);
+  /** @param {'poison' | 'attackDown' | 'defenseDown'} target @param {number} perMark */
+  const markScaling = (target, perMark) => ({ type: 'markScaling', target, perMark });
+  const MARKED_ATK = timed({ kind: 'marksAtLeast', count: 2 }, { type: 'stat', stat: 'attack', amount: 5 });
+  const sandbag = (overrides = {}) => challenge({ hp: 1000, attack: 0, turnLimit: 4, ...overrides });
+  /** @param {object} outcome @param {'player' | 'boss'} actor */
+  const damagesOf = (outcome, actor) => entriesOf(outcome, actor, 'hit').map((entry) => entry.damage);
+
+  test('解放：味方は 刻印 × 割合 の切り捨てだけ使い、残りは付いたまま', () => {
+    const outcome = simulate([ORIGIN, MARK, ICE, burst(0.5)], sandbag());
+
+    // 2T は刻印1の半分が切り捨てで0。4T は刻印3の半分を切り捨てて1を使う
+    assert.deepEqual(
+      entriesOf(outcome, 'player', 'burst').map((entry) => [entry.marks, entry.remaining, entry.multiplier]),
+      [
+        [0, 1, 1],
+        [1, 2, 1.5],
+      ],
+    );
+    assert.deepEqual(damagesOf(outcome, 'player'), [10, 10, 10, 15]);
+  });
+
+  test('解放：敵も割合だけ使う', () => {
+    const outcome = simulate(
+      [ORIGIN],
+      challenge({
+        hp: 1000,
+        attack: 10,
+        abilities: [
+          { type: 'mark', amount: 2 },
+          { type: 'burst', perMark: 0.5, ratio: 0.5 },
+        ],
+        turnLimit: 2,
+      }),
+    );
+
+    assert.deepEqual(damagesOf(outcome, 'boss'), [10, 15]);
+    // 解放だけのローテーションなので毎ターン解放する。1T は刻印0、2T は刻印2の半分を使う
+    assert.deepEqual(
+      entriesOf(outcome, 'boss', 'burst').map((entry) => [entry.marks, entry.remaining]),
+      [
+        [0, 0],
+        [1, 1],
+      ],
+    );
+  });
+
+  test('刻印の数の期間：味方は刻印が N に達した次の1発から効き、解放で下回ったら切れる', () => {
+    const outcome = simulate([ORIGIN, MARK, ICE, burst(1), node('marked', [MARKED_ATK])], sandbag());
+
+    // 3T の1発で刻印2になって有効になる。4T は解放で刻印を使い切って切れるので、ATK 10 のまま2倍
+    assert.deepEqual(
+      entriesOf(outcome, 'player', 'timed').map((entry) => [entry.turn, entry.state]),
+      [
+        [3, 'start'],
+        [4, 'end'],
+      ],
+    );
+    assert.deepEqual(damagesOf(outcome, 'player'), [10, 15, 10, 20]);
+  });
+
+  test('刻印の数の期間：敵も味方の刻印の数で効く', () => {
+    const outcome = simulate(
+      [ORIGIN],
+      challenge({ hp: 1000, attack: 10, abilities: [{ type: 'mark', amount: 1 }, MARKED_ATK], turnLimit: 3 }),
+    );
+
+    assert.deepEqual(damagesOf(outcome, 'boss'), [10, 10, 15]);
+    assert.deepEqual(
+      entriesOf(outcome, 'boss', 'timed').map((entry) => [entry.turn, entry.state]),
+      [[2, 'start']],
+    );
+  });
+
+  test('呪陣：味方はターン終了に 刻印 × n を、毒と足して与える', () => {
+    const outcome = simulate(
+      [ORIGIN, MARK, node('curse', [markScaling('poison', 2), { type: 'poison', damage: 3 }])],
+      sandbag({ turnLimit: 2 }),
+    );
+
+    assert.deepEqual(
+      entriesOf(outcome, 'player', 'poison').map((entry) => [entry.damage, entry.markDamage, entry.marks]),
+      [
+        [5, 2, 1],
+        [7, 4, 2],
+      ],
+    );
+  });
+
+  test('呪陣：敵も味方の刻印の数でダメージを与える', () => {
+    const outcome = simulate(
+      [ORIGIN],
+      sandbag({ abilities: [{ type: 'mark', amount: 1 }, markScaling('poison', 2)], turnLimit: 2 }),
+    );
+
+    assert.deepEqual(
+      entriesOf(outcome, 'boss', 'poison').map((entry) => entry.damage),
+      [2, 4],
+    );
+  });
+
+  test('縛陣：味方は相手の攻撃を 刻印 × n 下げ、攻撃の行に下がった ATK を添える', () => {
+    const outcome = simulate(
+      [ORIGIN, MARK, node('bind', [markScaling('attackDown', 3)])],
+      challenge({ hp: 1000, attack: 10, turnLimit: 2 }),
+    );
+
+    assert.deepEqual(damagesOf(outcome, 'boss'), [7, 4]);
+    assert.deepEqual(
+      entriesOf(outcome, 'player', 'hit').map((entry) => entry.changes),
+      [
+        { attack: stat(10, 0, 3), marks: { before: 0, after: 1 } },
+        { attack: stat(10, 0, 6), marks: { before: 1, after: 2 } },
+      ],
+    );
+  });
+
+  test('縛陣：0 未満には下げない', () => {
+    const outcome = simulate(
+      [ORIGIN, MARK, node('bind', [markScaling('attackDown', 20)])],
+      challenge({ hp: 1000, attack: 10, turnLimit: 2 }),
+    );
+
+    assert.deepEqual(damagesOf(outcome, 'boss'), [0, 0]);
+  });
+
+  test('縛陣：敵も味方の攻撃を下げる', () => {
+    const outcome = simulate(
+      [ORIGIN],
+      challenge({
+        hp: 1000,
+        attack: 0,
+        abilities: [{ type: 'mark', amount: 1 }, markScaling('attackDown', 3)],
+        turnLimit: 3,
+      }),
+    );
+
+    assert.deepEqual(damagesOf(outcome, 'player'), [10, 7, 4]);
+  });
+
+  test('砕陣：味方は相手の防御を 刻印 × n 下げ、解放で刻印が減れば戻る', () => {
+    const outcome = simulate(
+      [ORIGIN, MARK, ICE, burst(1), node('sunder', [markScaling('defenseDown', 2)])],
+      sandbag({ defense: 4 }),
+    );
+
+    // 1T：DEF 4。2T：解放で刻印0に戻り DEF 4 で1.5倍。3T：刻印1で DEF 2。4T：解放で戻り DEF 4 で2倍
+    assert.deepEqual(damagesOf(outcome, 'player'), [6, 11, 8, 16]);
+  });
+
+  test('刻印の数の期間で有効になった砕陣は、有効にした1発の行に下がった DEF を添える', () => {
+    const marked = timed({ kind: 'marksAtLeast', count: 2 }, markScaling('defenseDown', 2));
+    const outcome = simulate([ORIGIN, MARK, node('marked', [marked])], sandbag({ defense: 5, turnLimit: 2 }));
+
+    assert.deepEqual(
+      entriesOf(outcome, 'player', 'hit').map((entry) => entry.changes),
+      [{ marks: { before: 0, after: 1 } }, { defense: stat(5, 0, 4), marks: { before: 1, after: 2 } }],
+    );
+  });
+
+  test('砕陣：敵も味方の防御を下げ、0 未満にはしない', () => {
+    const outcome = simulate(
+      [ORIGIN, node('def', [{ type: 'stat', stat: 'defense', amount: 3 }])],
+      challenge({
+        hp: 1000,
+        attack: 5,
+        abilities: [{ type: 'mark', amount: 1 }, markScaling('defenseDown', 2)],
+        turnLimit: 3,
+      }),
+    );
+
+    assert.deepEqual(damagesOf(outcome, 'boss'), [2, 4, 5]);
   });
 });

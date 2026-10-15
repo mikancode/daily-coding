@@ -94,12 +94,12 @@ describe('根性・復活の表示', () => {
 describe('時限能力の表示', () => {
   const POISON = { type: 'poison', damage: 5 };
   const cases = [
-    ['最初の x ターン', { kind: 'first', turns: 3 }, '毒 5（〜3T）', '最初の 3 ターンだけ有効。'],
-    ['x ターン目から', { kind: 'from', turn: 4 }, '毒 5（4T〜）', '4 ターン目から有効。'],
-    ['x ターン目だけ', { kind: 'at', turn: 2 }, '毒 5（2T）', '2 ターン目だけ有効。'],
-    ['ローテーション', { kind: 'rotation', turns: 2 }, '毒 5（周期2T）', 'そのターンから 2 ターン有効'],
-    ['HP の割合以下', { kind: 'hpAtMost', ratio: 0.5 }, '毒 5（HP50%以下）', '50% 以下になったら有効になり、回復しても切れない。'],
-    ['復活後', { kind: 'revived' }, '毒 5（復活後）', '根性・復活が発動したら有効になる。'],
+    ['最初の x ターン', { kind: 'first', turns: 3 }, '毒 5(〜3T)', '最初の 3 ターンだけ有効。'],
+    ['x ターン目から', { kind: 'from', turn: 4 }, '毒 5(4T〜)', '4 ターン目から有効。'],
+    ['x ターン目だけ', { kind: 'at', turn: 2 }, '毒 5(2T)', '2 ターン目だけ有効。'],
+    ['ローテーション', { kind: 'rotation', turns: 2 }, '毒 5(周期2T)', 'そのターンから 2 ターン有効'],
+    ['HP の割合以下', { kind: 'hpAtMost', ratio: 0.5 }, '毒 5(HP50%以下)', '50% 以下になったら有効になり、回復しても切れない。'],
+    ['復活後', { kind: 'revived' }, '毒 5(復活後)', '根性・復活が発動したら有効になる。'],
   ];
   for (const [label, period, badge, fragment] of cases) {
     test(`${label}：バッジ名に期間を添え、説明は期間の文に中身の説明を続ける`, () => {
@@ -113,7 +113,7 @@ describe('時限能力の表示', () => {
 
   test('報酬の一覧では、中身の名前に期間を添える', () => {
     const effect = timed({ kind: 'first', turns: 3 }, { type: 'stat', stat: 'attack', amount: 5 });
-    assert.equal(formatReward(effect), 'ATK +5（〜3T）');
+    assert.equal(formatReward(effect), 'ATK +5(〜3T)');
   });
 
   test('ボスの時限能力は、ステータスの加算を包んでいてもバッジにする', () => {
@@ -131,6 +131,6 @@ describe('時限能力の表示', () => {
         ],
       }),
     );
-    assert.deepEqual(effects.map(formatBadgeLabel), ['反撃 10（周期2T）', 'ATK +5（4T〜）']);
+    assert.deepEqual(effects.map(formatBadgeLabel), ['反撃 10(周期2T)', 'ATK +5(4T〜)']);
   });
 });
