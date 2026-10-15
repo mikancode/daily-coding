@@ -15,7 +15,7 @@ const ATTACK_STEP = 1;
 const DEFENSE_STEP = 1;
 /** 連撃の回数はターンごとにログを積むので、大きすぎる値で画面が固まらないよう上限を置く */
 const MAX_MULTI_HITS = 100;
-/** 根性で踏みとどまったときの HP。復活は、これより大きい HP に戻す。表示で根性と復活を呼び分けるのにも使う */
+/** 根性が発動したときの HP。復活は、これより大きい HP に戻す。表示で根性と復活を呼び分けるのにも使う */
 export const ENDURE_HP = 1;
 
 /** @param {string} name @param {string} label @param {'hp' | 'attack' | 'defense'} stat @param {number} step @returns {AbilityDefinition} */

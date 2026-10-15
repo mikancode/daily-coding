@@ -91,7 +91,7 @@ describe('ターンの流れ', () => {
     assert.deepEqual(types, ['hit', 'counter', 'hit', 'counter', 'hit', 'turnLimit']);
   });
 
-  test('multiHit を重ねると、回数と係数がそれぞれ掛け合わさる', () => {
+  test('multiHit を重ねると、回数と係数がそれぞれ乗算される', () => {
     const second = node('multi-hit-2', [{ type: 'multiHit', hits: 2, ratio: 0.5 }]);
     const outcome = simulate([ORIGIN, MULTI_HIT, second], challenge({ hp: 100, attack: 0, turnLimit: 1 }));
     const hits = outcome.log.filter((entry) => entry.type === 'hit' && entry.actor === 'player');
@@ -163,11 +163,11 @@ describe('ローテーション', () => {
     assert.deepEqual(elements(simulate([ORIGIN], challenge(resistant))), ['physical', 'physical', 'physical', 'physical']);
   });
 
-  test('周期スキルが1つなら、毎ターン使う', () => {
+  test('周期スキルが1つなら、毎ターン発動する', () => {
     assert.deepEqual(elements(simulate([ORIGIN, ICE], challenge(resistant))), ['ice', 'ice', 'ice', 'ice']);
   });
 
-  test('周期スキルが2つなら、ビルドの並び順で交互に使う', () => {
+  test('周期スキルが2つなら、ビルドの並び順で交互に発動する', () => {
     assert.deepEqual(elements(simulate([ORIGIN, FIRE, ICE], challenge(resistant))), ['fire', 'ice', 'fire', 'ice']);
     assert.deepEqual(elements(simulate([ORIGIN, ICE, FIRE], challenge(resistant))), ['ice', 'fire', 'ice', 'fire']);
   });
@@ -310,7 +310,7 @@ describe('能力を味方が持つ場合と敵が持つ場合', () => {
     assert.deepEqual(entriesOf(revive(500), 'player', 'endure'), [{ type: 'endure', actor: 'player', turn: 1, hp: 100 }]);
   });
 
-  test('endure：根性と復活を両方持っても使えるのは1回で、戻す HP は大きいほう', () => {
+  test('endure：根性と復活を両方持っても発動するのは1回で、戻す HP は大きいほう', () => {
     const both = node('both', [
       { type: 'endure', hp: 1 },
       { type: 'endure', hp: 30 },
@@ -458,7 +458,7 @@ describe('攻撃を当てた・受けたときの能力', () => {
     );
   });
 
-  test('mark・burst：味方は刻印を付け、解放で全部使って倍率を掛ける', () => {
+  test('mark・burst：味方は刻印を付け、解放で全部消費して倍率を乗算する', () => {
     const mark = node('mark', [{ type: 'mark', amount: 1 }]);
     const burst = node('burst', [{ type: 'burst', perMark: 0.5 }]);
     const outcome = simulate([ORIGIN, mark, ICE, burst], challenge({ hp: 1000, attack: 0, turnLimit: 4 }));
@@ -510,7 +510,7 @@ describe('攻撃を当てた・受けたときの能力', () => {
 });
 
 describe('倍率の能力', () => {
-  test('tempo：味方は倍数のターンだけ倍率が掛かる', () => {
+  test('tempo：味方は倍数のターンだけ有効になる', () => {
     const tempo = node('tempo', [{ type: 'tempo', every: 2, damageMultiplier: 3 }]);
     const outcome = simulate([ORIGIN, tempo], challenge({ hp: 1000, attack: 0, turnLimit: 4 }));
 
@@ -525,7 +525,7 @@ describe('倍率の能力', () => {
     );
   });
 
-  test('tempo：敵も倍数のターンだけ倍率が掛かり、反撃には掛からない', () => {
+  test('tempo：敵も倍数のターンだけ有効で、反撃には倍率を乗算しない', () => {
     const outcome = simulate(
       [ORIGIN],
       challenge({
@@ -683,9 +683,9 @@ describe('時限能力', () => {
   const timedLog = (log) => log.filter((entry) => entry.type === 'timed').map(({ turn, state }) => [turn, state]);
 
   const periodCases = [
-    ['最初の x ターンだけ効く', { kind: 'first', turns: 2 }, [1, 2], [[1, 'start'], [3, 'end']]],
-    ['x ターン目から効く', { kind: 'from', turn: 3 }, [3, 4, 5], [[3, 'start']]],
-    ['x ターン目にだけ効く', { kind: 'at', turn: 2 }, [2], [[2, 'start'], [3, 'end']]],
+    ['最初の x ターンだけ有効', { kind: 'first', turns: 2 }, [1, 2], [[1, 'start'], [3, 'end']]],
+    ['x ターン目から有効', { kind: 'from', turn: 3 }, [3, 4, 5], [[3, 'start']]],
+    ['x ターン目だけ有効', { kind: 'at', turn: 2 }, [2], [[2, 'start'], [3, 'end']]],
   ];
   for (const [label, period, poisonTurns, expectedLog] of periodCases) {
     test(label, () => {
@@ -695,7 +695,7 @@ describe('時限能力', () => {
     });
   }
 
-  test('ローテーションで回ってきたターンから x ターン効き、そのターンは物理で殴る', () => {
+  test('ローテーションで回ってきたターンから x ターン有効になり、そのターンは物理で殴る', () => {
     const build = [
       ORIGIN,
       node('fire', [{ type: 'element', element: 'fire' }]),
@@ -708,7 +708,7 @@ describe('時限能力', () => {
     assert.deepEqual(elements, ['fire', 'physical', 'fire', 'physical', 'fire']);
   });
 
-  test('ローテーションの時限能力は、効いている間に再び回ってきたら張り直す', () => {
+  test('ローテーションの時限能力は、有効な間に再び回ってきたら再発動する', () => {
     const build = [
       ORIGIN,
       node('fire', [{ type: 'element', element: 'fire' }]),
@@ -720,7 +720,7 @@ describe('時限能力', () => {
     assert.deepEqual(timedLog(log), [[2, 'start'], [4, 'renew']]);
   });
 
-  test('ステータスの加算は、効いているターンのダメージにだけ乗る', () => {
+  test('ステータスの加算は、有効なターンのダメージにだけ乗る', () => {
     const build = [ORIGIN, node('timed', [timed({ kind: 'from', turn: 2 }, { type: 'stat', stat: 'attack', amount: 5 })])];
     const { log } = simulate(build, sandbag({ turnLimit: 3 }));
     const damages = log.filter((entry) => entry.type === 'hit' && entry.actor === 'player').map((entry) => entry.damage);
@@ -759,7 +759,7 @@ describe('時限能力', () => {
     );
   });
 
-  test('HP の条件で効き始めた反撃は、条件を満たした1発には返さず、次の1発から返す', () => {
+  test('HP の条件で有効になった反撃は、条件を満たした1発には返さず、次の1発から返す', () => {
     const build = [ORIGIN, node('multi', [{ type: 'multiHit', hits: 2, ratio: 1 }])];
     const boss = sandbag({ hp: 20, abilities: [timed({ kind: 'hpAtMost', ratio: 0.5 }, { type: 'counter', damage: 7 })] });
     const { log } = simulate(build, boss);
@@ -777,7 +777,7 @@ describe('時限能力', () => {
     assert.deepEqual(timedLog(log), [[1, 'start']]);
   });
 
-  test('連撃の回数は行動の最初に決め、途中で効き始めた連撃は次の行動から効く', () => {
+  test('連撃の回数は行動の最初に決め、途中で有効になった連撃は次の行動から効く', () => {
     const build = [
       ORIGIN,
       node('regen', [{ type: 'regen', amount: 60 }]),
@@ -787,7 +787,7 @@ describe('時限能力', () => {
     assert.deepEqual(turnsOf(log, 'hit'), [1, 2, 2]);
   });
 
-  test('復活後の能力は、根性・復活で踏みとどまった直後から効く', () => {
+  test('復活後の能力は、根性・復活が発動した直後から有効になる', () => {
     const boss = challenge({
       hp: 10,
       attack: 0,
@@ -802,7 +802,7 @@ describe('時限能力', () => {
     assert.deepEqual(hitDamages(log, 'boss'), [20]);
   });
 
-  test('HP の条件・復活後の能力は、倒れた1発では効き始めない', () => {
+  test('HP の条件・復活後の能力は、倒れた1発では有効にならない', () => {
     const boss = challenge({ hp: 10, attack: 0, abilities: [timed(BELOW_HALF, POISON), timed({ kind: 'revived' }, POISON)] });
     const { log } = simulate([ORIGIN], boss);
     assert.deepEqual(timedLog(log), []);

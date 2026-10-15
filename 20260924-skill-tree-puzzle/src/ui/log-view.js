@@ -21,7 +21,7 @@ const MULTIPLIER_DIGITS = 2;
 const formatMultiplier = (multiplier) => `${Number(multiplier.toFixed(MULTIPLIER_DIGITS))}倍`;
 
 /**
- * 攻撃の行に、掛かった好機の倍率と、受けた側の変わった状態を添える
+ * 攻撃の行に、有効だった好機の倍率と、受けた側の変わった状態を添える
  * @param {number | undefined} tempo
  * @param {TargetChanges | undefined} changes
  * @returns {string}
@@ -37,7 +37,7 @@ function formatAddenda(tempo, changes) {
 }
 
 /** @type {Readonly<Record<'start' | 'renew' | 'end', string>>} */
-const TIMED_STATES = { start: '効き始めた', renew: '張り直された', end: '切れた' };
+const TIMED_STATES = { start: '有効になった', renew: '再発動した', end: '切れた' };
 
 /** @type {Readonly<Record<LoseReason, string>>} */
 const LOSE_REASONS = {
@@ -92,10 +92,10 @@ function formatEntry(entry, { playerMaxHp, bossMaxHp }) {
         : `${entry.turn}T ボスが再生で ${entry.amount} 回復（${bossHp(entry.hp)}）`;
     case 'endure': {
       // 戻したあとの HP で呼び分ける。最大 HP の頭打ちで1に戻った復活も、働きは根性と同じなので根性と出す
-      const action = entry.hp === ENDURE_HP ? '根性で踏みとどまった' : '復活した';
+      const name = entry.hp === ENDURE_HP ? '根性' : '復活';
       return byPlayer
-        ? `${entry.turn}T ${action}（${playerHp(entry.hp)}）`
-        : `${entry.turn}T ボスが${action}（${bossHp(entry.hp)}）`;
+        ? `${entry.turn}T ${name}が発動した（${playerHp(entry.hp)}）`
+        : `${entry.turn}T ボスの${name}が発動した（${bossHp(entry.hp)}）`;
     }
     case 'timed':
       return byPlayer
