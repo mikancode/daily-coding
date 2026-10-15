@@ -469,10 +469,10 @@ describe('攻撃を当てた・受けたときの能力', () => {
     assert.deepEqual(
       entriesOf(outcome, 'player', 'hit').map((entry) => [entry.element, entry.damage, entry.changes]),
       [
-        ['ice', 10, { marks: 1 }],
-        ['physical', 15, { marks: 1 }],
-        ['ice', 10, { marks: 2 }],
-        ['physical', 20, { marks: 1 }],
+        ['ice', 10, { marks: { before: 0, after: 1 } }],
+        ['physical', 15, { marks: { before: 0, after: 1 } }],
+        ['ice', 10, { marks: { before: 1, after: 2 } }],
+        ['physical', 20, { marks: { before: 0, after: 1 } }],
       ],
     );
     assert.deepEqual(
@@ -933,8 +933,8 @@ describe('刻印の使い道', () => {
     assert.deepEqual(
       entriesOf(outcome, 'player', 'hit').map((entry) => entry.changes),
       [
-        { attack: stat(10, 0, 3), marks: 1 },
-        { attack: stat(10, 0, 6), marks: 2 },
+        { attack: stat(10, 0, 3), marks: { before: 0, after: 1 } },
+        { attack: stat(10, 0, 6), marks: { before: 1, after: 2 } },
       ],
     );
   });
@@ -978,7 +978,7 @@ describe('刻印の使い道', () => {
 
     assert.deepEqual(
       entriesOf(outcome, 'player', 'hit').map((entry) => entry.changes),
-      [{ marks: 1 }, { defense: stat(5, 0, 4), marks: 2 }],
+      [{ marks: { before: 0, after: 1 } }, { defense: stat(5, 0, 4), marks: { before: 1, after: 2 } }],
     );
   });
 

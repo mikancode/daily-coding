@@ -16,6 +16,7 @@ import { createEnemyProfile, createProfile, withEffects } from './profile.js';
  * @typedef {import('../types.js').Effect} Effect
  * @typedef {import('../types.js').SimulationResult} SimulationResult
  * @typedef {import('../types.js').StatBreakdown} StatBreakdown
+ * @typedef {import('../types.js').MarkChange} MarkChange
  * @typedef {import('../types.js').TimedEffect} TimedEffect
  * @typedef {import('../types.js').TimedPeriod} TimedPeriod
  * @typedef {import('../types.js').RotationSkill} RotationSkill
@@ -371,7 +372,7 @@ function applyStrikeEffects(attacker, target) {
  */
 function readStrikeChanges(attacker, target) {
   const marked = attacker.profile.mark > 0;
-  /** @type {{ attack?: StatBreakdown, defense?: StatBreakdown, marks?: number }} */
+  /** @type {{ attack?: StatBreakdown, defense?: StatBreakdown, marks?: MarkChange }} */
   const changes = {};
   if (target.profile.rage > 0 || (marked && attacker.profile.markAttackDown > 0)) {
     changes.attack = attackBreakdown(target, attacker);
@@ -380,7 +381,7 @@ function readStrikeChanges(attacker, target) {
     changes.defense = defenseBreakdown(target, attacker);
   }
   if (marked) {
-    changes.marks = target.marks;
+    changes.marks = { before: target.marks - attacker.profile.mark, after: target.marks };
   }
   return Object.keys(changes).length === 0 ? undefined : changes;
 }

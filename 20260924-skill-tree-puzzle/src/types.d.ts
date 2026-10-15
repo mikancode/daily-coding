@@ -306,6 +306,12 @@ export interface CombatantProfile {
 
 export type Actor = 'player' | 'boss';
 
+/** 刻印の数の変化 */
+export interface MarkChange {
+  readonly before: number;
+  readonly after: number;
+}
+
 /**
  * 戦闘中に増減した攻撃・防御の内訳。value = max(0, base + up − down)。
  * base は集計の値で、有効な時限能力の加算を含む。up は逆上、down は破甲・縛陣・砕陣で変わった量
@@ -326,8 +332,8 @@ export interface TargetChanges {
   readonly attack?: StatBreakdown;
   /** 破甲・砕陣で変わったあとの防御 */
   readonly defense?: StatBreakdown;
-  /** 付いたあとの刻印の数 */
-  readonly marks?: number;
+  /** 付く前と付いたあとの刻印の数 */
+  readonly marks?: MarkChange;
 }
 
 /** actor は行動した側。HP は行動を受けた側（regen・endure・drain は自分）の残り。endure の hp は戻したあとの HP */
